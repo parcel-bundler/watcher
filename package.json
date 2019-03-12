@@ -1,0 +1,6 @@
+{
+  "main": "build/Release/fschanges.node",
+  "dependencies": {
+    "nan": "^2.12.1"
+  }
+}
