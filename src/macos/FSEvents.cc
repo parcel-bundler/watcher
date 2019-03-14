@@ -85,6 +85,22 @@ EventList *getEventsSinceImpl(std::string *dir, std::string *token) {
     kFSEventStreamCreateFlagFileEvents
   );
 
+  std::string g = *dir + "/.git";
+  CFStringRef gitPath = CFStringCreateWithCString(
+    NULL,
+    g.c_str(),
+    kCFStringEncodingUTF8
+  );
+  
+  CFArrayRef exclusions = CFArrayCreate(
+    NULL,
+    (const void **)&gitPath,
+    1,
+    NULL
+  );
+
+  FSEventStreamSetExclusionPaths(stream, exclusions);
+
   CFRunLoopRef runLoop = CFRunLoopGetCurrent();
   FSEventStreamScheduleWithRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
   FSEventStreamStart(stream);
