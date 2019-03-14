@@ -11,9 +11,9 @@ struct DirEntry {
   std::string path;
   time_t mtime;
 
-  DirEntry(const char *p, const struct stat *info) {
-    path.assign(p);
-    mtime = info->st_mtime;
+  DirEntry(std::string p, time_t t) {
+    path = p;
+    mtime = t;
   }
   
   DirEntry(std::istream &stream) {

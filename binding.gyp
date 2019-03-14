@@ -13,7 +13,7 @@
           },
           "conditions": [
             ['use_nftw=="true"', {
-              "sources": ["src/unix/nftw.cc"]
+              "sources": ["src/shared/brute.cc", "src/unix/nftw.cc"]
             }, {
               "sources": ["src/macos/FSEvents.cc"],
             }]
@@ -23,7 +23,10 @@
           }
         }],
         ['OS=="linux"', {
-          "sources": ["src/unix/nftw.cc"]
+          "sources": ["src/shared/brute.cc", "src/unix/nftw.cc"]
+        }],
+        ['OS=="win"', {
+          "sources": ["src/shared/brute.cc", "src/windows/win.cc"]
         }]
       ]
     }
