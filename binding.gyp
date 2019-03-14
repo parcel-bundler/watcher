@@ -8,10 +8,22 @@
       ],
       "conditions": [
         ['OS=="mac"', {
-          "sources": ["src/macos/FSEvents.cc"],
+          "variables": {
+            "use_nftw%": "false"
+          },
+          "conditions": [
+            ['use_nftw=="true"', {
+              "sources": ["src/unix/nftw.cc"]
+            }, {
+              "sources": ["src/macos/FSEvents.cc"],
+            }]
+          ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
           }
+        }],
+        ['OS=="linux"', {
+          "sources": ["src/unix/nftw.cc"]
         }]
       ]
     }

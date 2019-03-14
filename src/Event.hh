@@ -42,7 +42,7 @@ public:
       arr->Set(i, mEvents[i]->toJS());
     }
 
-     return scope.Escape(arr);
+    return scope.Escape(arr);
   }
 };
 
