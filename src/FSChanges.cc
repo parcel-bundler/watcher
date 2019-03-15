@@ -18,14 +18,12 @@ struct AsyncRequest {
   EventList *events;
   Nan::Persistent<Promise::Resolver> *resolver;
 
-  AsyncRequest(Local<Value> d, Local<Value> s, Local<Value> o, Local<Promise::Resolver> r) {
+  AsyncRequest(Local<Value> dir, Local<Value> snap, Local<Value> o, Local<Promise::Resolver> r) {
     work.data = (void *)this;
 
     // copy the string since the JS garbage collector might run before the async request is finished
-    Nan::Utf8String dir(d);
-    Nan::Utf8String sp(s);
-    directory = std::string(*dir);
-    snapshotPath = std::string(*sp);
+    directory = std::string(*Nan::Utf8String(dir));
+    snapshotPath = std::string(*Nan::Utf8String(snap));
     events = NULL;
 
     if (o->IsObject()) {
@@ -80,7 +78,7 @@ void getEventsSinceAsync(uv_work_t *work) {
   req->events = getEventsSinceImpl(&req->directory, &req->snapshotPath, &req->ignore);
 }
 
-NAN_METHOD(writeSnapshot) {
+void queueWork(const Nan::FunctionCallbackInfo<v8::Value>& info, uv_work_cb cb) {
   if (info.Length() < 1 || !info[0]->IsString()) {
     return Nan::ThrowTypeError("Expected a string");
   }
@@ -95,29 +93,17 @@ NAN_METHOD(writeSnapshot) {
 
   auto resolver = Promise::Resolver::New(info.GetIsolate());
   AsyncRequest *req = new AsyncRequest(info[0], info[1], info[2], resolver);
-  uv_queue_work(uv_default_loop(), &req->work, writeSnapshotAsync, (uv_after_work_cb) asyncCallback);
+  uv_queue_work(uv_default_loop(), &req->work, cb, (uv_after_work_cb) asyncCallback);
 
   info.GetReturnValue().Set(resolver->GetPromise());
 }
 
+NAN_METHOD(writeSnapshot) {
+  queueWork(info, writeSnapshotAsync);
+}
+
 NAN_METHOD(getEventsSince) {
-  if (info.Length() < 1 || !info[0]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
-  }
-
-  if (info.Length() < 2 || !info[1]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
-  }
-
-  if (info.Length() >= 3 && !info[2]->IsObject()) {
-    return Nan::ThrowTypeError("Expected an object");
-  }
-
-  auto resolver = Promise::Resolver::New(info.GetIsolate());
-  AsyncRequest *req = new AsyncRequest(info[0], info[1], info[2], resolver);
-  uv_queue_work(uv_default_loop(), &req->work, getEventsSinceAsync, (uv_after_work_cb) asyncCallback);
-
-  info.GetReturnValue().Set(resolver->GetPromise());
+  queueWork(info, getEventsSinceAsync);
 }
 
 NAN_MODULE_INIT(Init) {
