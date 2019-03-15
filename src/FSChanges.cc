@@ -1,70 +1,64 @@
-#include <node.h>
-#include <uv.h>
+#include <napi.h>
 #include <v8.h>
-#include <nan.h>
+#include <napi.h>
 #include <unordered_set>
 #include "Event.hh"
-
-using namespace v8;
 
 void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
 struct AsyncRequest {
+  Napi::Env env;
+
   uv_work_t work;
   std::string directory;
   std::string snapshotPath;
   std::unordered_set<std::string> ignore;
   EventList *events;
-  Nan::Persistent<Promise::Resolver> *resolver;
+  Napi::Promise::Deferred deferred;
 
-  AsyncRequest(Local<Value> dir, Local<Value> snap, Local<Value> o, Local<Promise::Resolver> r) {
+  AsyncRequest(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value o, Napi::Promise::Deferred r) : env(env), deferred(r) {
     work.data = (void *)this;
 
     // copy the string since the JS garbage collector might run before the async request is finished
-    directory = std::string(*Nan::Utf8String(dir));
-    snapshotPath = std::string(*Nan::Utf8String(snap));
+    directory = std::string(dir.As<Napi::String>().Utf8Value().c_str());
+    snapshotPath = std::string(snap.As<Napi::String>().Utf8Value().c_str());
     events = NULL;
 
-    if (o->IsObject()) {
-      Local<Value> v = Local<Object>::Cast(o)->Get(Nan::New<String>("ignore").ToLocalChecked());
-      if (v->IsArray()) {
-        Local<Array> items = Local<Array>::Cast(v);
-        for (size_t i = 0; i < items->Length(); i++) {
-          Local<Value> item = items->Get(Nan::New<Number>(i));
-          if (item->IsString()) {
-            ignore.insert(std::string(*Nan::Utf8String(item)));
+    if (o.IsObject()) {
+      Napi::Value v = o.As<Napi::Object>().Get(Napi::String::New(env, "ignore"));
+      if (v.IsArray()) {
+        Napi::Array items = v.As<Napi::Array>();
+        for (size_t i = 0; i < items.Length(); i++) {
+          Napi::Value item = items.Get(Napi::Number::New(env, i));
+          if (item.IsString()) {
+            ignore.insert(std::string(item.As<Napi::String>().Utf8Value().c_str()));
           }
         }
       }
     }
-
-    resolver = new Nan::Persistent<Promise::Resolver>(r);
   }
 
   ~AsyncRequest() {
     if (events) {
       delete events;
     }
-
-    resolver->Reset();
   }
 };
 
 void asyncCallback(uv_work_t *work) {
-  Nan::HandleScope scope;
   AsyncRequest *req = (AsyncRequest *) work->data;
-  Nan::AsyncResource async("asyncCallback");
-  Local<Value> result;
+  Napi::Env env = req->env;
+  Napi::HandleScope scope(env);
+  Napi::Value result;
 
   if (req->events) {
-    result = req->events->toJS();
+    result = req->events->toJS(env);
   } else {
-    result = Nan::Null();
+    result = env.Null();
   }
 
-  auto resolver = Nan::New(*req->resolver);
-  resolver->Resolve(result);
+  req->deferred.Resolve(result);
   delete req;
 }
 
@@ -78,37 +72,47 @@ void getEventsSinceAsync(uv_work_t *work) {
   req->events = getEventsSinceImpl(&req->directory, &req->snapshotPath, &req->ignore);
 }
 
-void queueWork(const Nan::FunctionCallbackInfo<v8::Value>& info, uv_work_cb cb) {
-  if (info.Length() < 1 || !info[0]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
+Napi::Value queueWork(const Napi::CallbackInfo& info, uv_work_cb cb) {
+  if (info.Length() < 1 || !info[0].IsString()) {
+    Napi::TypeError::New(info.Env(), "Expected a string").ThrowAsJavaScriptException();
+    return info.Env().Null();
   }
 
-  if (info.Length() < 2 || !info[1]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
+  if (info.Length() < 2 || !info[1].IsString()) {
+    Napi::TypeError::New(info.Env(), "Expected a string").ThrowAsJavaScriptException();
+    return info.Env().Null();
   }
 
-  if (info.Length() >= 3 && !info[2]->IsObject()) {
-    return Nan::ThrowTypeError("Expected an object");
+  if (info.Length() >= 3 && !info[2].IsObject()) {
+    Napi::TypeError::New(info.Env(), "Expected an object").ThrowAsJavaScriptException();
+    return info.Env().Null();
   }
 
-  auto resolver = Promise::Resolver::New(info.GetIsolate());
-  AsyncRequest *req = new AsyncRequest(info[0], info[1], info[2], resolver);
+  auto deferred = Napi::Promise::Deferred::New(info.Env());
+  AsyncRequest *req = new AsyncRequest(info.Env(), info[0], info[1], info[2], deferred);
   uv_queue_work(uv_default_loop(), &req->work, cb, (uv_after_work_cb) asyncCallback);
 
-  info.GetReturnValue().Set(resolver->GetPromise());
+  return deferred.Promise();
 }
 
-NAN_METHOD(writeSnapshot) {
-  queueWork(info, writeSnapshotAsync);
+Napi::Value writeSnapshot(const Napi::CallbackInfo& info) {
+  return queueWork(info, writeSnapshotAsync);
 }
 
-NAN_METHOD(getEventsSince) {
-  queueWork(info, getEventsSinceAsync);
+Napi::Value getEventsSince(const Napi::CallbackInfo& info) {
+  return queueWork(info, getEventsSinceAsync);
 }
 
-NAN_MODULE_INIT(Init) {
-  Nan::Export(target, "writeSnapshot", writeSnapshot);
-  Nan::Export(target, "getEventsSince", getEventsSince);
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+  exports.Set(
+    Napi::String::New(env, "writeSnapshot"),
+    Napi::Function::New(env, writeSnapshot)
+  );
+  exports.Set(
+    Napi::String::New(env, "getEventsSince"),
+    Napi::Function::New(env, getEventsSince)
+  );
+  return exports;
 }
 
-NODE_MODULE(fschanges, Init)
+NODE_API_MODULE(fschanges, Init)

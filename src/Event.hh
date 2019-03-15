@@ -2,12 +2,12 @@
 #define EVENT_H
 
 #include <string>
-#include <node.h>
+#include <napi.h>
 #include <uv.h>
 #include <v8.h>
-#include <nan.h>
+#include <napi.h>
 
-using namespace v8;
+using namespace Napi;
 
 struct Event {
   std::string mPath;
@@ -17,11 +17,11 @@ struct Event {
     mType = type;
   }
 
-  Local<Object> toJS() {
-    Nan::EscapableHandleScope scope;
-    Local<Object> res = Nan::New<Object>();
-    res->Set(Nan::New<String>("path").ToLocalChecked(), Nan::New<String>(mPath.c_str()).ToLocalChecked());
-    res->Set(Nan::New<String>("type").ToLocalChecked(), Nan::New<String>(mType.c_str()).ToLocalChecked());
+  Napi::Value toJS(const Napi::Env& env) {
+    Napi::EscapableHandleScope scope(env);
+    Napi::Object res = Napi::Object::New(env);
+    res.Set(Napi::String::New(env, "path"), Napi::String::New(env, mPath.c_str()));
+    res.Set(Napi::String::New(env, "type"), Napi::String::New(env, mType.c_str()));
     return scope.Escape(res);
   }
 };
@@ -34,12 +34,12 @@ public:
     mEvents.push_back(new Event(path, type));
   }
 
-  Local<Array> toJS() {
-    Nan::EscapableHandleScope scope;
-    Local<Array> arr = Nan::New<Array>(mEvents.size());
+  Napi::Value toJS(const Napi::Env& env) {
+    Napi::EscapableHandleScope scope(env);
+    Napi::Array arr = Napi::Array::New(env, mEvents.size());
 
     for (size_t i = 0; i < mEvents.size(); i++) {
-      arr->Set(i, mEvents[i]->toJS());
+      arr.Set(i, mEvents[i]->toJS(env));
     }
 
     return scope.Escape(arr);
