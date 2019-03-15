@@ -1,10 +1,12 @@
 #include <CoreServices/CoreServices.h>
 #include <string>
+#include <fstream>
 #include "../Event.hh"
 
-std::string getCurrentTokenImpl(std::string *dir) {
+void writeSnapshotImpl(std::string *dir, std::string *snapshotPath) {
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
-  return std::to_string(id);
+  std::ofstream ofs(*snapshotPath);
+  ofs << id;
 }
 
 void FSEventsCallback(
@@ -55,8 +57,16 @@ void FSEventsCallback(
   }
 }
 
-EventList *getEventsSinceImpl(std::string *dir, std::string *token) {
-  FSEventStreamEventId id = std::stoull(*token);
+EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath) {
+  EventList *list = new EventList();
+
+  std::ifstream ifs(*snapshotPath);
+  if (ifs.fail()) {
+    return list;
+  }
+
+  FSEventStreamEventId id;
+  ifs >> id;
 
   CFAbsoluteTime latency = 0.001;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
@@ -72,8 +82,6 @@ EventList *getEventsSinceImpl(std::string *dir, std::string *token) {
     NULL
   );
   
-  EventList *list = new EventList();
-
   FSEventStreamContext callbackInfo {0, (void *)list, nullptr, nullptr, nullptr};
   FSEventStreamRef stream = FSEventStreamCreate(
     NULL,
