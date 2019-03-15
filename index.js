@@ -5,13 +5,17 @@ let dir = process.cwd();
 
 async function run() {
   try {
-    let changes = await fschanges.getEventsSince(dir, dir + '/token.txt');
+    let changes = await fschanges.getEventsSince(dir, dir + '/token.txt', {
+      ignore: [dir + '/.git']
+    });
     console.log(changes);
   } catch (err) {
     console.log(err)
   }
 
-  await fschanges.writeSnapshot(dir, dir + '/token.txt');
+  await fschanges.writeSnapshot(dir, dir + '/token.txt', {
+    ignore: [dir + '/.git']
+  });
 }
 
 run();

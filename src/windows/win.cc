@@ -7,7 +7,7 @@
 
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-DirTree *getDirTree(std::string *dir) {
+DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
   DirTree *tree = new DirTree();
   HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;
@@ -30,7 +30,7 @@ DirTree *getDirTree(std::string *dir) {
       if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
         std::string fullPath = path + "\\" + ffd.cFileName;
         tree->entries.insert(DirEntry(fullPath, CONVERT_TIME(ffd.ftLastWriteTime)));
-        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && ignore->count(fullPath) == 0) {
           directories.push(fullPath);
         }
       }

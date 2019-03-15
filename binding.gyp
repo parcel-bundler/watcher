@@ -9,11 +9,11 @@
       "conditions": [
         ['OS=="mac"', {
           "variables": {
-            "use_nftw%": "false"
+            "use_fts%": "false"
           },
           "conditions": [
-            ['use_nftw=="true"', {
-              "sources": ["src/shared/brute.cc", "src/unix/nftw.cc"]
+            ['use_fts=="true"', {
+              "sources": ["src/shared/brute.cc", "src/unix/fts.cc"]
             }, {
               "sources": ["src/macos/FSEvents.cc"],
             }]
@@ -23,7 +23,7 @@
           }
         }],
         ['OS=="linux"', {
-          "sources": ["src/shared/brute.cc", "src/unix/nftw.cc"]
+          "sources": ["src/shared/brute.cc", "src/unix/fts.cc"]
         }],
         ['OS=="win"', {
           "sources": ["src/shared/brute.cc", "src/windows/win.cc"]

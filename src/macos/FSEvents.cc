@@ -1,9 +1,10 @@
 #include <CoreServices/CoreServices.h>
 #include <string>
 #include <fstream>
+#include <unordered_set>
 #include "../Event.hh"
 
-void writeSnapshotImpl(std::string *dir, std::string *snapshotPath) {
+void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
   std::ofstream ofs(*snapshotPath);
   ofs << id;
@@ -57,7 +58,7 @@ void FSEventsCallback(
   }
 }
 
-EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath) {
+EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
   EventList *list = new EventList();
 
   std::ifstream ifs(*snapshotPath);
@@ -92,20 +93,17 @@ EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath) {
     latency,
     kFSEventStreamCreateFlagFileEvents
   );
-
-  std::string g = *dir + "/.git";
-  CFStringRef gitPath = CFStringCreateWithCString(
-    NULL,
-    g.c_str(),
-    kCFStringEncodingUTF8
-  );
   
-  CFArrayRef exclusions = CFArrayCreate(
-    NULL,
-    (const void **)&gitPath,
-    1,
-    NULL
-  );
+  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, ignore->size(), NULL);
+  for (auto it = ignore->begin(); it != ignore->end(); it++) {
+    CFStringRef path = CFStringCreateWithCString(
+      NULL,
+      it->c_str(),
+      kCFStringEncodingUTF8
+    );
+
+    CFArrayAppendValue(exclusions, (const void *)path);
+  }
 
   FSEventStreamSetExclusionPaths(stream, exclusions);
 
