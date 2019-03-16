@@ -1,30 +1,33 @@
 #include <unordered_set>
 #include <iostream>
 #include <napi.h>
+#include <node_api.h>
 #include "Event.hh"
 
 void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
-
-
 class AsyncRunner {
 public:
   void Queue() {
-    napi_status status = napi_queue_async_work(env, work);
-    NAPI_THROW_IF_FAILED_VOID(env, status);
-    // if(status != napi_ok){
-    //   const napi_extended_error_info *error_info = 0;
-    //   napi_get_last_error_info(env, &error_info);
-    //   Napi::Error e = Napi::Error::New(env, error_info->error_message);
-    //   e.ThrowAsJavaScriptException();
-    // }
+    if(this->work) {
+      napi_status status = napi_queue_async_work(env, this->work);
+      NAPI_THROW_IF_FAILED_VOID(env, status);
+    }
   }
 protected:
   AsyncRunner(Napi::Env env): env(env) {
-      napi_status status = napi_create_async_work(this->env, nullptr, env.Undefined(), 
-                                                  OnExecute, OnWorkComplete, this, &work);
-      NAPI_THROW_IF_FAILED_VOID(env, status);
+    napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
+                                                OnExecute, OnWorkComplete, this, &this->work);
+    if(status != napi_ok) {
+      work = nullptr;
+      const napi_extended_error_info *error_info = 0;
+      napi_get_last_error_info(env, &error_info);
+      if(error_info->error_message)
+        Napi::Error::New(env, error_info->error_message).ThrowAsJavaScriptException();
+      else
+        Napi::Error::New(env).ThrowAsJavaScriptException();
+    }
   }
   virtual ~AsyncRunner() {}
   virtual void Execute() = 0;
@@ -43,23 +46,28 @@ private:
   static void OnWorkComplete(napi_env env, napi_status status, void* this_pointer) {
     AsyncRunner* self = (AsyncRunner*) this_pointer;
     if (status != napi_cancelled) {
-      HandleScope scope(self->env);
+      Napi::HandleScope scope(self->env);
       if(status == napi_ok) {
-        self->OnOK();
-      } else {
-        const napi_extended_error_info *error_info = 0;
-        napi_get_last_error_info(env, &error_info);
-        Napi::Error e = Napi::Error::New(env, error_info->error_message);
-        self->OnError(e);
+        status = napi_delete_async_work(self->env, self->work);
+        if(status == napi_ok) {
+          self->OnOK();
+          delete self;
+          return;
+        }
       }
     }
-    status = napi_delete_async_work(env, self->work);
+
+    // fallthrough for error handling
+    const napi_extended_error_info *error_info = 0;
+    napi_get_last_error_info(env, &error_info);
+    if(error_info->error_message){
+      self->OnError(Napi::Error::New(env, error_info->error_message));
+    } else {
+      self->OnError(Napi::Error::New(env));
+    }
     delete self;
-    NAPI_THROW_IF_FAILED_VOID(env, status);
   }
-
 };
-
 
 class FSAsyncRunner;
 typedef void (*AsyncFunction)(FSAsyncRunner *);
@@ -79,7 +87,7 @@ public:
         for (size_t i = 0; i < items.Length(); i++) {
           Napi::Value item = items.Get(Napi::Number::New(env, i));
           if (item.IsString()) {
-            ignore.insert(std::string(item.As<Napi::String>().Utf8Value().c_str()));
+            this->ignore.insert(std::string(item.As<Napi::String>().Utf8Value().c_str()));
           }
         }
       }
@@ -96,8 +104,8 @@ public:
 
 
   ~FSAsyncRunner() {
-    if (events) {
-      delete events;
+    if (this->events) {
+      delete this->events;
     }
   }
 
