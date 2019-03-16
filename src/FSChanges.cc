@@ -7,15 +7,18 @@ void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unorder
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
 
+
 class AsyncRunner {
 public:
   void Queue() {
     napi_status status = napi_queue_async_work(env, work);
-    // assert(status == napi_ok);
-    // const napi_extended_error_info *error_info = 0;
-    // napi_get_last_error_info(env, &error_info);
-    // std::cout << error_info->error_message << "\n";
     NAPI_THROW_IF_FAILED_VOID(env, status);
+    // if(status != napi_ok){
+    //   const napi_extended_error_info *error_info = 0;
+    //   napi_get_last_error_info(env, &error_info);
+    //   Napi::Error e = Napi::Error::New(env, error_info->error_message);
+    //   e.ThrowAsJavaScriptException();
+    // }
   }
 protected:
   AsyncRunner(Napi::Env env): env(env) {
@@ -26,6 +29,7 @@ protected:
   virtual ~AsyncRunner() {}
   virtual void Execute() = 0;
   virtual void OnOK() = 0;
+  virtual void OnError(const Napi::Error& e) = 0;
   const Napi::Env env;
 
 private:
@@ -40,10 +44,18 @@ private:
     AsyncRunner* self = (AsyncRunner*) this_pointer;
     if (status != napi_cancelled) {
       HandleScope scope(self->env);
-      self->OnOK();
+      if(status == napi_ok) {
+        self->OnOK();
+      } else {
+        const napi_extended_error_info *error_info = 0;
+        napi_get_last_error_info(env, &error_info);
+        Napi::Error e = Napi::Error::New(env, error_info->error_message);
+        self->OnError(e);
+      }
     }
-    napi_delete_async_work(env, self->work);
+    status = napi_delete_async_work(env, self->work);
     delete self;
+    NAPI_THROW_IF_FAILED_VOID(env, status);
   }
 
 };
@@ -104,6 +116,10 @@ public:
     }
 
     this->deferred.Resolve(result);
+  }
+
+  void OnError(const Napi::Error& e) {
+    this->deferred.Reject(e.Value());
   }
 };
 
