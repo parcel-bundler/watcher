@@ -1,29 +1,64 @@
-#include <napi.h>
-#include <v8.h>
-#include <napi.h>
 #include <unordered_set>
+#include <iostream>
+#include <napi.h>
 #include "Event.hh"
 
 void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
-struct AsyncRequest {
-  Napi::Env env;
 
-  uv_work_t work;
-  std::string directory;
-  std::string snapshotPath;
-  std::unordered_set<std::string> ignore;
-  EventList *events;
-  Napi::Promise::Deferred deferred;
+class AsyncRunner {
+public:
+  void Queue() {
+    napi_status status = napi_queue_async_work(env, work);
+    // assert(status == napi_ok);
+    // const napi_extended_error_info *error_info = 0;
+    // napi_get_last_error_info(env, &error_info);
+    // std::cout << error_info->error_message << "\n";
+    NAPI_THROW_IF_FAILED_VOID(env, status);
+  }
+protected:
+  AsyncRunner(Napi::Env env): env(env) {
+      napi_status status = napi_create_async_work(this->env, nullptr, env.Undefined(), 
+                                                  OnExecute, OnWorkComplete, this, &work);
+      NAPI_THROW_IF_FAILED_VOID(env, status);
+  }
+  virtual ~AsyncRunner() {}
+  virtual void Execute() = 0;
+  virtual void OnOK() = 0;
+  const Napi::Env env;
 
-  AsyncRequest(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value o, Napi::Promise::Deferred r) : env(env), deferred(r) {
-    work.data = (void *)this;
+private:
+  napi_async_work work;
 
-    // copy the string since the JS garbage collector might run before the async request is finished
-    directory = std::string(dir.As<Napi::String>().Utf8Value().c_str());
-    snapshotPath = std::string(snap.As<Napi::String>().Utf8Value().c_str());
-    events = NULL;
+  static void OnExecute(napi_env env, void* this_pointer) {
+    AsyncRunner* self = (AsyncRunner*) this_pointer;
+    self->Execute();
+  }
+
+  static void OnWorkComplete(napi_env env, napi_status status, void* this_pointer) {
+    AsyncRunner* self = (AsyncRunner*) this_pointer;
+    if (status != napi_cancelled) {
+      HandleScope scope(self->env);
+      self->OnOK();
+    }
+    napi_delete_async_work(env, self->work);
+    delete self;
+  }
+
+};
+
+
+class FSAsyncRunner;
+typedef void (*AsyncFunction)(FSAsyncRunner *);
+
+class FSAsyncRunner : public AsyncRunner {
+public:
+  FSAsyncRunner(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value o, Napi::Promise::Deferred r, AsyncFunction func)
+    : AsyncRunner(env), 
+      directory(std::string(dir.As<Napi::String>().Utf8Value().c_str())),
+      snapshotPath(std::string(snap.As<Napi::String>().Utf8Value().c_str())),
+      events(nullptr),  deferred(r), func(func) {
 
     if (o.IsObject()) {
       Napi::Value v = o.As<Napi::Object>().Get(Napi::String::New(env, "ignore"));
@@ -39,58 +74,67 @@ struct AsyncRequest {
     }
   }
 
-  ~AsyncRequest() {
+  std::string directory;
+  std::string snapshotPath;
+
+  std::unordered_set<std::string> ignore;
+  EventList *events;
+  Napi::Promise::Deferred deferred;
+  AsyncFunction func;
+
+
+  ~FSAsyncRunner() {
     if (events) {
       delete events;
     }
   }
-};
 
-void asyncCallback(uv_work_t *work) {
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  Napi::Env env = req->env;
-  Napi::HandleScope scope(env);
-  Napi::Value result;
-
-  if (req->events) {
-    result = req->events->toJS(env);
-  } else {
-    result = env.Null();
+  void Execute() {
+    this->func(this);
   }
 
-  req->deferred.Resolve(result);
-  delete req;
+  void OnOK() {
+    Napi::HandleScope scope(env);
+    Napi::Value result;
+
+    if (this->events) {
+      result = this->events->toJS(env);
+    } else {
+      result = env.Null();
+    }
+
+    this->deferred.Resolve(result);
+  }
+};
+
+void writeSnapshotAsync(FSAsyncRunner *runner) {
+  writeSnapshotImpl(&runner->directory, &runner->snapshotPath, &runner->ignore);
 }
 
-void writeSnapshotAsync(uv_work_t *work) {
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  writeSnapshotImpl(&req->directory, &req->snapshotPath, &req->ignore);
+void getEventsSinceAsync(FSAsyncRunner *runner) {
+  runner->events = getEventsSinceImpl(&runner->directory, &runner->snapshotPath, &runner->ignore);
 }
 
-void getEventsSinceAsync(uv_work_t *work) {
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  req->events = getEventsSinceImpl(&req->directory, &req->snapshotPath, &req->ignore);
-}
-
-Napi::Value queueWork(const Napi::CallbackInfo& info, uv_work_cb cb) {
+Napi::Value queueWork(const Napi::CallbackInfo& info, AsyncFunction func) {
+  Napi::Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
-    Napi::TypeError::New(info.Env(), "Expected a string").ThrowAsJavaScriptException();
-    return info.Env().Null();
+    Napi::TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
   if (info.Length() < 2 || !info[1].IsString()) {
-    Napi::TypeError::New(info.Env(), "Expected a string").ThrowAsJavaScriptException();
-    return info.Env().Null();
+    Napi::TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
   if (info.Length() >= 3 && !info[2].IsObject()) {
-    Napi::TypeError::New(info.Env(), "Expected an object").ThrowAsJavaScriptException();
-    return info.Env().Null();
+    Napi::TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
-  auto deferred = Napi::Promise::Deferred::New(info.Env());
-  AsyncRequest *req = new AsyncRequest(info.Env(), info[0], info[1], info[2], deferred);
-  uv_queue_work(uv_default_loop(), &req->work, cb, (uv_after_work_cb) asyncCallback);
+  Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
+  FSAsyncRunner *runner = new FSAsyncRunner(info.Env(), info[0], info[1], info[2], deferred, func);
+  runner->Queue();
 
   return deferred.Promise();
 }

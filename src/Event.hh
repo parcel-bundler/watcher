@@ -3,9 +3,6 @@
 
 #include <string>
 #include <napi.h>
-#include <uv.h>
-#include <v8.h>
-#include <napi.h>
 
 using namespace Napi;
 

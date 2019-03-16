@@ -1,4 +1,5 @@
 #include <CoreServices/CoreServices.h>
+#include <sys/stat.h>
 #include <string>
 #include <fstream>
 #include <unordered_set>
