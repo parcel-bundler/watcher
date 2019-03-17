@@ -3,6 +3,7 @@
 #include <napi.h>
 #include <node_api.h>
 #include "Event.hh"
+#include "Backend.hh"
 
 void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
@@ -74,14 +75,23 @@ typedef void (*AsyncFunction)(FSAsyncRunner *);
 
 class FSAsyncRunner : public AsyncRunner {
 public:
-  FSAsyncRunner(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value o, Napi::Promise::Deferred r, AsyncFunction func)
+  std::string directory;
+  std::string snapshotPath;
+  std::string backend;
+
+  std::unordered_set<std::string> ignore;
+  EventList *events;
+  Napi::Promise::Deferred deferred;
+  AsyncFunction func;
+
+  FSAsyncRunner(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value opts, Napi::Promise::Deferred r, AsyncFunction func)
     : AsyncRunner(env), 
       directory(std::string(dir.As<Napi::String>().Utf8Value().c_str())),
       snapshotPath(std::string(snap.As<Napi::String>().Utf8Value().c_str())),
       events(nullptr),  deferred(r), func(func) {
 
-    if (o.IsObject()) {
-      Napi::Value v = o.As<Napi::Object>().Get(Napi::String::New(env, "ignore"));
+    if (opts.IsObject()) {
+      Napi::Value v = opts.As<Napi::Object>().Get(Napi::String::New(env, "ignore"));
       if (v.IsArray()) {
         Napi::Array items = v.As<Napi::Array>();
         for (size_t i = 0; i < items.Length(); i++) {
@@ -92,16 +102,12 @@ public:
         }
       }
     }
+
+    Napi::Value b = opts.As<Napi::Object>().Get(Napi::String::New(env, "backend"));
+    if (b.IsString()) {
+      backend = std::string(b.As<Napi::String>().Utf8Value().c_str());
+    }
   }
-
-  std::string directory;
-  std::string snapshotPath;
-
-  std::unordered_set<std::string> ignore;
-  EventList *events;
-  Napi::Promise::Deferred deferred;
-  AsyncFunction func;
-
 
   ~FSAsyncRunner() {
     if (this->events) {
@@ -132,11 +138,11 @@ public:
 };
 
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  writeSnapshotImpl(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  GET_BACKEND(runner->backend, writeSnapshot)(&runner->directory, &runner->snapshotPath, &runner->ignore);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  runner->events = getEventsSinceImpl(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  runner->events = GET_BACKEND(runner->backend, getEventsSince)(&runner->directory, &runner->snapshotPath, &runner->ignore);
 }
 
 Napi::Value queueWork(const Napi::CallbackInfo& info, AsyncFunction func) {
