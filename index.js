@@ -6,6 +6,7 @@ let dir = process.cwd();
 async function run() {
   console.time('read');
   let changes = await fschanges.getEventsSince(dir, dir + '/token.txt', {
+    // backend: 'brute-force',
     ignore: [dir + '/.git']
   });
   console.timeEnd('read');
@@ -13,6 +14,7 @@ async function run() {
 
   console.time('write');
   await fschanges.writeSnapshot(dir, dir + '/token.txt', {
+    // backend: 'brute-force',
     ignore: [dir + '/.git']
   });
   console.timeEnd('write');

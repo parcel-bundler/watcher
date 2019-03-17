@@ -4,21 +4,20 @@
 #include <nan.h>
 #include <unordered_set>
 #include "Event.hh"
+#include "Backend.hh"
 
 using namespace v8;
-
-void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
-EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
 struct AsyncRequest {
   uv_work_t work;
   std::string directory;
   std::string snapshotPath;
   std::unordered_set<std::string> ignore;
+  std::string backend;
   EventList *events;
   Nan::Persistent<Promise::Resolver> *resolver;
 
-  AsyncRequest(Local<Value> dir, Local<Value> snap, Local<Value> o, Local<Promise::Resolver> r) {
+  AsyncRequest(Local<Value> dir, Local<Value> snap, Local<Value> opts, Local<Promise::Resolver> r) {
     work.data = (void *)this;
 
     // copy the string since the JS garbage collector might run before the async request is finished
@@ -26,8 +25,9 @@ struct AsyncRequest {
     snapshotPath = std::string(*Nan::Utf8String(snap));
     events = NULL;
 
-    if (o->IsObject()) {
-      Local<Value> v = Local<Object>::Cast(o)->Get(Nan::New<String>("ignore").ToLocalChecked());
+    if (opts->IsObject()) {
+      Local<Object> o = Local<Object>::Cast(opts);
+      Local<Value> v = o->Get(Nan::New<String>("ignore").ToLocalChecked());
       if (v->IsArray()) {
         Local<Array> items = Local<Array>::Cast(v);
         for (size_t i = 0; i < items->Length(); i++) {
@@ -36,6 +36,11 @@ struct AsyncRequest {
             ignore.insert(std::string(*Nan::Utf8String(item)));
           }
         }
+      }
+
+      Local<Value> b = o->Get(Nan::New<String>("backend").ToLocalChecked());
+      if (b->IsString()) {
+        backend = std::string(*Nan::Utf8String(b));
       }
     }
 
@@ -70,12 +75,12 @@ void asyncCallback(uv_work_t *work) {
 
 void writeSnapshotAsync(uv_work_t *work) {
   AsyncRequest *req = (AsyncRequest *) work->data;
-  writeSnapshotImpl(&req->directory, &req->snapshotPath, &req->ignore);
+  GET_BACKEND(req->backend, writeSnapshot)(&req->directory, &req->snapshotPath, &req->ignore);
 }
 
 void getEventsSinceAsync(uv_work_t *work) {
   AsyncRequest *req = (AsyncRequest *) work->data;
-  req->events = getEventsSinceImpl(&req->directory, &req->snapshotPath, &req->ignore);
+  req->events = GET_BACKEND(req->backend, getEventsSince)(&req->directory, &req->snapshotPath, &req->ignore);
 }
 
 void queueWork(const Nan::FunctionCallbackInfo<v8::Value>& info, uv_work_cb cb) {

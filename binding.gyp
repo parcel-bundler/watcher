@@ -6,34 +6,49 @@
       "include_dirs" : [
         "<!(node -e \"require('nan')\")"
       ],
+      "cflags!": ["-fexceptions"],
+      "cflags_cc!": ["-fexceptions"],
       "conditions": [
         ['OS=="mac"', {
-          "variables": {
-            "use_fts%": "false",
-            "use_watchman%": "false"
-          },
-          "conditions": [
-            ['use_fts=="true"', {
-              "sources": ["src/shared/brute.cc", "src/unix/fts.cc"]
-            }, {
-              "conditions": [
-                ['use_watchman=="true"', {
-                  "sources": ["src/watchman/BSER.cc", "src/watchman/watchman.cc"]
-                }, {
-                  "sources": ["src/macos/FSEvents.cc"],
-                }]
-              ]
-            }]
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/watchman.cc",
+            "src/shared/brute.cc",
+            "src/unix/fts.cc",
+            "src/macos/FSEvents.cc"
           ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
+          },
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE",
+            "FS_EVENTS"
+          ],
+          "xcode_settings": {
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
           }
         }],
         ['OS=="linux"', {
-          "sources": ["src/shared/brute.cc", "src/unix/fts.cc"]
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/watchman.cc",
+            "src/shared/brute.cc",
+            "src/unix/fts.cc"
+          ],
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE"
+          ]
         }],
         ['OS=="win"', {
-          "sources": ["src/shared/brute.cc", "src/windows/win.cc"]
+          "sources": [
+            "src/shared/brute.cc",
+            "src/windows/win.cc"
+          ],
+          "defines": [
+            "BRUTE_FORCE"
+          ]
         }]
       ]
     }

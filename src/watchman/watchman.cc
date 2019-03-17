@@ -7,6 +7,7 @@
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
+#include "../Backend.hh"
 
 static int sock = -1;
 
@@ -39,8 +40,7 @@ std::string getSockPath() {
   FILE *fp;
   fp = popen("/bin/sh -c 'watchman --output-encoding=bser get-sockname'", "r");
   if (fp == NULL) {
-    printf("Failed to run command\n");
-    exit(1);
+    throw "Failed to execute watchman";
   }
 
   BSER b = readBSER([fp] (char *buf, size_t len) {
@@ -63,8 +63,7 @@ void watchmanConnect() {
 
   sock = socket(AF_UNIX, SOCK_STREAM, 0);
   if (connect(sock, (struct sockaddr *) &addr, sizeof(struct sockaddr_un))) {
-    printf("error connecting\n");
-    exit(1);
+    throw "Error connecting to watchman";
   }
 }
 
@@ -78,8 +77,7 @@ void watchmanWrite(BSER b) {
       if (errno == EAGAIN) {
         r = 0;
       } else {
-        printf("write error\n");
-        exit(1);
+        throw "Write error";
       }
     }
   }
@@ -101,12 +99,20 @@ void watchmanWatch(std::string *dir) {
   auto obj = b.objectValue();
   auto error = obj.find("error");
   if (error != obj.end()) {
-    printf("error watching project\n");
-    exit(1);
+    throw "Error watching project from watchman";
   }
 }
 
-void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+bool WatchmanBackend::check() {
+  try {
+    watchmanConnect();
+    return true;
+  } catch (std::string err) {
+    return false;
+  }
+}
+
+void WatchmanBackend::writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
   watchmanConnect();
   watchmanWatch(dir);
 
@@ -119,8 +125,7 @@ void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unorder
   auto obj = b.objectValue();
   auto found = obj.find("clock");
   if (found == obj.end()) {
-    printf("error\n");
-    exit(1);
+    throw "Error reading clock from watchman";
   }
 
   auto str = found->second.stringValue();
@@ -128,7 +133,7 @@ void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unorder
   ofs << str;
 }
 
-EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+EventList *WatchmanBackend::getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
   EventList *list = new EventList();
 
   std::ifstream ifs(*snapshotPath);
@@ -151,8 +156,7 @@ EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::
   auto obj = b.objectValue();
   auto found = obj.find("files");
   if (found == obj.end()) {
-    printf("error\n");
-    exit(1);
+    throw "Error reading changes from watchman";
   }
   
   auto files = found->second.arrayValue();

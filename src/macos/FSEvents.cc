@@ -3,12 +3,7 @@
 #include <fstream>
 #include <unordered_set>
 #include "../Event.hh"
-
-void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
-  FSEventStreamEventId id = FSEventsGetCurrentEventId();
-  std::ofstream ofs(*snapshotPath);
-  ofs << id;
-}
+#include "../Backend.hh"
 
 void FSEventsCallback(
   ConstFSEventStreamRef streamRef,
@@ -58,7 +53,13 @@ void FSEventsCallback(
   }
 }
 
-EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+void FSEventsBackend::writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+  FSEventStreamEventId id = FSEventsGetCurrentEventId();
+  std::ofstream ofs(*snapshotPath);
+  ofs << id;
+}
+
+EventList *FSEventsBackend::getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
   EventList *list = new EventList();
 
   std::ifstream ifs(*snapshotPath);
