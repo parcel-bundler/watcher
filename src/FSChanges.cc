@@ -5,6 +5,8 @@
 #include "Event.hh"
 #include "Backend.hh"
 
+using namespace Napi;
+
 void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
 
@@ -13,7 +15,7 @@ typedef void (*AsyncFunction)(FSAsyncRunner *);
 
 class FSAsyncRunner {
 public:
-  const Napi::Env env;
+  const Env env;
 
   std::string directory;
   std::string snapshotPath;
@@ -22,9 +24,9 @@ public:
   std::unordered_set<std::string> ignore;
   EventList *events;
 
-  FSAsyncRunner(Napi::Env env, Napi::Value dir, Napi::Value snap, Napi::Value opts, Napi::Promise::Deferred r, AsyncFunction func)
-    : env(env), directory(std::string(dir.As<Napi::String>().Utf8Value().c_str())),
-      snapshotPath(std::string(snap.As<Napi::String>().Utf8Value().c_str())),
+  FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
+    : env(env), directory(std::string(dir.As<String>().Utf8Value().c_str())),
+      snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
       events(nullptr), func(func), deferred(r) {
 
     napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
@@ -34,27 +36,27 @@ public:
       const napi_extended_error_info *error_info = 0;
       napi_get_last_error_info(env, &error_info);
       if(error_info->error_message)
-        Napi::Error::New(env, error_info->error_message).ThrowAsJavaScriptException();
+        Error::New(env, error_info->error_message).ThrowAsJavaScriptException();
       else
-        Napi::Error::New(env).ThrowAsJavaScriptException();
+        Error::New(env).ThrowAsJavaScriptException();
     }
 
     if (opts.IsObject()) {
-      Napi::Value v = opts.As<Napi::Object>().Get(Napi::String::New(env, "ignore"));
+      Value v = opts.As<Object>().Get(String::New(env, "ignore"));
       if (v.IsArray()) {
-        Napi::Array items = v.As<Napi::Array>();
+        Array items = v.As<Array>();
         for (size_t i = 0; i < items.Length(); i++) {
-          Napi::Value item = items.Get(Napi::Number::New(env, i));
+          Value item = items.Get(Number::New(env, i));
           if (item.IsString()) {
-            this->ignore.insert(std::string(item.As<Napi::String>().Utf8Value().c_str()));
+            this->ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
           }
         }
       }
     }
 
-    Napi::Value b = opts.As<Napi::Object>().Get(Napi::String::New(env, "backend"));
+    Value b = opts.As<Object>().Get(String::New(env, "backend"));
     if (b.IsString()) {
-      backend = std::string(b.As<Napi::String>().Utf8Value().c_str());
+      backend = std::string(b.As<String>().Utf8Value().c_str());
     }
   }
 
@@ -74,7 +76,7 @@ public:
 private:
   napi_async_work work;
   AsyncFunction func;
-  Napi::Promise::Deferred deferred;
+  Promise::Deferred deferred;
 
   static void OnExecute(napi_env env, void* this_pointer) {
     FSAsyncRunner* self = (FSAsyncRunner*) this_pointer;
@@ -84,7 +86,7 @@ private:
   static void OnWorkComplete(napi_env env, napi_status status, void* this_pointer) {
     FSAsyncRunner* self = (FSAsyncRunner*) this_pointer;
     if (status != napi_cancelled) {
-      Napi::HandleScope scope(self->env);
+      HandleScope scope(self->env);
       if(status == napi_ok) {
         status = napi_delete_async_work(self->env, self->work);
         if(status == napi_ok) {
@@ -99,9 +101,9 @@ private:
     const napi_extended_error_info *error_info = 0;
     napi_get_last_error_info(env, &error_info);
     if(error_info->error_message){
-      self->OnError(Napi::Error::New(env, error_info->error_message));
+      self->OnError(Error::New(env, error_info->error_message));
     } else {
-      self->OnError(Napi::Error::New(env));
+      self->OnError(Error::New(env));
     }
     delete self;
   }
@@ -112,8 +114,8 @@ private:
   }
 
   void OnOK() {
-    Napi::HandleScope scope(env);
-    Napi::Value result;
+    HandleScope scope(env);
+    Value result;
 
     if (this->events) {
       result = this->events->toJS(env);
@@ -124,7 +126,7 @@ private:
     this->deferred.Resolve(result);
   }
 
-  void OnError(const Napi::Error& e) {
+  void OnError(const Error& e) {
     this->deferred.Reject(e.Value());
   }
 };
@@ -137,46 +139,46 @@ void getEventsSinceAsync(FSAsyncRunner *runner) {
   runner->events = GET_BACKEND(runner->backend, getEventsSince)(&runner->directory, &runner->snapshotPath, &runner->ignore);
 }
 
-Napi::Value queueWork(const Napi::CallbackInfo& info, AsyncFunction func) {
-  Napi::Env env = info.Env();
+Value queueWork(const CallbackInfo& info, AsyncFunction func) {
+  Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
-    Napi::TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   if (info.Length() < 2 || !info[1].IsString()) {
-    Napi::TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   if (info.Length() >= 3 && !info[2].IsObject()) {
-    Napi::TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
     return env.Null();
   }
 
-  Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
+  Promise::Deferred deferred = Promise::Deferred::New(env);
   FSAsyncRunner *runner = new FSAsyncRunner(info.Env(), info[0], info[1], info[2], deferred, func);
   runner->Queue();
 
   return deferred.Promise();
 }
 
-Napi::Value writeSnapshot(const Napi::CallbackInfo& info) {
+Value writeSnapshot(const CallbackInfo& info) {
   return queueWork(info, writeSnapshotAsync);
 }
 
-Napi::Value getEventsSince(const Napi::CallbackInfo& info) {
+Value getEventsSince(const CallbackInfo& info) {
   return queueWork(info, getEventsSinceAsync);
 }
 
-Napi::Object Init(Napi::Env env, Napi::Object exports) {
+Object Init(Env env, Object exports) {
   exports.Set(
-    Napi::String::New(env, "writeSnapshot"),
-    Napi::Function::New(env, writeSnapshot)
+    String::New(env, "writeSnapshot"),
+    Function::New(env, writeSnapshot)
   );
   exports.Set(
-    Napi::String::New(env, "getEventsSince"),
-    Napi::Function::New(env, getEventsSince)
+    String::New(env, "getEventsSince"),
+    Function::New(env, getEventsSince)
   );
   return exports;
 }

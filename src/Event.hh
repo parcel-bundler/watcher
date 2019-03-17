@@ -14,11 +14,11 @@ struct Event {
     mType = type;
   }
 
-  Napi::Value toJS(const Napi::Env& env) {
-    Napi::EscapableHandleScope scope(env);
-    Napi::Object res = Napi::Object::New(env);
-    res.Set(Napi::String::New(env, "path"), Napi::String::New(env, mPath.c_str()));
-    res.Set(Napi::String::New(env, "type"), Napi::String::New(env, mType.c_str()));
+  Value toJS(const Env& env) {
+    EscapableHandleScope scope(env);
+    Object res = Object::New(env);
+    res.Set(String::New(env, "path"), String::New(env, mPath.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, mType.c_str()));
     return scope.Escape(res);
   }
 };
@@ -31,9 +31,9 @@ public:
     mEvents.push_back(new Event(path, type));
   }
 
-  Napi::Value toJS(const Napi::Env& env) {
-    Napi::EscapableHandleScope scope(env);
-    Napi::Array arr = Napi::Array::New(env, mEvents.size());
+  Value toJS(const Env& env) {
+    EscapableHandleScope scope(env);
+    Array arr = Array::New(env, mEvents.size());
 
     for (size_t i = 0; i < mEvents.size(); i++) {
       arr.Set(i, mEvents[i]->toJS(env));
