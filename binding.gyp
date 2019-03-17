@@ -9,13 +9,20 @@
       "conditions": [
         ['OS=="mac"', {
           "variables": {
-            "use_fts%": "false"
+            "use_fts%": "false",
+            "use_watchman%": "false"
           },
           "conditions": [
             ['use_fts=="true"', {
               "sources": ["src/shared/brute.cc", "src/unix/fts.cc"]
             }, {
-              "sources": ["src/macos/FSEvents.cc"],
+              "conditions": [
+                ['use_watchman=="true"', {
+                  "sources": ["src/watchman/BSER.cc", "src/watchman/watchman.cc"]
+                }, {
+                  "sources": ["src/macos/FSEvents.cc"],
+                }]
+              ]
             }]
           ],
           "link_settings": {
