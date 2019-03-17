@@ -1,3 +1,4 @@
+#include <sys/stat.h>
 #include <string>
 #include <fts.h>
 #include "../DirTree.hh"

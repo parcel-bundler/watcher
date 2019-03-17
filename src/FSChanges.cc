@@ -1,119 +1,186 @@
-#include <node.h>
-#include <uv.h>
-#include <v8.h>
-#include <nan.h>
 #include <unordered_set>
+#include <iostream>
+#include <napi.h>
+#include <node_api.h>
 #include "Event.hh"
 #include "Backend.hh"
 
-using namespace v8;
+using namespace Napi;
 
-struct AsyncRequest {
-  uv_work_t work;
+void writeSnapshotImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
+EventList *getEventsSinceImpl(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
+
+class FSAsyncRunner;
+typedef void (*AsyncFunction)(FSAsyncRunner *);
+
+class FSAsyncRunner {
+public:
+  const Env env;
+
   std::string directory;
   std::string snapshotPath;
-  std::unordered_set<std::string> ignore;
   std::string backend;
+
+  std::unordered_set<std::string> ignore;
   EventList *events;
-  Nan::Persistent<Promise::Resolver> *resolver;
 
-  AsyncRequest(Local<Value> dir, Local<Value> snap, Local<Value> opts, Local<Promise::Resolver> r) {
-    work.data = (void *)this;
+  FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
+    : env(env), directory(std::string(dir.As<String>().Utf8Value().c_str())),
+      snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
+      events(nullptr), func(func), deferred(r) {
 
-    // copy the string since the JS garbage collector might run before the async request is finished
-    directory = std::string(*Nan::Utf8String(dir));
-    snapshotPath = std::string(*Nan::Utf8String(snap));
-    events = NULL;
+    napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
+                                                OnExecute, OnWorkComplete, this, &this->work);
+    if(status != napi_ok) {
+      work = nullptr;
+      const napi_extended_error_info *error_info = 0;
+      napi_get_last_error_info(env, &error_info);
+      if(error_info->error_message)
+        Error::New(env, error_info->error_message).ThrowAsJavaScriptException();
+      else
+        Error::New(env).ThrowAsJavaScriptException();
+    }
 
-    if (opts->IsObject()) {
-      Local<Object> o = Local<Object>::Cast(opts);
-      Local<Value> v = o->Get(Nan::New<String>("ignore").ToLocalChecked());
-      if (v->IsArray()) {
-        Local<Array> items = Local<Array>::Cast(v);
-        for (size_t i = 0; i < items->Length(); i++) {
-          Local<Value> item = items->Get(Nan::New<Number>(i));
-          if (item->IsString()) {
-            ignore.insert(std::string(*Nan::Utf8String(item)));
+    if (opts.IsObject()) {
+      Value v = opts.As<Object>().Get(String::New(env, "ignore"));
+      if (v.IsArray()) {
+        Array items = v.As<Array>();
+        for (size_t i = 0; i < items.Length(); i++) {
+          Value item = items.Get(Number::New(env, i));
+          if (item.IsString()) {
+            this->ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
           }
         }
       }
+    }
 
-      Local<Value> b = o->Get(Nan::New<String>("backend").ToLocalChecked());
-      if (b->IsString()) {
-        backend = std::string(*Nan::Utf8String(b));
+    Value b = opts.As<Object>().Get(String::New(env, "backend"));
+    if (b.IsString()) {
+      backend = std::string(b.As<String>().Utf8Value().c_str());
+    }
+  }
+
+  ~FSAsyncRunner() {
+    if (this->events) {
+      delete this->events;
+    }
+  }
+
+  void Queue() {
+    if(this->work) {
+      napi_status status = napi_queue_async_work(env, this->work);
+      NAPI_THROW_IF_FAILED_VOID(env, status);
+    }
+  }
+
+private:
+  napi_async_work work;
+  AsyncFunction func;
+  Promise::Deferred deferred;
+
+  static void OnExecute(napi_env env, void* this_pointer) {
+    FSAsyncRunner* self = (FSAsyncRunner*) this_pointer;
+    self->Execute();
+  }
+
+  static void OnWorkComplete(napi_env env, napi_status status, void* this_pointer) {
+    FSAsyncRunner* self = (FSAsyncRunner*) this_pointer;
+    if (status != napi_cancelled) {
+      HandleScope scope(self->env);
+      if(status == napi_ok) {
+        status = napi_delete_async_work(self->env, self->work);
+        if(status == napi_ok) {
+          self->OnOK();
+          delete self;
+          return;
+        }
       }
     }
 
-    resolver = new Nan::Persistent<Promise::Resolver>(r);
+    // fallthrough for error handling
+    const napi_extended_error_info *error_info = 0;
+    napi_get_last_error_info(env, &error_info);
+    if(error_info->error_message){
+      self->OnError(Error::New(env, error_info->error_message));
+    } else {
+      self->OnError(Error::New(env));
+    }
+    delete self;
   }
 
-  ~AsyncRequest() {
-    if (events) {
-      delete events;
+
+  void Execute() {
+    this->func(this);
+  }
+
+  void OnOK() {
+    HandleScope scope(env);
+    Value result;
+
+    if (this->events) {
+      result = this->events->toJS(env);
+    } else {
+      result = env.Null();
     }
 
-    resolver->Reset();
+    this->deferred.Resolve(result);
+  }
+
+  void OnError(const Error& e) {
+    this->deferred.Reject(e.Value());
   }
 };
 
-void asyncCallback(uv_work_t *work) {
-  Nan::HandleScope scope;
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  Nan::AsyncResource async("asyncCallback");
-  Local<Value> result;
+void writeSnapshotAsync(FSAsyncRunner *runner) {
+  GET_BACKEND(runner->backend, writeSnapshot)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+}
 
-  if (req->events) {
-    result = req->events->toJS();
-  } else {
-    result = Nan::Null();
+void getEventsSinceAsync(FSAsyncRunner *runner) {
+  runner->events = GET_BACKEND(runner->backend, getEventsSince)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+}
+
+Value queueWork(const CallbackInfo& info, AsyncFunction func) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
-  auto resolver = Nan::New(*req->resolver);
-  resolver->Resolve(result);
-  delete req;
-}
-
-void writeSnapshotAsync(uv_work_t *work) {
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  GET_BACKEND(req->backend, writeSnapshot)(&req->directory, &req->snapshotPath, &req->ignore);
-}
-
-void getEventsSinceAsync(uv_work_t *work) {
-  AsyncRequest *req = (AsyncRequest *) work->data;
-  req->events = GET_BACKEND(req->backend, getEventsSince)(&req->directory, &req->snapshotPath, &req->ignore);
-}
-
-void queueWork(const Nan::FunctionCallbackInfo<v8::Value>& info, uv_work_cb cb) {
-  if (info.Length() < 1 || !info[0]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
+  if (info.Length() < 2 || !info[1].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
-  if (info.Length() < 2 || !info[1]->IsString()) {
-    return Nan::ThrowTypeError("Expected a string");
+  if (info.Length() >= 3 && !info[2].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
   }
 
-  if (info.Length() >= 3 && !info[2]->IsObject()) {
-    return Nan::ThrowTypeError("Expected an object");
-  }
+  Promise::Deferred deferred = Promise::Deferred::New(env);
+  FSAsyncRunner *runner = new FSAsyncRunner(info.Env(), info[0], info[1], info[2], deferred, func);
+  runner->Queue();
 
-  auto resolver = Promise::Resolver::New(info.GetIsolate());
-  AsyncRequest *req = new AsyncRequest(info[0], info[1], info[2], resolver);
-  uv_queue_work(uv_default_loop(), &req->work, cb, (uv_after_work_cb) asyncCallback);
-
-  info.GetReturnValue().Set(resolver->GetPromise());
+  return deferred.Promise();
 }
 
-NAN_METHOD(writeSnapshot) {
-  queueWork(info, writeSnapshotAsync);
+Value writeSnapshot(const CallbackInfo& info) {
+  return queueWork(info, writeSnapshotAsync);
 }
 
-NAN_METHOD(getEventsSince) {
-  queueWork(info, getEventsSinceAsync);
+Value getEventsSince(const CallbackInfo& info) {
+  return queueWork(info, getEventsSinceAsync);
 }
 
-NAN_MODULE_INIT(Init) {
-  Nan::Export(target, "writeSnapshot", writeSnapshot);
-  Nan::Export(target, "getEventsSince", getEventsSince);
+Object Init(Env env, Object exports) {
+  exports.Set(
+    String::New(env, "writeSnapshot"),
+    Function::New(env, writeSnapshot)
+  );
+  exports.Set(
+    String::New(env, "getEventsSince"),
+    Function::New(env, getEventsSince)
+  );
+  return exports;
 }
 
-NODE_MODULE(fschanges, Init)
+NODE_API_MODULE(fschanges, Init)
