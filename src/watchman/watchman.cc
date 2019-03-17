@@ -89,10 +89,10 @@ BSER watchmanRead() {
   });
 }
 
-void watchmanWatch(std::string *dir) {
+void watchmanWatch(std::string dir) {
   std::vector<BSER> cmd;
   cmd.push_back("watch-project");
-  cmd.push_back(*dir);
+  cmd.push_back(dir);
   watchmanWrite(cmd);
 
   BSER b = watchmanRead();
@@ -112,13 +112,13 @@ bool WatchmanBackend::check() {
   }
 }
 
-void WatchmanBackend::writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+void WatchmanBackend::writeSnapshot(std::string *snapshotPath) {
   watchmanConnect();
-  watchmanWatch(dir);
+  watchmanWatch(mDir);
 
   std::vector<BSER> cmd;
   cmd.push_back("clock");
-  cmd.push_back(*dir);
+  cmd.push_back(mDir);
   watchmanWrite(cmd);
 
   BSER b = watchmanRead();
@@ -133,7 +133,7 @@ void WatchmanBackend::writeSnapshot(std::string *dir, std::string *snapshotPath,
   ofs << str;
 }
 
-EventList *WatchmanBackend::getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+EventList *WatchmanBackend::getEventsSince(std::string *snapshotPath) {
   EventList *list = new EventList();
 
   std::ifstream ifs(*snapshotPath);
@@ -148,7 +148,7 @@ EventList *WatchmanBackend::getEventsSince(std::string *dir, std::string *snapsh
 
   std::vector<BSER> cmd;
   cmd.push_back("since");
-  cmd.push_back(*dir);
+  cmd.push_back(mDir);
   cmd.push_back(clock);
   watchmanWrite(cmd);
 

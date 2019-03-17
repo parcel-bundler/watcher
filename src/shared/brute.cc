@@ -6,19 +6,19 @@
 
 DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore);
 
-void BruteForceBackend::writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
-  auto tree = getDirTree(dir, ignore);
+void BruteForceBackend::writeSnapshot(std::string *snapshotPath) {
+  auto tree = getDirTree(&mDir, &mIgnore);
   std::ofstream ofs(*snapshotPath);
   tree->write(ofs);
 }
 
-EventList *BruteForceBackend::getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+EventList *BruteForceBackend::getEventsSince(std::string *snapshotPath) {
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
     return new EventList();
   }
 
   auto snapshot = new DirTree(ifs);
-  auto now = getDirTree(dir, ignore);
+  auto now = getDirTree(&mDir, &mIgnore);
   return now->getChanges(snapshot);
 }

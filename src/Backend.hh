@@ -3,41 +3,36 @@
 
 #include "./Event.hh"
 
+struct Backend {
+  std::string mDir;
+  std::unordered_set<std::string> mIgnore;
+  Backend(std::string dir, std::unordered_set<std::string> ignore) : mDir(dir), mIgnore(ignore) {}
+  virtual void writeSnapshot(std::string *snapshotPath) = 0;
+  virtual EventList *getEventsSince(std::string *snapshotPath) = 0;
+  virtual ~Backend() {}
+};
+
 #ifdef FS_EVENTS
-struct FSEventsBackend {
-  static void writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
-  static EventList *getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
+struct FSEventsBackend : public Backend {
+  FSEventsBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
+  void writeSnapshot(std::string *snapshotPath) override;
+  EventList *getEventsSince(std::string *snapshotPath) override;
 };
 #endif
 
 #ifdef WATCHMAN
-struct WatchmanBackend {
+struct WatchmanBackend : public Backend {
   static bool check();
-  static void writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
-  static EventList *getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
+  WatchmanBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
+  void writeSnapshot(std::string *snapshotPath) override;
+  EventList *getEventsSince(std::string *snapshotPath) override;
 };
 #endif
 
-struct BruteForceBackend {
-  static void writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
-  static EventList *getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore);
+struct BruteForceBackend : public Backend {
+  BruteForceBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
+  void writeSnapshot(std::string *snapshotPath) override;
+  EventList *getEventsSince(std::string *snapshotPath) override;
 };
-
-// Use FSEvents on macOS by default.
-// Use watchman by default if available on other platforms.
-// Fall back to brute force.
-#ifdef FS_EVENTS
-#define DEFAULT_BACKEND(method) FSEventsBackend::method
-#elif WATCHMAN
-#define DEFAULT_BACKEND(method) (WatchmanBackend::check() ? WatchmanBackend::method : BruteForceBackend::method)
-#else
-#define DEFAULT_BACKEND(method) BruteForceBackend::method
-#endif
-
-#define GET_BACKEND(backend, method) \
-  (backend == "watchman" && WATCHMAN && WatchmanBackend::check() ? WatchmanBackend::method \
-    : backend == "fs-events" && FS_EVENTS ? FSEventsBackend::method \
-    : backend == "brute-force" ? BruteForceBackend::method \
-    : DEFAULT_BACKEND(method))
 
 #endif

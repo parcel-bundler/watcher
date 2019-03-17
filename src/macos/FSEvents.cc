@@ -54,13 +54,13 @@ void FSEventsCallback(
   }
 }
 
-void FSEventsBackend::writeSnapshot(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+void FSEventsBackend::writeSnapshot(std::string *snapshotPath) {
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
   std::ofstream ofs(*snapshotPath);
   ofs << id;
 }
 
-EventList *FSEventsBackend::getEventsSince(std::string *dir, std::string *snapshotPath, std::unordered_set<std::string> *ignore) {
+EventList *FSEventsBackend::getEventsSince(std::string *snapshotPath) {
   EventList *list = new EventList();
 
   std::ifstream ifs(*snapshotPath);
@@ -74,7 +74,7 @@ EventList *FSEventsBackend::getEventsSince(std::string *dir, std::string *snapsh
   CFAbsoluteTime latency = 0.001;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
-    dir->c_str(),
+    mDir.c_str(),
     kCFStringEncodingUTF8
   );
 
@@ -96,8 +96,8 @@ EventList *FSEventsBackend::getEventsSince(std::string *dir, std::string *snapsh
     kFSEventStreamCreateFlagFileEvents
   );
   
-  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, ignore->size(), NULL);
-  for (auto it = ignore->begin(); it != ignore->end(); it++) {
+  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, mIgnore.size(), NULL);
+  for (auto it = mIgnore.begin(); it != mIgnore.end(); it++) {
     CFStringRef path = CFStringCreateWithCString(
       NULL,
       it->c_str(),

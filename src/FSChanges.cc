@@ -128,12 +128,35 @@ private:
   }
 };
 
+std::shared_ptr<Backend> getBackend(std::string backend, std::string dir, std::unordered_set<std::string> ignore) {
+  // Use FSEvents on macOS by default.
+  // Use watchman by default if available on other platforms.
+  // Fall back to brute force.
+  #ifdef FS_EVENTS
+    if (backend == "fs-events" || backend == "default") {
+      return std::make_shared<FSEventsBackend>(dir, ignore);
+    }
+  #endif
+  #ifdef WATCHMAN
+    if ((backend == "watchman" || backend == "default") && WatchmanBackend::check()) {
+      return std::make_shared<WatchmanBackend>(dir, ignore);
+    }
+  #endif
+  if (backend == "brute-force" || backend == "default") {
+    return std::make_shared<BruteForceBackend>(dir, ignore);
+  }
+
+  return getBackend("default", dir, ignore);
+}
+
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  GET_BACKEND(runner->backend, writeSnapshot)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  std::shared_ptr<Backend> b = getBackend(runner->backend, runner->directory, runner->ignore);
+  b->writeSnapshot(&runner->snapshotPath);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  runner->events = GET_BACKEND(runner->backend, getEventsSince)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  std::shared_ptr<Backend> b = getBackend(runner->backend, runner->directory, runner->ignore);
+  runner->events = b->getEventsSince(&runner->snapshotPath);
 }
 
 Value queueWork(const CallbackInfo& info, AsyncFunction func) {
