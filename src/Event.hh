@@ -28,10 +28,10 @@ struct Event {
 
 class EventList {
 public:
-  std::vector<Event *> mEvents;
+  std::vector<Event> mEvents;
 
   void push(std::string path, std::string type) {
-    mEvents.push_back(new Event(path, type));
+    mEvents.push_back(Event(path, type));
   }
 
   Local<Array> toJS() {
@@ -39,7 +39,7 @@ public:
     Local<Array> arr = Nan::New<Array>(mEvents.size());
 
     for (size_t i = 0; i < mEvents.size(); i++) {
-      arr->Set(i, mEvents[i]->toJS());
+      arr->Set(i, mEvents[i].toJS());
     }
 
     return scope.Escape(arr);
