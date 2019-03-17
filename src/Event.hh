@@ -2,12 +2,9 @@
 #define EVENT_H
 
 #include <string>
-#include <node.h>
-#include <uv.h>
-#include <v8.h>
-#include <nan.h>
+#include <napi.h>
 
-using namespace v8;
+using namespace Napi;
 
 struct Event {
   std::string mPath;
@@ -17,11 +14,11 @@ struct Event {
     mType = type;
   }
 
-  Local<Object> toJS() {
-    Nan::EscapableHandleScope scope;
-    Local<Object> res = Nan::New<Object>();
-    res->Set(Nan::New<String>("path").ToLocalChecked(), Nan::New<String>(mPath.c_str()).ToLocalChecked());
-    res->Set(Nan::New<String>("type").ToLocalChecked(), Nan::New<String>(mType.c_str()).ToLocalChecked());
+  Value toJS(const Env& env) {
+    EscapableHandleScope scope(env);
+    Object res = Object::New(env);
+    res.Set(String::New(env, "path"), String::New(env, mPath.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, mType.c_str()));
     return scope.Escape(res);
   }
 };
@@ -34,12 +31,12 @@ public:
     mEvents.push_back(Event(path, type));
   }
 
-  Local<Array> toJS() {
-    Nan::EscapableHandleScope scope;
-    Local<Array> arr = Nan::New<Array>(mEvents.size());
+  Value toJS(const Env& env) {
+    EscapableHandleScope scope(env);
+    Array arr = Array::New(env, mEvents.size());
 
     for (size_t i = 0; i < mEvents.size(); i++) {
-      arr->Set(i, mEvents[i].toJS());
+      arr.Set(i, mEvents[i].toJS(env));
     }
 
     return scope.Escape(arr);
