@@ -5,6 +5,15 @@
 #include <unordered_set>
 #include "../Event.hh"
 #include "../Backend.hh"
+#include "./FSEvents.hh"
+#include "../Watcher.hh"
+
+void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
+  FSEventStreamStop(stream);
+  FSEventStreamUnscheduleFromRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
+  FSEventStreamInvalidate(stream);
+  FSEventStreamRelease(stream);
+}
 
 void FSEventsCallback(
   ConstFSEventStreamRef streamRef,
@@ -15,7 +24,8 @@ void FSEventsCallback(
   const FSEventStreamEventId eventIds[]
 ) {
   char **paths = (char **)eventPaths;
-  EventList *list = (EventList *)clientCallBackInfo;
+  Watcher *watcher = (Watcher *)clientCallBackInfo;
+  EventList *list = &watcher->mEvents;
 
   for (size_t i = 0; i < numEvents; ++i) {
     bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
@@ -37,7 +47,7 @@ void FSEventsCallback(
     } else if (isRenamed && !(isCreated || isModified || isRemoved)) {
       list->push(paths[i], "rename");
     } else if (isDone) {
-      CFRunLoopStop(CFRunLoopGetCurrent());
+      stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
     } else {
       struct stat file;
       if (stat(paths[i], &file) != 0) {
@@ -52,29 +62,15 @@ void FSEventsCallback(
       }
     }
   }
+
+  watcher->notify();
 }
 
-void FSEventsBackend::writeSnapshot(std::string *snapshotPath) {
-  FSEventStreamEventId id = FSEventsGetCurrentEventId();
-  std::ofstream ofs(*snapshotPath);
-  ofs << id;
-}
-
-EventList *FSEventsBackend::getEventsSince(std::string *snapshotPath) {
-  EventList *list = new EventList();
-
-  std::ifstream ifs(*snapshotPath);
-  if (ifs.fail()) {
-    return list;
-  }
-
-  FSEventStreamEventId id;
-  ifs >> id;
-
+void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   CFAbsoluteTime latency = 0.001;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
-    mDir.c_str(),
+    watcher.mDir.c_str(),
     kCFStringEncodingUTF8
   );
 
@@ -84,8 +80,8 @@ EventList *FSEventsBackend::getEventsSince(std::string *snapshotPath) {
     1,
     NULL
   );
-  
-  FSEventStreamContext callbackInfo {0, (void *)list, nullptr, nullptr, nullptr};
+
+  FSEventStreamContext callbackInfo {0, (void *)&watcher, nullptr, nullptr, nullptr};
   FSEventStreamRef stream = FSEventStreamCreate(
     NULL,
     &FSEventsCallback,
@@ -96,8 +92,8 @@ EventList *FSEventsBackend::getEventsSince(std::string *snapshotPath) {
     kFSEventStreamCreateFlagFileEvents
   );
   
-  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, mIgnore.size(), NULL);
-  for (auto it = mIgnore.begin(); it != mIgnore.end(); it++) {
+  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnore.size(), NULL);
+  for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
     CFStringRef path = CFStringCreateWithCString(
       NULL,
       it->c_str(),
@@ -109,18 +105,58 @@ EventList *FSEventsBackend::getEventsSince(std::string *snapshotPath) {
 
   FSEventStreamSetExclusionPaths(stream, exclusions);
 
-  CFRunLoopRef runLoop = CFRunLoopGetCurrent();
-  FSEventStreamScheduleWithRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
+  FSEventStreamScheduleWithRunLoop(stream, mRunLoop, kCFRunLoopDefaultMode);
   FSEventStreamStart(stream);
   CFRelease(pathsToWatch);
   CFRelease(fileWatchPath);
 
+  watcher.state = (void *)stream;
+}
+
+void FSEventsBackend::start() {
+  mRunLoop = CFRunLoopGetCurrent();
+
+  // Unlock once run loop has started.
+  CFRunLoopPerformBlock(mRunLoop, kCFRunLoopDefaultMode, ^ {
+    mMutex.unlock();
+  });
+
+  CFRunLoopWakeUp(mRunLoop);
   CFRunLoopRun();
+}
 
-  FSEventStreamStop(stream);
-  FSEventStreamUnscheduleFromRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
-  FSEventStreamInvalidate(stream);
-  FSEventStreamRelease(stream);
+FSEventsBackend::~FSEventsBackend() {
+  std::lock_guard<std::mutex> lock(mMutex);
+  CFRunLoopStop(mRunLoop);
+}
 
-  return list;
+void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  FSEventStreamEventId id = FSEventsGetCurrentEventId();
+  std::ofstream ofs(*snapshotPath);
+  ofs << id;
+}
+
+void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  std::ifstream ifs(*snapshotPath);
+  if (ifs.fail()) {
+    return;
+  }
+
+  FSEventStreamEventId id;
+  ifs >> id;
+
+  startStream(watcher, id);
+}
+
+void FSEventsBackend::subscribe(Watcher &watcher) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  startStream(watcher, kFSEventStreamEventIdSinceNow);
+}
+
+void FSEventsBackend::unsubscribe(Watcher &watcher) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  FSEventStreamRef stream = (FSEventStreamRef)watcher.state;
+  stopStream(stream, mRunLoop);
 }

@@ -1,38 +1,47 @@
 #ifndef BACKEND_H
 #define BACKEND_H
 
-#include "./Event.hh"
+#include "Event.hh"
+#include "Watcher.hh"
+#include <thread>
 
-struct Backend {
-  std::string mDir;
-  std::unordered_set<std::string> mIgnore;
-  Backend(std::string dir, std::unordered_set<std::string> ignore) : mDir(dir), mIgnore(ignore) {}
-  virtual void writeSnapshot(std::string *snapshotPath) = 0;
-  virtual EventList *getEventsSince(std::string *snapshotPath) = 0;
-  virtual ~Backend() {}
-};
+class Backend {
+public:
+  Backend() {
+    mMutex.lock();
+    mThread = std::thread([this] () {
+      this->start();
+    });
+  }
 
-#ifdef FS_EVENTS
-struct FSEventsBackend : public Backend {
-  FSEventsBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
-  void writeSnapshot(std::string *snapshotPath) override;
-  EventList *getEventsSince(std::string *snapshotPath) override;
+  virtual ~Backend() {
+    if (mThread.joinable()) {
+      mThread.join();
+    }
+  }
+
+  virtual void start() {}
+  virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
+  virtual void getEventsSince(Watcher &watcher, std::string *snapshotPath) = 0;
+  virtual void subscribe(Watcher &watcher) = 0;
+  virtual void unsubscribe(Watcher &watcher) = 0;
+
+  std::mutex mMutex;
+private:
+  std::thread mThread;
 };
-#endif
 
 #ifdef WATCHMAN
 struct WatchmanBackend : public Backend {
   static bool check();
-  WatchmanBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
-  void writeSnapshot(std::string *snapshotPath) override;
-  EventList *getEventsSince(std::string *snapshotPath) override;
+  void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
+  void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
 };
 #endif
 
-struct BruteForceBackend : public Backend {
-  BruteForceBackend(std::string dir, std::unordered_set<std::string> ignore) : Backend(dir, ignore) {}
-  void writeSnapshot(std::string *snapshotPath) override;
-  EventList *getEventsSince(std::string *snapshotPath) override;
-};
+// struct BruteForceBackend : public Backend {
+//   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
+//   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
+// };
 
 #endif

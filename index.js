@@ -20,4 +20,16 @@ async function run() {
   console.timeEnd('write');
 }
 
-run();
+// run();
+
+fschanges.subscribe(dir, events => {
+  console.log(events);
+});
+
+// let w = new Watcher(dir);
+// w.getEventsSince(snapshotPath);
+// w.writeSnapshot(snapshotPath);
+// w.subscribe(events => {
+
+// });
+// w.unsubscribe();

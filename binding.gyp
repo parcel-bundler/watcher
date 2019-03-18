@@ -11,18 +11,18 @@
       "conditions": [
         ['OS=="mac"', {
           "sources": [
-            "src/watchman/BSER.cc",
-            "src/watchman/watchman.cc",
-            "src/shared/brute.cc",
-            "src/unix/fts.cc",
+            # "src/watchman/BSER.cc",
+            # "src/watchman/watchman.cc",
+            # "src/shared/brute.cc",
+            # "src/unix/fts.cc",
             "src/macos/FSEvents.cc"
           ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
           },
           "defines": [
-            "WATCHMAN",
-            "BRUTE_FORCE",
+            # "WATCHMAN",
+            # "BRUTE_FORCE",
             "FS_EVENTS"
           ],
           "xcode_settings": {

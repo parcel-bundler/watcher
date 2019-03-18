@@ -1,9 +1,14 @@
+#ifdef FS_EVENTS
+#include "macos/FSEvents.hh"
+#endif
+
 #include <unordered_set>
 #include <iostream>
 #include <napi.h>
 #include <node_api.h>
 #include "Event.hh"
 #include "Backend.hh"
+#include "Watcher.hh"
 
 using namespace Napi;
 
@@ -14,17 +19,16 @@ class FSAsyncRunner {
 public:
   const Env env;
 
-  std::string directory;
+  Watcher watcher;
   std::string snapshotPath;
   std::string backend;
-
-  std::unordered_set<std::string> ignore;
-  EventList *events;
+  bool returnEvents;
 
   FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
-    : env(env), directory(std::string(dir.As<String>().Utf8Value().c_str())),
+    : env(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
-      events(nullptr), func(func), deferred(r) {
+      returnEvents(false),
+      func(func), deferred(r) {
 
     napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
                                                 OnExecute, OnWorkComplete, this, &this->work);
@@ -38,6 +42,8 @@ public:
         Error::New(env).ThrowAsJavaScriptException();
     }
 
+    watcher.mDir = std::string(dir.As<String>().Utf8Value().c_str());
+
     if (opts.IsObject()) {
       Value v = opts.As<Object>().Get(String::New(env, "ignore"));
       if (v.IsArray()) {
@@ -45,7 +51,7 @@ public:
         for (size_t i = 0; i < items.Length(); i++) {
           Value item = items.Get(Number::New(env, i));
           if (item.IsString()) {
-            this->ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
+            watcher.mIgnore.insert(std::string(item.As<String>().Utf8Value().c_str()));
           }
         }
       }
@@ -54,12 +60,6 @@ public:
     Value b = opts.As<Object>().Get(String::New(env, "backend"));
     if (b.IsString()) {
       backend = std::string(b.As<String>().Utf8Value().c_str());
-    }
-  }
-
-  ~FSAsyncRunner() {
-    if (this->events) {
-      delete this->events;
     }
   }
 
@@ -114,8 +114,8 @@ private:
     HandleScope scope(env);
     Value result;
 
-    if (this->events) {
-      result = this->events->toJS(env);
+    if (this->returnEvents) {
+      result = watcher.mEvents.toJS(env);
     } else {
       result = env.Null();
     }
@@ -128,35 +128,47 @@ private:
   }
 };
 
-std::shared_ptr<Backend> getBackend(std::string backend, std::string dir, std::unordered_set<std::string> ignore) {
+static std::shared_ptr<Backend> sharedBackend;
+std::shared_ptr<Backend> getBackend(std::string backend) {
   // Use FSEvents on macOS by default.
   // Use watchman by default if available on other platforms.
   // Fall back to brute force.
   #ifdef FS_EVENTS
     if (backend == "fs-events" || backend == "default") {
-      return std::make_shared<FSEventsBackend>(dir, ignore);
+      return std::make_shared<FSEventsBackend>();
     }
   #endif
   #ifdef WATCHMAN
     if ((backend == "watchman" || backend == "default") && WatchmanBackend::check()) {
-      return std::make_shared<WatchmanBackend>(dir, ignore);
+      return std::make_shared<WatchmanBackend>();
     }
   #endif
-  if (backend == "brute-force" || backend == "default") {
-    return std::make_shared<BruteForceBackend>(dir, ignore);
+  // if (backend == "brute-force" || backend == "default") {
+  //   return std::make_shared<BruteForceBackend>();
+  // }
+
+  return getBackend("default");
+}
+
+std::shared_ptr<Backend> getSharedBackend(std::string backend) {
+  if (sharedBackend) {
+    return sharedBackend;
   }
 
-  return getBackend("default", dir, ignore);
+  sharedBackend = getBackend(backend);
+  return sharedBackend;
 }
 
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = getBackend(runner->backend, runner->directory, runner->ignore);
-  b->writeSnapshot(&runner->snapshotPath);
+  std::shared_ptr<Backend> b = getBackend(runner->backend);
+  b->writeSnapshot(runner->watcher, &runner->snapshotPath);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = getBackend(runner->backend, runner->directory, runner->ignore);
-  runner->events = b->getEventsSince(&runner->snapshotPath);
+  std::shared_ptr<Backend> b = getBackend(runner->backend);
+  b->getEventsSince(runner->watcher, &runner->snapshotPath);
+  runner->watcher.wait();
+  runner->returnEvents = true;
 }
 
 Value queueWork(const CallbackInfo& info, AsyncFunction func) {
@@ -191,6 +203,37 @@ Value getEventsSince(const CallbackInfo& info) {
   return queueWork(info, getEventsSinceAsync);
 }
 
+struct Subscription {
+  FunctionReference callback;
+  Watcher watcher;
+};
+
+Value subscribe(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() < 2 || !info[1].IsFunction()) {
+    TypeError::New(env, "Expected a function").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  Subscription *s = new Subscription();
+  s->callback = Persistent(info[1].As<Function>());
+  s->watcher.mDir = std::string(info[0].As<String>().Utf8Value().c_str());
+  s->watcher.watch([s, env] (EventList &events) {
+    HandleScope scope(env);
+    s->callback.Call(std::initializer_list<napi_value>{events.toJS(env)});
+  });
+
+  std::shared_ptr<Backend> b = getSharedBackend("default");
+  b->subscribe(s->watcher);
+
+  return env.Null();
+}
+
 Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "writeSnapshot"),
@@ -199,6 +242,10 @@ Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "getEventsSince"),
     Function::New(env, getEventsSince)
+  );
+  exports.Set(
+    String::New(env, "subscribe"),
+    Function::New(env, subscribe)
   );
   return exports;
 }

@@ -3,16 +3,14 @@
 
 #include <string>
 #include <napi.h>
+#include <mutex>
 
 using namespace Napi;
 
 struct Event {
   std::string mPath;
   std::string mType;
-  Event(std::string path, std::string type) {
-    mPath = path;
-    mType = type;
-  }
+  Event(std::string path, std::string type) : mPath(path), mType(type) {}
 
   Value toJS(const Env& env) {
     EscapableHandleScope scope(env);
@@ -25,10 +23,12 @@ struct Event {
 
 class EventList {
 public:
-  std::vector<Event> mEvents;
-
   void push(std::string path, std::string type) {
     mEvents.push_back(Event(path, type));
+  }
+
+  void clear() {
+    mEvents.clear();
   }
 
   Value toJS(const Env& env) {
@@ -41,6 +41,9 @@ public:
 
     return scope.Escape(arr);
   }
+
+private:
+  std::vector<Event> mEvents;
 };
 
 #endif
