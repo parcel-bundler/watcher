@@ -26,6 +26,8 @@ public:
   virtual void subscribe(Watcher &watcher) = 0;
   virtual void unsubscribe(Watcher &watcher) = 0;
 
+  static std::shared_ptr<Backend> getShared(std::string backend);
+
   std::mutex mMutex;
 private:
   std::thread mThread;

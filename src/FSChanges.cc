@@ -128,44 +128,13 @@ private:
   }
 };
 
-static std::shared_ptr<Backend> sharedBackend;
-std::shared_ptr<Backend> getBackend(std::string backend) {
-  // Use FSEvents on macOS by default.
-  // Use watchman by default if available on other platforms.
-  // Fall back to brute force.
-  #ifdef FS_EVENTS
-    if (backend == "fs-events" || backend == "default") {
-      return std::make_shared<FSEventsBackend>();
-    }
-  #endif
-  #ifdef WATCHMAN
-    if ((backend == "watchman" || backend == "default") && WatchmanBackend::check()) {
-      return std::make_shared<WatchmanBackend>();
-    }
-  #endif
-  // if (backend == "brute-force" || backend == "default") {
-  //   return std::make_shared<BruteForceBackend>();
-  // }
-
-  return getBackend("default");
-}
-
-std::shared_ptr<Backend> getSharedBackend(std::string backend) {
-  if (sharedBackend) {
-    return sharedBackend;
-  }
-
-  sharedBackend = getBackend(backend);
-  return sharedBackend;
-}
-
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = getBackend(runner->backend);
+  std::shared_ptr<Backend> b = Backend::getShared(runner->backend);
   b->writeSnapshot(runner->watcher, &runner->snapshotPath);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = getBackend(runner->backend);
+  std::shared_ptr<Backend> b = Backend::getShared(runner->backend);
   b->getEventsSince(runner->watcher, &runner->snapshotPath);
   runner->watcher.wait();
   runner->returnEvents = true;
@@ -228,7 +197,7 @@ Value subscribe(const CallbackInfo& info) {
     s->callback.Call(std::initializer_list<napi_value>{events.toJS(env)});
   });
 
-  std::shared_ptr<Backend> b = getSharedBackend("default");
+  std::shared_ptr<Backend> b = Backend::getShared("default");
   b->subscribe(s->watcher);
 
   return env.Null();

@@ -3,7 +3,7 @@
     {
       "target_name": "fschanges",
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
-      "sources": [ "src/FSChanges.cc" ],
+      "sources": [ "src/FSChanges.cc", "src/Watcher.cc", "src/Backend.cc" ],
       "include_dirs" : ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
       "cflags!": ["-fexceptions"],
