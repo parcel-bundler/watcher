@@ -151,12 +151,10 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 }
 
 void FSEventsBackend::subscribe(Watcher &watcher) {
-  std::lock_guard<std::mutex> lock(mMutex);
   startStream(watcher, kFSEventStreamEventIdSinceNow);
 }
 
 void FSEventsBackend::unsubscribe(Watcher &watcher) {
-  std::lock_guard<std::mutex> lock(mMutex);
   FSEventStreamRef stream = (FSEventStreamRef)watcher.state;
   stopStream(stream, mRunLoop);
 }

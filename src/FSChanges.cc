@@ -15,6 +15,25 @@ using namespace Napi;
 class FSAsyncRunner;
 typedef void (*AsyncFunction)(FSAsyncRunner *);
 
+std::unordered_set<std::string> getIgnore(Env env, Value opts) {
+  std::unordered_set<std::string> ignore;
+
+  if (opts.IsObject()) {
+    Value v = opts.As<Object>().Get(String::New(env, "ignore"));
+    if (v.IsArray()) {
+      Array items = v.As<Array>();
+      for (size_t i = 0; i < items.Length(); i++) {
+        Value item = items.Get(Number::New(env, i));
+        if (item.IsString()) {
+          ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
+        }
+      }
+    }
+  }
+
+  return ignore;
+}
+
 class FSAsyncRunner {
 public:
   const Env env;
@@ -43,19 +62,7 @@ public:
     }
 
     watcher.mDir = std::string(dir.As<String>().Utf8Value().c_str());
-
-    if (opts.IsObject()) {
-      Value v = opts.As<Object>().Get(String::New(env, "ignore"));
-      if (v.IsArray()) {
-        Array items = v.As<Array>();
-        for (size_t i = 0; i < items.Length(); i++) {
-          Value item = items.Get(Number::New(env, i));
-          if (item.IsString()) {
-            watcher.mIgnore.insert(std::string(item.As<String>().Utf8Value().c_str()));
-          }
-        }
-      }
-    }
+    watcher.mIgnore = getIgnore(env, opts);
 
     Value b = opts.As<Object>().Get(String::New(env, "backend"));
     if (b.IsString()) {
@@ -172,11 +179,6 @@ Value getEventsSince(const CallbackInfo& info) {
   return queueWork(info, getEventsSinceAsync);
 }
 
-struct Subscription {
-  FunctionReference callback;
-  Watcher watcher;
-};
-
 Value subscribe(const CallbackInfo& info) {
   Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
@@ -189,16 +191,44 @@ Value subscribe(const CallbackInfo& info) {
     return env.Null();
   }
 
-  Subscription *s = new Subscription();
-  s->callback = Persistent(info[1].As<Function>());
-  s->watcher.mDir = std::string(info[0].As<String>().Utf8Value().c_str());
-  s->watcher.watch([s, env] (EventList &events) {
-    HandleScope scope(env);
-    s->callback.Call(std::initializer_list<napi_value>{events.toJS(env)});
-  });
+  if (info.Length() >= 3 && !info[2].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  std::shared_ptr<Watcher> watcher = Watcher::getShared(
+    std::string(info[0].As<String>().Utf8Value().c_str()), 
+    getIgnore(env, info[2])
+  );
+  watcher->watch(info[1].As<Function>());
 
   std::shared_ptr<Backend> b = Backend::getShared("default");
-  b->subscribe(s->watcher);
+  b->watch(*watcher);
+
+  return env.Null();
+}
+
+Value unsubscribe(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 2 && !info[1].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  std::shared_ptr<Watcher> watcher = Watcher::getShared(
+    std::string(info[0].As<String>().Utf8Value().c_str()),
+    getIgnore(env, info[2])
+  );
+  
+  std::shared_ptr<Backend> b = Backend::getShared("default");
+  b->unwatch(*watcher);
+  
+  watcher->unwatch();
 
   return env.Null();
 }
@@ -215,6 +245,10 @@ Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "subscribe"),
     Function::New(env, subscribe)
+  );
+  exports.Set(
+    String::New(env, "unsubscribe"),
+    Function::New(env, unsubscribe)
   );
   return exports;
 }

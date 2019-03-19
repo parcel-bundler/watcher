@@ -43,3 +43,46 @@ std::shared_ptr<Backend> Backend::getShared(std::string backend) {
   sharedBackends.emplace(backend, result);
   return result;
 }
+
+void removeShared(Backend *backend) {
+  for (auto it = sharedBackends.begin(); it != sharedBackends.end(); it++) {
+    if (it->second.get() == backend) {
+      sharedBackends.erase(it);
+      break;
+    }
+  }
+}
+
+Backend::Backend() {
+  mMutex.lock();
+  mThread = std::thread([this] () {
+    this->start();
+  });
+}
+
+Backend::~Backend() {
+  std::lock_guard<std::mutex> lock(mMutex);
+  if (mThread.joinable()) {
+    mThread.join();
+  }
+}
+
+void Backend::watch(Watcher &watcher) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  auto res = mSubscriptions.insert(&watcher);
+  if (res.second) {
+    this->subscribe(watcher);
+  }
+}
+
+void Backend::unwatch(Watcher &watcher) {
+  std::lock_guard<std::mutex> lock(mMutex);
+  size_t deleted = mSubscriptions.erase(&watcher);
+  if (deleted > 0) {
+    this->unsubscribe(watcher);
+
+    if (mSubscriptions.size() == 0) {
+      removeShared(this);
+    }
+  }
+}

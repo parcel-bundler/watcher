@@ -24,7 +24,8 @@ async function run() {
 
 fschanges.subscribe(dir, events => {
   console.log(events);
-});
+  fschanges.unsubscribe(dir, {ignore: [dir + '/.git']});
+}, {ignore: [dir + '/.git']});
 
 // let w = new Watcher(dir);
 // w.getEventsSince(snapshotPath);

@@ -7,18 +7,8 @@
 
 class Backend {
 public:
-  Backend() {
-    mMutex.lock();
-    mThread = std::thread([this] () {
-      this->start();
-    });
-  }
-
-  virtual ~Backend() {
-    if (mThread.joinable()) {
-      mThread.join();
-    }
-  }
+  Backend();
+  virtual ~Backend();
 
   virtual void start() {}
   virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
@@ -28,9 +18,13 @@ public:
 
   static std::shared_ptr<Backend> getShared(std::string backend);
 
+  void watch(Watcher &watcher);
+  void unwatch(Watcher &watcher);
+
   std::mutex mMutex;
 private:
   std::thread mThread;
+  std::unordered_set<Watcher *> mSubscriptions;
 };
 
 #ifdef WATCHMAN
