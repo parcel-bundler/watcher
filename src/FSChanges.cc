@@ -38,9 +38,9 @@ class FSAsyncRunner {
 public:
   const Env env;
 
-  Watcher watcher;
+  std::shared_ptr<Backend> backend;
+  std::shared_ptr<Watcher> watcher;
   std::string snapshotPath;
-  std::string backend;
   bool returnEvents;
 
   FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
@@ -61,13 +61,18 @@ public:
         Error::New(env).ThrowAsJavaScriptException();
     }
 
-    watcher.mDir = std::string(dir.As<String>().Utf8Value().c_str());
-    watcher.mIgnore = getIgnore(env, opts);
+    watcher = Watcher::getShared(
+      std::string(dir.As<String>().Utf8Value().c_str()),
+      getIgnore(env, opts)
+    );
 
     Value b = opts.As<Object>().Get(String::New(env, "backend"));
+    std::string back;
     if (b.IsString()) {
-      backend = std::string(b.As<String>().Utf8Value().c_str());
+      back = std::string(b.As<String>().Utf8Value().c_str());
     }
+
+    backend = Backend::getShared(back);
   }
 
   void Queue() {
@@ -122,28 +127,29 @@ private:
     Value result;
 
     if (this->returnEvents) {
-      result = watcher.mEvents.toJS(env);
+      result = watcher->mEvents.toJS(env);
     } else {
       result = env.Null();
     }
 
+    watcher->unref();
+    backend->unref();
     this->deferred.Resolve(result);
   }
 
   void OnError(const Error& e) {
+    watcher->unref();
+    backend->unref();
     this->deferred.Reject(e.Value());
   }
 };
 
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = Backend::getShared(runner->backend);
-  b->writeSnapshot(runner->watcher, &runner->snapshotPath);
+  runner->backend->writeSnapshot(*runner->watcher, &runner->snapshotPath);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  std::shared_ptr<Backend> b = Backend::getShared(runner->backend);
-  b->getEventsSince(runner->watcher, &runner->snapshotPath);
-  runner->watcher.wait();
+  runner->backend->getEventsSince(*runner->watcher, &runner->snapshotPath);
   runner->returnEvents = true;
 }
 

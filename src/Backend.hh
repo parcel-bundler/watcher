@@ -20,6 +20,7 @@ public:
 
   void watch(Watcher &watcher);
   void unwatch(Watcher &watcher);
+  void unref();
 
   std::mutex mMutex;
 private:

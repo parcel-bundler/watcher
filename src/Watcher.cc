@@ -42,6 +42,8 @@ struct EventData {
   EventList events;
 };
 
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) : mDir(dir), mIgnore(ignore), mWatched(false) {}
+
 void Watcher::wait() {
   std::unique_lock<std::mutex> lk(mMutex);
   mCond.wait(lk);
@@ -57,9 +59,9 @@ void Watcher::notify() {
     data->events = mEvents;
     mAsync.data = (void *)data;
     uv_async_send(&mAsync);
-  }
 
-  mEvents.clear();
+    mEvents.clear();
+  }
 }
 
 void Watcher::fireCallbacks(uv_async_t *handle) {
@@ -88,6 +90,7 @@ bool Watcher::watch(Function callback) {
   auto res = mCallbacks.insert(Persistent(callback));
   if (res.second && mCallbacks.size() == 1) {
     uv_async_init(uv_default_loop(), &mAsync, Watcher::fireCallbacks);
+    mWatched = true;
     return true;
   }
 
@@ -107,10 +110,19 @@ bool Watcher::unwatch(Function callback) {
   }
   
   if (removed && mCallbacks.size() == 0) {
-    uv_close(reinterpret_cast<uv_handle_t*>(&mAsync), nullptr);
-    removeShared(this);
+    unref();
     return true;
   }
 
   return false;
+}
+
+void Watcher::unref() {
+  if (mCallbacks.size() == 0) {
+    if (mWatched) {
+      uv_close(reinterpret_cast<uv_handle_t*>(&mAsync), nullptr);
+    }
+
+    removeShared(this);
+  }
 }

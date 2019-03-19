@@ -16,8 +16,7 @@ struct Watcher {
   EventList mEvents;
   void *state;
 
-  Watcher() {}
-  Watcher(std::string dir, std::unordered_set<std::string> ignore) : mDir(dir), mIgnore(ignore) {}
+  Watcher(std::string dir, std::unordered_set<std::string> ignore);
 
   bool operator==(const Watcher &other) const {
     return mDir == other.mDir;
@@ -27,6 +26,7 @@ struct Watcher {
   void notify();
   bool watch(Function callback);
   bool unwatch(Function callback);
+  void unref();
 
   static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignore);
 
@@ -36,6 +36,7 @@ private:
   uv_async_t mAsync;
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
+  bool mWatched;
 
   static void fireCallbacks(uv_async_t *handle);
 };

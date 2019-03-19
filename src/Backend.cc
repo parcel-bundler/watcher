@@ -61,14 +61,14 @@ Backend::Backend() {
 }
 
 Backend::~Backend() {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   if (mThread.joinable()) {
     mThread.join();
   }
 }
 
 void Backend::watch(Watcher &watcher) {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   auto res = mSubscriptions.insert(&watcher);
   if (res.second) {
     this->subscribe(watcher);
@@ -76,13 +76,16 @@ void Backend::watch(Watcher &watcher) {
 }
 
 void Backend::unwatch(Watcher &watcher) {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   size_t deleted = mSubscriptions.erase(&watcher);
   if (deleted > 0) {
     this->unsubscribe(watcher);
+    unref();
+  }
+}
 
-    if (mSubscriptions.size() == 0) {
-      removeShared(this);
-    }
+void Backend::unref() {
+  if (mSubscriptions.size() == 0) {
+    removeShared(this);
   }
 }

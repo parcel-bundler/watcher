@@ -115,6 +115,7 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
 
 void FSEventsBackend::start() {
   mRunLoop = CFRunLoopGetCurrent();
+  CFRetain(mRunLoop);
 
   // Unlock once run loop has started.
   CFRunLoopPerformBlock(mRunLoop, kCFRunLoopDefaultMode, ^ {
@@ -126,19 +127,20 @@ void FSEventsBackend::start() {
 }
 
 FSEventsBackend::~FSEventsBackend() {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   CFRunLoopStop(mRunLoop);
+  CFRelease(mRunLoop);
 }
 
 void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
   std::ofstream ofs(*snapshotPath);
   ofs << id;
 }
 
 void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
-  std::lock_guard<std::mutex> lock(mMutex);
+  std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
     return;
@@ -148,6 +150,7 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   ifs >> id;
 
   startStream(watcher, id);
+  watcher.wait();
 }
 
 void FSEventsBackend::subscribe(Watcher &watcher) {
