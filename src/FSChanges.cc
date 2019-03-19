@@ -200,10 +200,12 @@ Value subscribe(const CallbackInfo& info) {
     std::string(info[0].As<String>().Utf8Value().c_str()), 
     getIgnore(env, info[2])
   );
-  watcher->watch(info[1].As<Function>());
 
-  std::shared_ptr<Backend> b = Backend::getShared("default");
-  b->watch(*watcher);
+  bool added = watcher->watch(info[1].As<Function>());
+  if (added) {
+    std::shared_ptr<Backend> b = Backend::getShared("default");
+    b->watch(*watcher);
+  }
 
   return env.Null();
 }
@@ -215,7 +217,12 @@ Value unsubscribe(const CallbackInfo& info) {
     return env.Null();
   }
 
-  if (info.Length() >= 2 && !info[1].IsObject()) {
+  if (info.Length() < 2 || !info[1].IsFunction()) {
+    TypeError::New(env, "Expected a function").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 3 && !info[2].IsObject()) {
     TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
     return env.Null();
   }
@@ -224,12 +231,13 @@ Value unsubscribe(const CallbackInfo& info) {
     std::string(info[0].As<String>().Utf8Value().c_str()),
     getIgnore(env, info[2])
   );
-  
-  std::shared_ptr<Backend> b = Backend::getShared("default");
-  b->unwatch(*watcher);
-  
-  watcher->unwatch();
 
+  bool removed =  watcher->unwatch(info[1].As<Function>());
+  if (removed) {
+    std::shared_ptr<Backend> b = Backend::getShared("default");
+    b->unwatch(*watcher);
+  }
+  
   return env.Null();
 }
 

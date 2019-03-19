@@ -22,10 +22,12 @@ async function run() {
 
 // run();
 
-fschanges.subscribe(dir, events => {
+let fn = events => {
   console.log(events);
-  fschanges.unsubscribe(dir, {ignore: [dir + '/.git']});
-}, {ignore: [dir + '/.git']});
+  fschanges.unsubscribe(dir, fn, {ignore: [dir + '/.git']});
+};
+
+fschanges.subscribe(dir, fn, {ignore: [dir + '/.git']});
 
 // let w = new Watcher(dir);
 // w.getEventsSince(snapshotPath);

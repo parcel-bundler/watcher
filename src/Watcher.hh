@@ -3,6 +3,7 @@
 
 #include <condition_variable>
 #include <unordered_set>
+#include <set>
 #include <uv.h>
 #include <node_api.h>
 #include "Event.hh"
@@ -24,8 +25,8 @@ struct Watcher {
 
   void wait();
   void notify();
-  void watch(Function callback);
-  void unwatch();
+  bool watch(Function callback);
+  bool unwatch(Function callback);
 
   static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignore);
 
@@ -33,8 +34,10 @@ private:
   std::mutex mMutex;
   std::condition_variable mCond;
   uv_async_t mAsync;
-  bool mWatching;
-  std::vector<FunctionReference> mCallbacks;
+  std::set<FunctionReference> mCallbacks;
+  std::set<FunctionReference>::iterator mCallbacksIterator;
+
+  static void fireCallbacks(uv_async_t *handle);
 };
 
 #endif
