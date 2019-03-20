@@ -259,8 +259,7 @@ BSER::BSER(std::istream &iss) {
       m_ptr = decodeTemplate(iss);
       break;
     default:
-      printf("unknown BSER type\n");
-      exit(1);
+      throw "unknown BSER type";
   }
 }
 

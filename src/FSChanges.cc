@@ -1,6 +1,9 @@
 #ifdef FS_EVENTS
 #include "macos/FSEvents.hh"
 #endif
+#ifdef WATCHMAN
+#include "watchman/watchman.hh"
+#endif
 
 #include <unordered_set>
 #include <iostream>
@@ -32,6 +35,16 @@ std::unordered_set<std::string> getIgnore(Env env, Value opts) {
   }
 
   return ignore;
+}
+
+std::shared_ptr<Backend> getBackend(Env env, Value opts) {
+  Value b = opts.As<Object>().Get(String::New(env, "backend"));
+  std::string backendName;
+  if (b.IsString()) {
+    backendName = std::string(b.As<String>().Utf8Value().c_str());
+  }
+
+  return Backend::getShared(backendName);
 }
 
 class FSAsyncRunner {
@@ -66,13 +79,7 @@ public:
       getIgnore(env, opts)
     );
 
-    Value b = opts.As<Object>().Get(String::New(env, "backend"));
-    std::string back;
-    if (b.IsString()) {
-      back = std::string(b.As<String>().Utf8Value().c_str());
-    }
-
-    backend = Backend::getShared(back);
+    backend = getBackend(env, opts);
   }
 
   void Queue() {
@@ -209,7 +216,7 @@ Value subscribe(const CallbackInfo& info) {
 
   bool added = watcher->watch(info[1].As<Function>());
   if (added) {
-    std::shared_ptr<Backend> b = Backend::getShared("default");
+    std::shared_ptr<Backend> b = getBackend(env, info[2]);;
     b->watch(*watcher);
   }
 
@@ -240,7 +247,7 @@ Value unsubscribe(const CallbackInfo& info) {
 
   bool removed =  watcher->unwatch(info[1].As<Function>());
   if (removed) {
-    std::shared_ptr<Backend> b = Backend::getShared("default");
+    std::shared_ptr<Backend> b = getBackend(env, info[2]);;
     b->unwatch(*watcher);
   }
   

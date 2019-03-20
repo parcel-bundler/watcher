@@ -37,6 +37,7 @@ private:
   uv_async_t mAsync;
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
+  bool mCallingCallbacks;
 
   static void fireCallbacks(uv_async_t *handle);
 };

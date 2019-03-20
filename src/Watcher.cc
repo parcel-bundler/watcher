@@ -42,7 +42,11 @@ struct EventData {
   EventList events;
 };
 
-Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) : mDir(dir), mIgnore(ignore), mWatched(false) {}
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) 
+  : mDir(dir),
+    mIgnore(ignore),
+    mWatched(false),
+    mCallingCallbacks(false) {}
 
 void Watcher::wait() {
   std::unique_lock<std::mutex> lk(mMutex);
@@ -67,6 +71,7 @@ void Watcher::notify() {
 void Watcher::fireCallbacks(uv_async_t *handle) {
   EventData *data = (EventData *)handle->data;
   Watcher *watcher = data->watcher;
+  watcher->mCallingCallbacks = true;
 
   watcher->mCallbacksIterator = watcher->mCallbacks.begin();
   while (watcher->mCallbacksIterator != watcher->mCallbacks.end()) {
@@ -80,6 +85,11 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     if (watcher->mCallbacksIterator == it) {
       watcher->mCallbacksIterator++;
     }
+  }
+
+  watcher->mCallingCallbacks = false;
+  if (watcher->mCallbacks.size() == 0) {
+    watcher->unref();
   }
 
   delete data;
@@ -118,7 +128,7 @@ bool Watcher::unwatch(Function callback) {
 }
 
 void Watcher::unref() {
-  if (mCallbacks.size() == 0) {
+  if (mCallbacks.size() == 0 && !mCallingCallbacks) {
     if (mWatched) {
       uv_close(reinterpret_cast<uv_handle_t*>(&mAsync), nullptr);
     }

@@ -28,14 +28,6 @@ private:
   std::unordered_set<Watcher *> mSubscriptions;
 };
 
-#ifdef WATCHMAN
-struct WatchmanBackend : public Backend {
-  static bool check();
-  void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
-  void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
-};
-#endif
-
 // struct BruteForceBackend : public Backend {
 //   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
 //   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;

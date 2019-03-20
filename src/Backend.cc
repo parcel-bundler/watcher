@@ -1,6 +1,9 @@
 #ifdef FS_EVENTS
 #include "macos/FSEvents.hh"
 #endif
+#ifdef WATCHMAN
+#include "watchman/watchman.hh"
+#endif
 
 #include "Backend.hh"
 #include <unordered_map>
