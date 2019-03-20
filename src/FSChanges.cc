@@ -1,10 +1,3 @@
-#ifdef FS_EVENTS
-#include "macos/FSEvents.hh"
-#endif
-#ifdef WATCHMAN
-#include "watchman/watchman.hh"
-#endif
-
 #include <unordered_set>
 #include <iostream>
 #include <napi.h>

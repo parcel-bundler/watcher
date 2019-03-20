@@ -13,8 +13,8 @@
           "sources": [
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
-            # "src/shared/brute.cc",
-            # "src/unix/fts.cc",
+            "src/shared/BruteForceBackend.cc",
+            "src/unix/fts.cc",
             "src/macos/FSEvents.cc"
           ],
           "link_settings": {
@@ -22,7 +22,7 @@
           },
           "defines": [
             "WATCHMAN",
-            # "BRUTE_FORCE",
+            "BRUTE_FORCE",
             "FS_EVENTS"
           ],
           "xcode_settings": {

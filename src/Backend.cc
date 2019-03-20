@@ -4,6 +4,7 @@
 #ifdef WATCHMAN
 #include "watchman/watchman.hh"
 #endif
+#include "shared/BruteForceBackend.hh"
 
 #include "Backend.hh"
 #include <unordered_map>
@@ -24,11 +25,10 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
       return std::make_shared<WatchmanBackend>();
     }
   #endif
-  // if (backend == "brute-force" || backend == "default") {
-  //   return std::make_shared<BruteForceBackend>();
-  // }
+  if (backend == "brute-force" || backend == "default") {
+    return std::make_shared<BruteForceBackend>();
+  }
 
-  // return getBackend("default");
   return nullptr;
 }
 
@@ -61,6 +61,11 @@ Backend::Backend() {
   mThread = std::thread([this] () {
     this->start();
   });
+}
+
+void Backend::start() {
+  // Default implementation if not overridden needs to unlock the mutex.
+  mMutex.unlock();
 }
 
 Backend::~Backend() {

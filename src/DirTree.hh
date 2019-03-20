@@ -65,25 +65,22 @@ struct DirTree {
     }
   }
 
-  EventList *getChanges(DirTree *snapshot) {
-    EventList *events = new EventList();
+  void getChanges(DirTree *snapshot, EventList &events) {
     for (auto it = entries.begin(); it != entries.end(); it++) {
       auto found = snapshot->entries.find(*it);
       if (found == snapshot->entries.end()) {
-        events->push(it->path, "create");
+        events.push(it->path, "create");
       } else if (found->mtime != it->mtime) {
-        events->push(it->path, "update");
+        events.push(it->path, "update");
       }
     }
 
     for (auto it = snapshot->entries.begin(); it != snapshot->entries.end(); it++) {
       size_t count = entries.count(*it);
       if (count == 0) {
-        events->push(it->path, "delete");
+        events.push(it->path, "delete");
       }
     }
-
-    return events;
   }
 };
 

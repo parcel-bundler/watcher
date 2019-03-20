@@ -10,7 +10,7 @@ public:
   Backend();
   virtual ~Backend();
 
-  virtual void start() {}
+  virtual void start();
   virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
   virtual void getEventsSince(Watcher &watcher, std::string *snapshotPath) = 0;
   virtual void subscribe(Watcher &watcher) = 0;
@@ -27,10 +27,5 @@ private:
   std::thread mThread;
   std::unordered_set<Watcher *> mSubscriptions;
 };
-
-// struct BruteForceBackend : public Backend {
-//   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
-//   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
-// };
 
 #endif

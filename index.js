@@ -6,7 +6,7 @@ let dir = process.cwd();
 async function run() {
   console.time('read');
   let changes = await fschanges.getEventsSince(dir, dir + '/token.txt', {
-    backend: 'watchman',
+    backend: 'brute-force',
     ignore: [dir + '/.git']
   });
   console.timeEnd('read');
@@ -14,20 +14,20 @@ async function run() {
 
   console.time('write');
   await fschanges.writeSnapshot(dir, dir + '/token.txt', {
-    backend: 'watchman',
+    backend: 'brute-force',
     ignore: [dir + '/.git']
   });
   console.timeEnd('write');
 }
 
-// run();
+run();
 
 let fn = events => {
   console.log(events);
   fschanges.unsubscribe(dir, fn, {ignore: [dir + '/.git']});
 };
 
-fschanges.subscribe(dir, fn, {ignore: [dir + '/.git'], backend: 'watchman'});
+// fschanges.subscribe(dir, fn, {ignore: [dir + '/.git'], backend: 'watchman'});
 
 // let w = new Watcher(dir);
 // w.getEventsSince(snapshotPath);
