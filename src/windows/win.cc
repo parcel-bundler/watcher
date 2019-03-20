@@ -4,10 +4,11 @@
 #include <winsock2.h>
 #include <windows.h>
 #include "../DirTree.hh"
+#include "../shared/BruteForceBackend.hh"
 
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
+DirTree *BruteForceBackend::getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
   DirTree *tree = new DirTree();
   HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;

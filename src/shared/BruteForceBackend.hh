@@ -2,6 +2,7 @@
 #define BRUTE_FORCE_H
 
 #include "../Backend.hh"
+#include "../DirTree.hh"
 
 class BruteForceBackend : public Backend {
 public:
@@ -14,6 +15,8 @@ public:
   void unsubscribe(Watcher &watcher) override {
     throw "Brute force backend doesn't support subscriptions.";
   }
+private:
+  DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore);
 };
 
 #endif

@@ -2,8 +2,9 @@
 #include <string>
 #include <fts.h>
 #include "../DirTree.hh"
+#include "../shared/BruteForceBackend.hh"
 
-DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
+DirTree *BruteForceBackend::getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
   DirTree *tree = new DirTree();
 
   char *paths[2] {(char *)dir->c_str(), NULL};

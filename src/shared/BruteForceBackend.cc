@@ -4,8 +4,6 @@
 #include "../Event.hh"
 #include "./BruteForceBackend.hh"
 
-DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore);
-
 void BruteForceBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   auto tree = getDirTree(&watcher.mDir, &watcher.mIgnore);
   std::ofstream ofs(*snapshotPath);
