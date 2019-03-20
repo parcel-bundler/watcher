@@ -7,7 +7,7 @@
 
 class WatchmanBackend : public Backend {
 public:
-  static bool check();
+  static bool checkAvailable();
   void start() override;
   WatchmanBackend() : mSock(-1), mStopped(false), mEnded(false) {};
   ~WatchmanBackend();

@@ -202,15 +202,19 @@ Value subscribe(const CallbackInfo& info) {
     return env.Null();
   }
 
-  std::shared_ptr<Watcher> watcher = Watcher::getShared(
-    std::string(info[0].As<String>().Utf8Value().c_str()), 
-    getIgnore(env, info[2])
-  );
+  try {
+    std::shared_ptr<Watcher> watcher = Watcher::getShared(
+      std::string(info[0].As<String>().Utf8Value().c_str()), 
+      getIgnore(env, info[2])
+    );
 
-  bool added = watcher->watch(info[1].As<Function>());
-  if (added) {
-    std::shared_ptr<Backend> b = getBackend(env, info[2]);;
-    b->watch(*watcher);
+    bool added = watcher->watch(info[1].As<Function>());
+    if (added) {
+      std::shared_ptr<Backend> b = getBackend(env, info[2]);;
+      b->watch(*watcher);
+    }
+  } catch (const char *err) {
+    Error::New(env, err).ThrowAsJavaScriptException();
   }
 
   return env.Null();
@@ -233,15 +237,19 @@ Value unsubscribe(const CallbackInfo& info) {
     return env.Null();
   }
 
-  std::shared_ptr<Watcher> watcher = Watcher::getShared(
-    std::string(info[0].As<String>().Utf8Value().c_str()),
-    getIgnore(env, info[2])
-  );
+  try {
+    std::shared_ptr<Watcher> watcher = Watcher::getShared(
+      std::string(info[0].As<String>().Utf8Value().c_str()),
+      getIgnore(env, info[2])
+    );
 
-  bool removed =  watcher->unwatch(info[1].As<Function>());
-  if (removed) {
-    std::shared_ptr<Backend> b = getBackend(env, info[2]);;
-    b->unwatch(*watcher);
+    bool removed =  watcher->unwatch(info[1].As<Function>());
+    if (removed) {
+      std::shared_ptr<Backend> b = getBackend(env, info[2]);;
+      b->unwatch(*watcher);
+    }
+  } catch (const char *err) {
+    Error::New(env, err).ThrowAsJavaScriptException();
   }
   
   return env.Null();

@@ -21,7 +21,7 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
     }
   #endif
   #ifdef WATCHMAN
-    if ((backend == "watchman" || backend == "default") && WatchmanBackend::check()) {
+    if ((backend == "watchman" || backend == "default") && WatchmanBackend::checkAvailable()) {
       return std::make_shared<WatchmanBackend>();
     }
   #endif

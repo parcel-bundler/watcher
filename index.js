@@ -20,14 +20,14 @@ async function run() {
   console.timeEnd('write');
 }
 
-run();
+// run();
 
 let fn = events => {
   console.log(events);
   fschanges.unsubscribe(dir, fn, {ignore: [dir + '/.git']});
 };
 
-// fschanges.subscribe(dir, fn, {ignore: [dir + '/.git'], backend: 'watchman'});
+fschanges.subscribe(dir, fn, {ignore: [dir + '/.git'], backend: 'brute-force'});
 
 // let w = new Watcher(dir);
 // w.getEventsSince(snapshotPath);
