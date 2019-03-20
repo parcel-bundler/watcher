@@ -47,7 +47,8 @@ void FSEventsCallback(
     } else if (isRenamed && !(isCreated || isModified || isRemoved)) {
       list->push(paths[i], "rename");
     } else if (isDone) {
-      stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
+      watcher->notify();
+      break;
     } else {
       struct stat file;
       if (stat(paths[i], &file) != 0) {
@@ -63,7 +64,9 @@ void FSEventsCallback(
     }
   }
 
-  watcher->notify();
+  if (watcher->mWatched) {
+    watcher->notify();
+  }
 }
 
 void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
@@ -151,6 +154,7 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 
   startStream(watcher, id);
   watcher.wait();
+  stopStream((FSEventStreamRef)watcher.state, mRunLoop);
 }
 
 void FSEventsBackend::subscribe(Watcher &watcher) {

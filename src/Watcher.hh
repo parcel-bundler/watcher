@@ -15,6 +15,7 @@ struct Watcher {
   std::unordered_set<std::string> mIgnore;
   EventList mEvents;
   void *state;
+  bool mWatched;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignore);
 
@@ -36,7 +37,6 @@ private:
   uv_async_t mAsync;
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
-  bool mWatched;
 
   static void fireCallbacks(uv_async_t *handle);
 };
