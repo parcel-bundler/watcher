@@ -33,7 +33,7 @@
           "sources": [
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
-            "src/shared/brute.cc",
+            "src/shared/BruteForceBackend.cc",
             "src/unix/fts.cc"
           ],
           "defines": [
@@ -43,12 +43,18 @@
         }],
         ['OS=="win"', {
           "sources": [
-            "src/shared/brute.cc",
-            "src/windows/win.cc"
+            "src/shared/BruteForceBackend.cc",
+            "src/windows/WindowsBackend.cc"
           ],
           "defines": [
+            "WINDOWS",
             "BRUTE_FORCE"
-          ]
+          ],
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "ExceptionHandling": 1,  # /EHsc
+            }
+          }
         }]
       ]
     }

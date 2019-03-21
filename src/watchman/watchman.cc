@@ -148,7 +148,7 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 
 void WatchmanBackend::start() {
   mSock = watchmanConnect();
-  mMutex.unlock();
+  notifyStarted();
 
   while (true) {
     // If there are no subscriptions we are reading, wait for a request.

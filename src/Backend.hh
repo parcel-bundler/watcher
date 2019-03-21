@@ -3,12 +3,14 @@
 
 #include "Event.hh"
 #include "Watcher.hh"
+#include "Signal.hh"
 #include <thread>
 
 class Backend {
 public:
-  Backend();
   virtual ~Backend();
+  void run();
+  void notifyStarted();
 
   virtual void start();
   virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
@@ -23,9 +25,11 @@ public:
   void unref();
 
   std::mutex mMutex;
-private:
   std::thread mThread;
+private:
   std::unordered_set<Watcher *> mSubscriptions;
+  bool mStarted;
+  Signal mStartedSignal;
 };
 
 #endif

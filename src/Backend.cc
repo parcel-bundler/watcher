@@ -4,6 +4,9 @@
 #ifdef WATCHMAN
 #include "watchman/watchman.hh"
 #endif
+#ifdef WINDOWS
+#include "windows/WindowsBackend.hh"
+#endif
 #include "shared/BruteForceBackend.hh"
 
 #include "Backend.hh"
@@ -25,6 +28,11 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
       return std::make_shared<WatchmanBackend>();
     }
   #endif
+  #ifdef WINDOWS
+    if (backend == "windows" || backend == "default") {
+      return std::make_shared<WindowsBackend>();
+    }
+  #endif
   if (backend == "brute-force" || backend == "default") {
     return std::make_shared<BruteForceBackend>();
   }
@@ -43,6 +51,7 @@ std::shared_ptr<Backend> Backend::getShared(std::string backend) {
     return getShared("default");
   }
 
+  result->run();
   sharedBackends.emplace(backend, result);
   return result;
 }
@@ -56,20 +65,33 @@ void removeShared(Backend *backend) {
   }
 }
 
-Backend::Backend() {
-  mMutex.lock();
+void Backend::run() {
+  mStarted = false;
   mThread = std::thread([this] () {
-    this->start();
+    start();
   });
+
+  if (mThread.joinable() && !mStarted) {
+    mStartedSignal.wait();
+  }
 }
 
-void Backend::start() {
-  // Default implementation if not overridden needs to unlock the mutex.
-  mMutex.unlock();
+void Backend::notifyStarted() {
+  mStarted = true;
+  mStartedSignal.notify();
 }
+
+void Backend::start() {}
 
 Backend::~Backend() {
   std::unique_lock<std::mutex> lock(mMutex);
+
+  // Unwatch all subscriptions so that their state gets cleaned up
+  for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
+    unwatch(**it);
+  }
+
+  // Wait for thread to stop
   if (mThread.joinable()) {
     mThread.join();
   }

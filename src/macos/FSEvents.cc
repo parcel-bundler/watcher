@@ -122,7 +122,7 @@ void FSEventsBackend::start() {
 
   // Unlock once run loop has started.
   CFRunLoopPerformBlock(mRunLoop, kCFRunLoopDefaultMode, ^ {
-    mMutex.unlock();
+    notifyStarted();
   });
 
   CFRunLoopWakeUp(mRunLoop);
