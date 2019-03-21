@@ -7,6 +7,7 @@
 #include <uv.h>
 #include <node_api.h>
 #include "Event.hh"
+#include "Debounce.hh"
 
 using namespace Napi;
 
@@ -38,6 +39,7 @@ private:
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
   bool mCallingCallbacks;
+  std::shared_ptr<Debounce> mDebounce;
 
   static void fireCallbacks(uv_async_t *handle);
 };

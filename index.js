@@ -24,7 +24,7 @@ async function run() {
 
 let fn = events => {
   console.log(events);
-  fschanges.unsubscribe(dir, fn, {ignore: [dir + '/.git']});
+  // fschanges.unsubscribe(dir, fn, {ignore: [dir + '/.git']});
 };
 
 fschanges.subscribe(dir, fn, {ignore: [dir + '/.git']});

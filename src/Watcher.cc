@@ -46,7 +46,20 @@ Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
   : mDir(dir),
     mIgnore(ignore),
     mWatched(false),
-    mCallingCallbacks(false) {}
+    mCallingCallbacks(false) {
+      mDebounce = Debounce::getShared();
+      mDebounce->add([this] () {
+        if (mCallbacks.size() > 0) {
+          EventData *data = new EventData();
+          data->watcher = this;
+          data->events = mEvents;
+          mAsync.data = (void *)data;
+          uv_async_send(&mAsync);
+
+          mEvents.clear();
+        }
+      });
+    }
 
 void Watcher::wait() {
   std::unique_lock<std::mutex> lk(mMutex);
@@ -57,15 +70,16 @@ void Watcher::notify() {
   std::unique_lock<std::mutex> lk(mMutex);
   mCond.notify_all();
 
-  if (mCallbacks.size() > 0) {
-    EventData *data = new EventData();
-    data->watcher = this;
-    data->events = mEvents;
-    mAsync.data = (void *)data;
-    uv_async_send(&mAsync);
+  mDebounce->trigger();
+  // if (mCallbacks.size() > 0) {
+  //   EventData *data = new EventData();
+  //   data->watcher = this;
+  //   data->events = mEvents;
+  //   mAsync.data = (void *)data;
+  //   uv_async_send(&mAsync);
 
-    mEvents.clear();
-  }
+  //   mEvents.clear();
+  // }
 }
 
 void Watcher::fireCallbacks(uv_async_t *handle) {
