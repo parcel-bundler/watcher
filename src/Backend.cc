@@ -7,6 +7,9 @@
 #ifdef WINDOWS
 #include "windows/WindowsBackend.hh"
 #endif
+#ifdef INOTIFY
+#include "linux/InotifyBackend.hh"
+#endif
 #include "shared/BruteForceBackend.hh"
 
 #include "Backend.hh"
@@ -31,6 +34,11 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
   #ifdef WINDOWS
     if (backend == "windows" || backend == "default") {
       return std::make_shared<WindowsBackend>();
+    }
+  #endif
+  #ifdef INOTIFY
+    if (backend == "inotify" || backend == "default") {
+      return std::make_shared<InotifyBackend>();
     }
   #endif
   if (backend == "brute-force" || backend == "default") {
@@ -81,7 +89,9 @@ void Backend::notifyStarted() {
   mStartedSignal.notify();
 }
 
-void Backend::start() {}
+void Backend::start() {
+  notifyStarted();
+}
 
 Backend::~Backend() {
   std::unique_lock<std::mutex> lock(mMutex);

@@ -46,6 +46,7 @@ Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
   : mDir(dir),
     mIgnore(ignore),
     mWatched(false),
+    mTree(NULL),
     mCallingCallbacks(false) {
       mDebounce = Debounce::getShared();
       mDebounce->add([this] () {

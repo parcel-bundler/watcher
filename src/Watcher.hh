@@ -8,6 +8,7 @@
 #include <node_api.h>
 #include "Event.hh"
 #include "Debounce.hh"
+#include "DirTree.hh"
 
 using namespace Napi;
 
@@ -17,6 +18,7 @@ struct Watcher {
   EventList mEvents;
   void *state;
   bool mWatched;
+  DirTree *mTree;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignore);
 

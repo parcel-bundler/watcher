@@ -34,10 +34,12 @@
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
             "src/shared/BruteForceBackend.cc",
+            "src/linux/InotifyBackend.cc",
             "src/unix/fts.cc"
           ],
           "defines": [
             "WATCHMAN",
+            "INOTIFY",
             "BRUTE_FORCE"
           ]
         }],
