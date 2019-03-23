@@ -6,8 +6,8 @@
       "sources": [ "src/FSChanges.cc", "src/Watcher.cc", "src/Backend.cc" ],
       "include_dirs" : ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
-      "cflags!": ["-fexceptions"],
-      "cflags_cc!": ["-fexceptions"],
+      'cflags!': [ '-fno-exceptions' ],
+      'cflags_cc!': [ '-fno-exceptions' ],
       "conditions": [
         ['OS=="mac"', {
           "sources": [

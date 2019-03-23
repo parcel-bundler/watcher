@@ -5,6 +5,7 @@
 #include <sstream>
 #include <vector>
 #include <unordered_map>
+#include <memory>
 
 enum BSERType {
   ARRAY = 0x00,

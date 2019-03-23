@@ -47,7 +47,6 @@ private:
   bool mTriggered;
   std::mutex mMutex;
   Signal mWaitSignal;
-  Signal mNotifySignal;
   std::thread mThread;
   std::vector<std::function<void()>> mCallbacks;
 
