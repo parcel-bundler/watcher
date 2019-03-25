@@ -181,9 +181,13 @@ public:
       case FILE_ACTION_RENAMED_NEW_NAME:
         mWatcher->mEvents.create(path);
         break;
-      case FILE_ACTION_MODIFIED:
-        mWatcher->mEvents.update(path);
+      case FILE_ACTION_MODIFIED: {
+        DWORD attrs = GetFileAttributesW(utf8ToUtf16(path).data());
+        if (!(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+          mWatcher->mEvents.update(path);
+        }
         break;
+      }
       case FILE_ACTION_REMOVED:
       case FILE_ACTION_RENAMED_OLD_NAME:
         mWatcher->mEvents.remove(path);
