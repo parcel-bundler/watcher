@@ -1,6 +1,13 @@
 {
   "main": "build/Release/fschanges.node",
+  "scripts": {
+    "test": "mocha"
+  },
   "dependencies": {
     "node-addon-api": "^1.6.2"
+  },
+  "devDependencies": {
+    "fs-extra": "^7.0.1",
+    "mocha": "^6.0.2"
   }
 }

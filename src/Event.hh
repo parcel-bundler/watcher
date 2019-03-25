@@ -4,46 +4,74 @@
 #include <string>
 #include <napi.h>
 #include <mutex>
+#include <map>
 
 using namespace Napi;
 
 struct Event {
-  std::string mPath;
-  std::string mType;
-  Event(std::string path, std::string type) : mPath(path), mType(type) {}
+  std::string path;
+  bool isCreated;
+  bool isDeleted;
+  Event(std::string path) : path(path), isCreated(false), isDeleted(false) {}
 
   Value toJS(const Env& env) {
     EscapableHandleScope scope(env);
     Object res = Object::New(env);
-    res.Set(String::New(env, "path"), String::New(env, mPath.c_str()));
-    res.Set(String::New(env, "type"), String::New(env, mType.c_str()));
+    std::string type = isCreated ? "create" : isDeleted ? "delete" : "update";
+    res.Set(String::New(env, "path"), String::New(env, path.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, type.c_str()));
     return scope.Escape(res);
   }
 };
 
 class EventList {
 public:
-  void push(std::string path, std::string type) {
-    mEvents.push_back(Event(path, type));
+  void create(std::string path) {
+    Event *event = update(path);
+    event->isCreated = true;
+  }
+
+  Event *update(std::string path) {
+    auto found = mEvents.find(path);
+    if (found == mEvents.end()) {
+      auto it = mEvents.emplace(path, Event(path));
+      return &it.first->second;
+    }
+
+    return &found->second;
+  }
+
+  void remove(std::string path) {
+    Event *event = update(path);
+    if (event->isCreated) {
+      mEvents.erase(path);
+    } else {
+      event->isDeleted = true;
+    }
   }
 
   void clear() {
     mEvents.clear();
   }
 
+  size_t size() {
+    return mEvents.size();
+  }
+
   Value toJS(const Env& env) {
     EscapableHandleScope scope(env);
     Array arr = Array::New(env, mEvents.size());
+    size_t i = 0;
 
-    for (size_t i = 0; i < mEvents.size(); i++) {
-      arr.Set(i, mEvents[i].toJS(env));
+    for (auto it = mEvents.begin(); it != mEvents.end(); it++) {
+      arr.Set(i++, it->second.toJS(env));
     }
 
     return scope.Escape(arr);
   }
 
 private:
-  std::vector<Event> mEvents;
+  std::map<std::string, Event> mEvents;
 };
 
 #endif

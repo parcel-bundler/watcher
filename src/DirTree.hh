@@ -88,6 +88,20 @@ struct DirTree {
   }
 
   void remove(std::string path) {
+    DirEntry *found = find(path);
+
+    // Remove all sub-entries if this is a directory
+    if (found && found->isDir) {
+      std::string pathStart = path + "/";
+      for (auto it = entries.begin(); it != entries.end();) {
+        if (it->first.rfind(pathStart, 0) == 0) {
+          it = entries.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+
     entries.erase(path);
   }
 
@@ -102,16 +116,16 @@ struct DirTree {
     for (auto it = entries.begin(); it != entries.end(); it++) {
       auto found = snapshot->entries.find(it->first);
       if (found == snapshot->entries.end()) {
-        events.push(it->second.path, "create");
+        events.create(it->second.path);
       } else if (found->second.mtime != it->second.mtime) {
-        events.push(it->second.path, "update");
+        events.update(it->second.path);
       }
     }
 
     for (auto it = snapshot->entries.begin(); it != snapshot->entries.end(); it++) {
       size_t count = entries.count(it->first);
       if (count == 0) {
-        events.push(it->second.path, "delete");
+        events.remove(it->second.path);
       }
     }
   }

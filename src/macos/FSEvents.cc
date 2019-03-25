@@ -37,29 +37,43 @@ void FSEventsCallback(
                       (eventFlags[i] & kFSEventStreamEventFlagItemXattrMod) == kFSEventStreamEventFlagItemXattrMod;
     bool isRenamed = (eventFlags[i] & kFSEventStreamEventFlagItemRenamed) == kFSEventStreamEventFlagItemRenamed;
     bool isDone = (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) == kFSEventStreamEventFlagHistoryDone;
+    bool isDir = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) == kFSEventStreamEventFlagItemIsDir;
 
+    // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
-      list->push(paths[i], "create");
+      watcher->mTree->add(paths[i], 0, isDir);
+
+      list->create(paths[i]);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
-      list->push(paths[i], "delete");
+      watcher->mTree->remove(paths[i]);
+      list->remove(paths[i]);
     } else if (isModified && !(isCreated || isRemoved || isRenamed)) {
-      list->push(paths[i], "update");
-    } else if (isRenamed && !(isCreated || isModified || isRemoved)) {
-      list->push(paths[i], "rename");
+      watcher->mTree->update(paths[i], 0);
+
+      list->update(paths[i]);
     } else if (isDone) {
       watcher->notify();
       break;
     } else {
+      // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
+      // We also check our local cache of recently modified files to see if we knew about it before.
+      // This helps disambiguate creates, updates, and deletes.
       struct stat file;
       if (stat(paths[i], &file) != 0) {
-        list->push(paths[i], "delete");
-        return;
+        if (watcher->mTree->find(paths[i])) {
+          watcher->mTree->remove(paths[i]);
+          list->remove(paths[i]);
+        }
+
+        continue;
       }
 
-      if (file.st_birthtimespec.tv_sec != file.st_mtimespec.tv_sec) {
-        list->push(paths[i], "update");
+      if (watcher->mTree->find(paths[i])) {
+        watcher->mTree->update(paths[i], file.st_mtime);
+        list->update(paths[i]);
       } else {
-        list->push(paths[i], "create");
+        watcher->mTree->add(paths[i], file.st_mtime, S_ISDIR(file.st_mode));
+        list->create(paths[i]);
       }
     }
   }
@@ -70,7 +84,9 @@ void FSEventsCallback(
 }
 
 void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
-  CFAbsoluteTime latency = 0.001;
+  watcher.mTree = new DirTree();
+  
+  CFAbsoluteTime latency = 0.0;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
     watcher.mDir.c_str(),
@@ -155,6 +171,9 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   startStream(watcher, id);
   watcher.wait();
   stopStream((FSEventStreamRef)watcher.state, mRunLoop);
+
+  delete watcher.mTree;
+  watcher.mTree = NULL;
 }
 
 void FSEventsBackend::subscribe(Watcher &watcher) {
@@ -164,4 +183,7 @@ void FSEventsBackend::subscribe(Watcher &watcher) {
 void FSEventsBackend::unsubscribe(Watcher &watcher) {
   FSEventStreamRef stream = (FSEventStreamRef)watcher.state;
   stopStream(stream, mRunLoop);
+
+  delete watcher.mTree;
+  watcher.mTree = NULL;
 }

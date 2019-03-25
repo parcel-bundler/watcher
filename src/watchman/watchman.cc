@@ -24,7 +24,7 @@ BSER readBSER(T &&do_read) {
     oss << std::string(buffer, r);
 
     if (len == -1) {
-      len = BSER::decodeLength(oss);
+      len = BSER::decodeLength(oss) + oss.tellg();
     }
 
     len -= r;
@@ -96,7 +96,7 @@ BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
 
 void WatchmanBackend::watchmanWatch(std::string dir) {
   std::vector<BSER> cmd;
-  cmd.push_back("watch-project");
+  cmd.push_back("watch");
   cmd.push_back(dir);
   watchmanRequest(cmd);
 }
@@ -121,14 +121,16 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
   for (auto it = files.begin(); it != files.end(); it++) {
     auto file = it->objectValue();
     auto name = file.find("name")->second.stringValue();
+    auto type = file.find("type")->second.stringValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
+    auto path = watcher.mDir + "/" + name;
     if (isNew && exists) {
-      watcher.mEvents.push(name, "create");
-    } else if (exists) {
-      watcher.mEvents.push(name, "update");
-    } else if (!isNew) {
-      watcher.mEvents.push(name, "delete");
+      watcher.mEvents.create(path);
+    } else if (exists && type != "d") {
+      watcher.mEvents.update(path);
+    } else if (!isNew && !exists) {
+      watcher.mEvents.remove(path);
     }
   }
 }
@@ -238,6 +240,8 @@ void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
     return;
   }
 
+  watchmanWatch(watcher.mDir);
+
   std::string clock;
   ifs >> clock;
 
@@ -251,6 +255,7 @@ void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 }
 
 void WatchmanBackend::subscribe(Watcher &watcher) {
+  watchmanWatch(watcher.mDir);
   mSubscriptions.emplace(watcher.mDir, &watcher);
 
   BSER::Array cmd;
@@ -260,6 +265,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 
   BSER::Array fields;
   fields.push_back("name");
+  fields.push_back("type");
   fields.push_back("exists");
   fields.push_back("new");
 
@@ -272,12 +278,14 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 }
 
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
-  mSubscriptions.erase(watcher.mDir);
+  auto erased = mSubscriptions.erase(watcher.mDir);
   
-  BSER::Array cmd;
-  cmd.push_back("unsubscribe");
-  cmd.push_back(watcher.mDir);
-  cmd.push_back("fschanges");
+  if (erased) {
+    BSER::Array cmd;
+    cmd.push_back("unsubscribe");
+    cmd.push_back(watcher.mDir);
+    cmd.push_back("fschanges");
 
-  watchmanRequest(cmd);
+    watchmanRequest(cmd);
+  }
 }
