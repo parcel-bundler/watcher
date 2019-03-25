@@ -24,6 +24,7 @@ jobs:
 
   - ${{ if eq(parameters.name, 'Linux') }}:
     - script: |
+        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
         sudo apt-get update
         sudo apt-get install -y autoconf automake build-essential python-dev
         # git clone https://github.com/facebook/watchman.git
