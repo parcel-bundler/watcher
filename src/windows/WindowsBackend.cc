@@ -174,17 +174,19 @@ public:
   }
 
   void processEvent(PFILE_NOTIFY_INFORMATION info) {
-    std::string path = utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
+    std::string path = mWatcher->mDir + "\\" + utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
 
     switch (info->Action) {
       case FILE_ACTION_ADDED:
-        mWatcher->mEvents.push(path, "create");
+      case FILE_ACTION_RENAMED_NEW_NAME:
+        mWatcher->mEvents.create(path);
         break;
       case FILE_ACTION_MODIFIED:
-        mWatcher->mEvents.push(path, "update");
+        mWatcher->mEvents.update(path);
         break;
       case FILE_ACTION_REMOVED:
-        mWatcher->mEvents.push(path, "delete");
+      case FILE_ACTION_RENAMED_OLD_NAME:
+        mWatcher->mEvents.remove(path);
         break;
     }
   }

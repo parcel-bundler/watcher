@@ -9,7 +9,7 @@ if (process.platform === 'darwin') {
   backends = ['fs-events', 'watchman'];
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
-} else if (process.platform === 'windows') {
+} else if (process.platform === 'win32') {
   backends = ['windows'];
 }
 
