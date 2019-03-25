@@ -2,8 +2,7 @@ jobs:
 - job: ${{ parameters.name }}
   pool: 
     vmImage: ${{ parameters.vmImage }}
-  - ${{ if eq(parameters.name, 'Linux') }}:
-    - container: jotadrilo/watchman
+  container: ${{ parameters.container }}
   strategy:
     matrix:
       node_8_x:

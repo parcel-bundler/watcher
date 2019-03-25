@@ -8,6 +8,7 @@ jobs:
   parameters:
     name: Linux
     vmImage: ubuntu-16.04
+    container: jotadrilo/watchman
 
 - template: azure-pipelines-template.yml
   parameters:
