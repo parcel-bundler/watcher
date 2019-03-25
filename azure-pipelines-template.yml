@@ -22,24 +22,24 @@ jobs:
         brew install watchman
       displayName: Install Watchman
 
-  - ${{ if eq(parameters.name, 'Linux') }}:
-    - script: |
-        sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-        sudo apt-get update
-        sudo apt-get purge libc6-dev
-        sudo apt-get install -y gcc-7 g++-7 libc6-dev
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
-        sudo update-alternatives --config gcc
-        gcc --version
-        g++ --version
-        # git clone https://github.com/facebook/watchman.git
-        # cd watchman
-        # git checkout v4.9.0
-        # ./autogen.sh
-        # ./configure
-        # make
-        # sudo make install
-      displayName: Install Watchman
+  # - ${{ if eq(parameters.name, 'Linux') }}:
+  #   - script: |
+  #       sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+  #       sudo apt-get update
+  #       sudo apt-get purge libc6-dev
+  #       sudo apt-get install -y gcc-7 g++-7 libc6-dev
+  #       sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 60 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+  #       sudo update-alternatives --config gcc
+  #       gcc --version
+  #       g++ --version
+  #       # git clone https://github.com/facebook/watchman.git
+  #       # cd watchman
+  #       # git checkout v4.9.0
+  #       # ./autogen.sh
+  #       # ./configure
+  #       # make
+  #       # sudo make install
+  #     displayName: Install Watchman
 
   - script: yarn
     displayName: 'Install dependencies'
