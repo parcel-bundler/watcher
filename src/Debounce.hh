@@ -56,8 +56,12 @@ private:
         mWaitSignal.wait();
       }
 
-      auto status = mWaitSignal.waitFor(std::chrono::milliseconds(500));
-      if (status == std::cv_status::timeout) {
+      if (!mRunning) {
+        break;
+      }
+
+      auto status = mWaitSignal.waitFor(std::chrono::milliseconds(50));
+      if (status == std::cv_status::timeout && mRunning) {
         notify();
       }
     }

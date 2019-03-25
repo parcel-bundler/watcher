@@ -37,28 +37,16 @@ void removeShared(Watcher *watcher) {
   }
 }
 
-struct EventData {
-  Watcher *watcher;
-  EventList events;
-};
-
 Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) 
   : mDir(dir),
     mIgnore(ignore),
     mWatched(false),
     mTree(NULL),
+    mAsync(NULL),
     mCallingCallbacks(false) {
       mDebounce = Debounce::getShared();
       mDebounce->add([this] () {
-        if (mCallbacks.size() > 0) {
-          EventData *data = new EventData();
-          data->watcher = this;
-          data->events = mEvents;
-          mAsync.data = (void *)data;
-          uv_async_send(&mAsync);
-
-          mEvents.clear();
-        }
+        triggerCallbacks();
       });
     }
 
@@ -70,29 +58,35 @@ void Watcher::wait() {
 void Watcher::notify() {
   std::unique_lock<std::mutex> lk(mMutex);
   mCond.notify_all();
+  
+  if (mCallbacks.size() > 0 && mEvents.size() > 0) {
+    mDebounce->trigger();
+  }
+}
 
-  mDebounce->trigger();
-  // if (mCallbacks.size() > 0) {
-  //   EventData *data = new EventData();
-  //   data->watcher = this;
-  //   data->events = mEvents;
-  //   mAsync.data = (void *)data;
-  //   uv_async_send(&mAsync);
+void Watcher::triggerCallbacks() {
+  if (mCallbacks.size() > 0 && mEvents.size() > 0) {
+    if (mCallingCallbacks) {
+      mCallbackSignal.wait();
+    }
 
-  //   mEvents.clear();
-  // }
+    mCallbackEvents = mEvents;
+    mEvents.clear();
+
+    // mDebounce->trigger();
+    uv_async_send(mAsync);
+  }
 }
 
 void Watcher::fireCallbacks(uv_async_t *handle) {
-  EventData *data = (EventData *)handle->data;
-  Watcher *watcher = data->watcher;
+  Watcher *watcher = (Watcher *)handle->data;
   watcher->mCallingCallbacks = true;
 
   watcher->mCallbacksIterator = watcher->mCallbacks.begin();
   while (watcher->mCallbacksIterator != watcher->mCallbacks.end()) {
     auto it = watcher->mCallbacksIterator;
     HandleScope scope(it->Env());
-    it->Call(std::initializer_list<napi_value>{data->events.toJS(it->Env())});
+    it->Call(std::initializer_list<napi_value>{watcher->mCallbackEvents.toJS(it->Env())});
 
     // If the iterator was changed, then the callback trigged an unwatch.
     // The iterator will have been set to the next valid callback.
@@ -107,14 +101,17 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     watcher->unref();
   }
 
-  delete data;
+  // watcher->mEvents.clear();
+  watcher->mCallbackSignal.notify();
 }
 
 bool Watcher::watch(Function callback) {
   std::unique_lock<std::mutex> lk(mMutex);
   auto res = mCallbacks.insert(Persistent(callback));
-  if (res.second && mCallbacks.size() == 1) {
-    uv_async_init(uv_default_loop(), &mAsync, Watcher::fireCallbacks);
+  if (res.second && !mWatched) {
+    mAsync = new uv_async_t;
+    mAsync->data = (void *)this;
+    uv_async_init(uv_default_loop(), mAsync, Watcher::fireCallbacks);
     mWatched = true;
     return true;
   }
@@ -145,9 +142,14 @@ bool Watcher::unwatch(Function callback) {
 void Watcher::unref() {
   if (mCallbacks.size() == 0 && !mCallingCallbacks) {
     if (mWatched) {
-      uv_close(reinterpret_cast<uv_handle_t*>(&mAsync), nullptr);
+      mWatched = false;
+      uv_close((uv_handle_t *)mAsync, Watcher::onClose);
     }
 
     removeShared(this);
   }
+}
+
+void Watcher::onClose(uv_handle_t *handle) {
+  delete (uv_async_t *)handle;
 }

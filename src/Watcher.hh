@@ -9,6 +9,7 @@
 #include "Event.hh"
 #include "Debounce.hh"
 #include "DirTree.hh"
+#include "Signal.hh"
 
 using namespace Napi;
 
@@ -37,13 +38,17 @@ struct Watcher {
 private:
   std::mutex mMutex;
   std::condition_variable mCond;
-  uv_async_t mAsync;
+  uv_async_t *mAsync;
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
   bool mCallingCallbacks;
+  EventList mCallbackEvents;
   std::shared_ptr<Debounce> mDebounce;
+  Signal mCallbackSignal;
 
+  void triggerCallbacks();
   static void fireCallbacks(uv_async_t *handle);
+  static void onClose(uv_handle_t *handle);
 };
 
 #endif
