@@ -1,6 +1,4 @@
-#include <sys/stat.h>
 #include <string>
-#include <stdlib.h>
 #include <fts.h>
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
