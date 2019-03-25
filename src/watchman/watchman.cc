@@ -107,6 +107,7 @@ bool WatchmanBackend::checkAvailable() {
     close(sock);
     return true;
   } catch (const char *err) {
+    printf("Error using watchman... %s\n", err);
     return false;
   }
 }
