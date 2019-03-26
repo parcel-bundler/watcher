@@ -24,7 +24,7 @@ jobs:
         brew install watchman
       displayName: Install Watchman
 
-  - script: yarn
+  - script: npm install
     displayName: 'Install dependencies'
-  - script: yarn test
+  - script: npm test
     displayName: 'Run tests'
