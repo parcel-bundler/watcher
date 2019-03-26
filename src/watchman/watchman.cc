@@ -121,13 +121,13 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
   for (auto it = files.begin(); it != files.end(); it++) {
     auto file = it->objectValue();
     auto name = file.find("name")->second.stringValue();
-    auto type = file.find("type")->second.stringValue();
+    auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
     auto path = watcher.mDir + "/" + name;
     if (isNew && exists) {
       watcher.mEvents.create(path);
-    } else if (exists && type != "d") {
+    } else if (exists && !S_ISDIR(mode)) {
       watcher.mEvents.update(path);
     } else if (!isNew && !exists) {
       watcher.mEvents.remove(path);
@@ -265,7 +265,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 
   BSER::Array fields;
   fields.push_back("name");
-  fields.push_back("type");
+  fields.push_back("mode");
   fields.push_back("exists");
   fields.push_back("new");
 
