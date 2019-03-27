@@ -13,12 +13,14 @@ DirTree *BruteForceBackend::getTree(Watcher &watcher) {
 }
 
 void BruteForceBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+  std::unique_lock<std::mutex> lock(mMutex);
   auto tree = getTree(watcher);
   std::ofstream ofs(*snapshotPath);
   tree->write(ofs);
 }
 
 void BruteForceBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+  std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
     return;

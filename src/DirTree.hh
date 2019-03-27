@@ -9,11 +9,11 @@
 
 struct DirEntry {
   std::string path;
-  time_t mtime;
+  uint64_t mtime;
   bool isDir;
   mutable void *state;
 
-  DirEntry(std::string p, time_t t, bool d) {
+  DirEntry(std::string p, uint64_t t, bool d) {
     path = p;
     mtime = t;
     isDir = d;
@@ -64,7 +64,7 @@ struct DirTree {
     }
   }
 
-  DirEntry *add(std::string path, time_t mtime, bool isDir) {
+  DirEntry *add(std::string path, uint64_t mtime, bool isDir) {
     DirEntry entry(path, mtime, isDir);
     auto it = entries.emplace(entry.path, entry);
     return &it.first->second;
@@ -79,7 +79,7 @@ struct DirTree {
     return &found->second;
   }
 
-  DirEntry *update(std::string path, time_t mtime) {
+  DirEntry *update(std::string path, uint64_t mtime) {
     DirEntry *found = find(path);
     if (found) {
       found->mtime = mtime;
@@ -118,7 +118,7 @@ struct DirTree {
       auto found = snapshot->entries.find(it->first);
       if (found == snapshot->entries.end()) {
         events.create(it->second.path);
-      } else if (found->second.mtime != it->second.mtime) {
+      } else if (found->second.mtime != it->second.mtime && !found->second.isDir && !it->second.isDir) {
         events.update(it->second.path);
       }
     }

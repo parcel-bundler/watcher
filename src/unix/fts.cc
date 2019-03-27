@@ -4,6 +4,11 @@
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
 
+#define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
+#if __APPLE__
+#define st_mtim st_mtimespec
+#endif
+
 DirTree *BruteForceBackend::readTree(Watcher &watcher) {
   DirTree *tree = new DirTree();
 
@@ -17,7 +22,7 @@ DirTree *BruteForceBackend::readTree(Watcher &watcher) {
       continue;
     }
 
-    tree->add(node->fts_path, node->fts_statp->st_mtime, (node->fts_info & FTS_D) == FTS_D);
+    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
   }
 
   fts_close(fts);
