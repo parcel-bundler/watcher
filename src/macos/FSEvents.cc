@@ -20,8 +20,8 @@ struct State {
   struct timespec since;
 };
 
-bool operator <(const timespec& lhs, const timespec& rhs) {
-  return lhs.tv_sec == rhs.tv_sec ? lhs.tv_nsec < rhs.tv_nsec : lhs.tv_sec < rhs.tv_sec;
+bool operator <=(const timespec& lhs, const timespec& rhs) {
+  return lhs.tv_sec == rhs.tv_sec ? lhs.tv_nsec <= rhs.tv_nsec : lhs.tv_sec <= rhs.tv_sec;
 }
 
 void FSEventsCallback(
