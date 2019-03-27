@@ -20,7 +20,7 @@ const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.rand
 
 describe('since', () => {
   backends.forEach(backend => {
-    const sleep = () => new Promise(resolve => setTimeout(resolve, 10)) 
+    const sleep = () => new Promise(resolve => setTimeout(resolve, 100)) 
 
     describe(backend, () => {
       before(async () => {
