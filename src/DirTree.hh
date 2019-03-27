@@ -27,6 +27,7 @@ struct DirEntry {
       path.resize(size);
       if (stream.read(&path[0], size)) {
         stream >> mtime;
+        stream >> isDir;
       }
     }
   }
@@ -36,7 +37,7 @@ struct DirEntry {
   }
 
   void write(std::ostream &stream) const {
-    stream << path.size() << path << mtime << "\n";
+    stream << path.size() << path << mtime << " " << isDir << "\n";
   }
 };
 
