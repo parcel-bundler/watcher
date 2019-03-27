@@ -88,7 +88,7 @@ void FSEventsCallback(
       }
 
       // If the file was modified, and existed before, then this is an update, otherwise a create.
-      if (isModified && (existed || file.st_birthtimespec < since)) {
+      if (isModified && (existed || file.st_birthtimespec <= since)) {
         watcher->mTree->update(paths[i], file.st_mtime);
         list->update(paths[i]);
       } else {

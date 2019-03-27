@@ -25,10 +25,11 @@ describe('since', () => {
     describe(backend, () => {
       before(async () => {
         await fs.mkdirp(tmpDir);
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await sleep();
       });
 
       beforeEach(async () => {
+        await sleep();
         await fs.emptydir(tmpDir);
         await sleep();
       });
