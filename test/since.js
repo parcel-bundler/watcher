@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 
-const tmpDir = require('os').tmpdir();
+const tmpDir = fs.realpathSync(require('os').tmpdir());
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 
 let backends = [];
@@ -19,12 +19,14 @@ let c = 0;
 const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
 
 describe('since', () => {
+  after(async () => {
+    try {
+      await fs.unlink(snapshotPath);
+    } catch (err) {}
+  });
+
   backends.forEach(backend => {
     const sleep = (ms = 10) => new Promise(resolve => setTimeout(resolve, ms));
-
-      after(async () => {
-        await fs.unlink(snapshotPath);
-      });
 
     describe(backend, () => {
       describe('files', () => {
