@@ -23,7 +23,8 @@ DirTree *BruteForceBackend::readTree(Watcher &watcher) {
     hFind = FindFirstFile(spec.c_str(), &ffd);
 
     if (hFind == INVALID_HANDLE_VALUE)  {
-      printf("error\n");
+      tree->remove(path);
+      continue;
     }
 
     do {
