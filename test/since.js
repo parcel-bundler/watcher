@@ -18,6 +18,15 @@ if (process.platform === 'darwin') {
 let c = 0;
 const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
 
+function testPrecision() {
+  let f = getFilename();
+  fs.writeFileSync(f, '.');
+  let stat = fs.statSync(f);
+  return (stat.atimeMs / 1000 | 0) === stat.atimeMs / 1000;
+}
+
+const isSecondPrecision = testPrecision();
+
 describe('since', () => {
   after(async () => {
     try {
@@ -33,6 +42,9 @@ describe('since', () => {
         it('should emit when a file is created', async () => {
           let f = getFilename();
           await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
           await fs.writeFile(f, 'hello world');
           await sleep();
           
@@ -140,6 +152,9 @@ describe('since', () => {
           await fs.mkdir(f1);
           await sleep();
           await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
 
           await fs.writeFile(f2, 'hello world');
           await sleep();
@@ -343,6 +358,9 @@ describe('since', () => {
         it('should coalese create and update events', async () => {
           let f1 = getFilename();
           await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
           await fs.writeFile(f1, 'hello world');
           await fs.writeFile(f1, 'updated');
           await sleep();
