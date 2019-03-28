@@ -3,7 +3,6 @@ const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 
-const tmpDir = path.join(__dirname, 'tmp');
 let backends = [];
 if (process.platform === 'darwin') {
   backends = ['fs-events', 'watchman'];
@@ -16,6 +15,7 @@ if (process.platform === 'darwin') {
 describe('watcher', () => {
   backends.forEach(backend => {
     describe(backend, () => {
+      let tmpDir;
       let cbs = [];
       let subscribed = false;
       let nextEvent = () => {
@@ -34,337 +34,372 @@ describe('watcher', () => {
         });
       };
 
+      let c = 0;
+      const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
+
       before(async () => {
-        await fs.mkdirp(tmpDir);
-        await new Promise(resolve => setTimeout(resolve, 200));
+        tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        fs.mkdirpSync(tmpDir);
+        await new Promise(resolve => setTimeout(resolve, 100));
         fschanges.subscribe(tmpDir, fn, {backend});
-      });
-
-      beforeEach(async () => {
-        let isEmpty = (await fs.readdir(tmpDir)).length === 0;
-        if (!isEmpty) {
-          fs.emptydir(tmpDir);
-        }
-
-        if (subscribed && !isEmpty) {
-          await nextEvent();
-        } else {
-          subscribed = true;
-        }
       });
 
       after(async () => {
         fschanges.unsubscribe(tmpDir, fn, {backend});
-        await fs.remove(tmpDir);
       });
 
       describe('files', () => {
         it('should emit when a file is created', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f = getFilename();
+          fs.writeFile(f, 'hello world');
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'test.txt')}
+            {type: 'create', path: f}
           ]);
         });
 
         it('should emit when a file is updated', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f = getFilename();
+          fs.writeFile(f, 'hello world');
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hi');
+          fs.writeFile(f, 'hi');
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'update', path: path.join(tmpDir, 'test.txt')}
+            {type: 'update', path: f}
           ]);
         });
 
         it('should emit when a file is renamed', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          fs.rename(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          fs.rename(f1, f2);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'test.txt')},
-            {type: 'create', path: path.join(tmpDir, 'test2.txt')}
+            {type: 'delete', path: f1},
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should emit when a file is deleted', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f = getFilename();
+          fs.writeFile(f, 'hello world');
           await nextEvent();
 
-          fs.unlink(path.join(tmpDir, 'test.txt'));
+          fs.unlink(f);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'test.txt')}
+            {type: 'delete', path: f}
           ]);
         });
       });
 
       describe('directories', () => {
         it('should emit when a directory is created', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f = getFilename();
+          fs.mkdir(f);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'dir')}
+            {type: 'create', path: f}
           ]);
         });
 
         it('should emit when a directory is renamed', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.rename(path.join(tmpDir, 'dir'), path.join(tmpDir, 'dir2'));
+          fs.rename(f1, f2);
           let res = await nextEvent();
 
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir')},
-            {type: 'create', path: path.join(tmpDir, 'dir2')}
+            {type: 'delete', path: f1},
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should emit when a directory is deleted', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f = getFilename();
+          fs.mkdir(f);
           await nextEvent();
 
-          fs.remove(path.join(tmpDir, 'dir'));
+          fs.remove(f);
           let res = await nextEvent();
 
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir')}
+            {type: 'delete', path: f}
           ]);
         });
       });
 
       describe('sub-files', () => {
         it('should emit when a sub-file is created', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hello world');
+          fs.writeFile(f2, 'hello world');
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'dir', 'test.txt')}
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should emit when a sub-file is updated', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hello world');
+          fs.writeFile(f2, 'hello world');
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hi');
+          fs.writeFile(f2, 'hi');
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'update', path: path.join(tmpDir, 'dir', 'test.txt')}
+            {type: 'update', path: f2}
           ]);
         });
 
         it('should emit when a sub-file is renamed', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          let f3 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hello world');
+          fs.writeFile(f2, 'hello world');
           await nextEvent();
 
-          fs.rename(path.join(tmpDir, 'dir', 'test.txt'), path.join(tmpDir, 'dir', 'test2.txt'));
+          fs.rename(f2, f3);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir', 'test.txt')},
-            {type: 'create', path: path.join(tmpDir, 'dir', 'test2.txt')}
+            {type: 'delete', path: f2},
+            {type: 'create', path: f3}
           ]);
         });
 
         it('should emit when a sub-file is deleted', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
           
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hello world');
+          fs.writeFile(f2, 'hello world');
           await nextEvent();
 
-          fs.unlink(path.join(tmpDir, 'dir', 'test.txt'));
+          fs.unlink(f2);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir', 'test.txt')}
+            {type: 'delete', path: f2}
           ]);
         });
       });
 
       describe('sub-directories', () => {
         it('should emit when a sub-directory is created', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.mkdir(path.join(tmpDir, 'dir', 'sub'));
+          fs.mkdir(f2);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'dir', 'sub')}
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should emit when a sub-directory is renamed', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          let f3 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
 
-          fs.mkdir(path.join(tmpDir, 'dir', 'sub'));
+          fs.mkdir(f2);
           await nextEvent();
 
-          fs.rename(path.join(tmpDir, 'dir', 'sub'), path.join(tmpDir, 'dir', 'sub2'));
+          fs.rename(f2, f3);
           let res = await nextEvent();
 
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir', 'sub')},
-            {type: 'create', path: path.join(tmpDir, 'dir', 'sub2')}
+            {type: 'delete', path: f2},
+            {type: 'create', path: f3}
           ]);
         });
 
         it('should emit when a sub-directory is deleted with files inside', async () => {
-          fs.mkdir(path.join(tmpDir, 'dir'));
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(f1));
+          fs.mkdir(f1);
           await nextEvent();
           
-          fs.writeFile(path.join(tmpDir, 'dir', 'test.txt'), 'hello world');
+          fs.writeFile(f2, 'hello world');
           await nextEvent();
 
-          fs.remove(path.join(tmpDir, 'dir'));
+          fs.remove(f1);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'dir')},
-            {type: 'delete', path: path.join(tmpDir, 'dir', 'test.txt')}
+            {type: 'delete', path: f1},
+            {type: 'delete', path: f2}
           ]);
         });
       });
 
       describe('symlinks', () => {
         it('should emit when a symlink is created', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          fs.symlink(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          fs.symlink(f1, f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'test2.txt')}
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should emit when a symlink is updated', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          fs.symlink(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          fs.symlink(f1, f2);
           await nextEvent();
 
-          fs.writeFile(path.join(tmpDir, 'test2.txt'), 'hi');
+          fs.writeFile(f2, 'hi');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'update', path: path.join(tmpDir, 'test.txt')}
+            {type: 'update', path: f1}
           ]);
         });
 
         it('should emit when a symlink is renamed', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          let f2 = getFilename();
+          let f3 = getFilename();
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          fs.symlink(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          fs.symlink(f1, f2);
           await nextEvent();
 
-          fs.rename(path.join(tmpDir, 'test2.txt'), path.join(tmpDir, 'test3.txt'));
+          fs.rename(f2, f3);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'test2.txt')},
-            {type: 'create', path: path.join(tmpDir, 'test3.txt')}
+            {type: 'delete', path: f2},
+            {type: 'create', path: f3}
           ]);
         });
 
         it('should emit when a symlink is deleted', async () => {
-          fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          fs.symlink(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          fs.symlink(f1, f2);
           await nextEvent();
 
-          fs.unlink(path.join(tmpDir, 'test2.txt'));
+          fs.unlink(f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'test2.txt')}
+            {type: 'delete', path: f2}
           ]);
         });
       });
 
       describe('rapid changes', () => {
         it('should ignore files that are created and deleted rapidly', async () => {
-          await fs.writeFile(path.join(tmpDir, 'a.txt'), 'hello world');
-          await fs.writeFile(path.join(tmpDir, 'test2.txt'), 'hello world');
-          await fs.unlink(path.join(tmpDir, 'test2.txt'));
+          let f1 = getFilename();
+          let f2 = getFilename();
+          await fs.writeFile(f1, 'hello world');
+          await fs.writeFile(f2, 'hello world');
+          await fs.unlink(f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'a.txt')}
+            {type: 'create', path: f1}
           ]);
         });
 
         it('should coalese create and update events', async () => {
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'updated');
+          let f1 = getFilename();
+          await fs.writeFile(f1, 'hello world');
+          await fs.writeFile(f1, 'updated');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'test.txt')}
+            {type: 'create', path: f1}
           ]);
         });
 
         it('should coalese create and rename events', async () => {
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
-          await fs.rename(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
+          let f1 = getFilename();
+          let f2 = getFilename();
+          await fs.writeFile(f1, 'hello world');
+          await fs.rename(f1, f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'test2.txt')}
+            {type: 'create', path: f2}
           ]);
         });
 
         it('should coalese multiple rename events', async () => {
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
-          await fs.rename(path.join(tmpDir, 'test.txt'), path.join(tmpDir, 'test2.txt'));
-          await fs.rename(path.join(tmpDir, 'test2.txt'), path.join(tmpDir, 'test3.txt'));
-          await fs.rename(path.join(tmpDir, 'test3.txt'), path.join(tmpDir, 'test4.txt'));
+          let f1 = getFilename();
+          let f2 = getFilename();
+          let f3 = getFilename();
+          let f4 = getFilename();
+          await fs.writeFile(f1, 'hello world');
+          await fs.rename(f1, f2);
+          await fs.rename(f2, f3);
+          await fs.rename(f3, f4);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(tmpDir, 'test4.txt')}
+            {type: 'create', path: f4}
           ]);
         });
 
         it('should coalese multiple update events', async () => {
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          await fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'update');
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'update2');
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'update3');
+          await fs.writeFile(f1, 'update');
+          await fs.writeFile(f1, 'update2');
+          await fs.writeFile(f1, 'update3');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'update', path: path.join(tmpDir, 'test.txt')}
+            {type: 'update', path: f1}
           ]);
         });
 
         it('should coalese update and delete events', async () => {
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'hello world');
+          let f1 = getFilename();
+          await fs.writeFile(f1, 'hello world');
           await nextEvent();
 
-          await fs.writeFile(path.join(tmpDir, 'test.txt'), 'update');
-          await fs.unlink(path.join(tmpDir, 'test.txt'));
+          await fs.writeFile(f1, 'update');
+          await fs.unlink(f1);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'delete', path: path.join(tmpDir, 'test.txt')}
+            {type: 'delete', path: f1}
           ]);
         });
       });

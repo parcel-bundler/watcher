@@ -3,8 +3,9 @@ const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 
-const tmpDir = fs.realpathSync(require('os').tmpdir());
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
+const tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+fs.mkdirpSync(tmpDir);
 
 let backends = [];
 if (process.platform === 'darwin') {
