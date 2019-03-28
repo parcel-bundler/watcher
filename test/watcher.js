@@ -25,7 +25,6 @@ describe('watcher', () => {
       };
 
       let fn = events => {
-        // console.log(events);
         setImmediate(() => {
           for (let cb of cbs) {
             cb(events);
@@ -44,7 +43,7 @@ describe('watcher', () => {
       beforeEach(async () => {
         let isEmpty = (await fs.readdir(tmpDir)).length === 0;
         if (!isEmpty) {
-          await fs.emptydir(tmpDir);
+          fs.emptydir(tmpDir);
         }
 
         if (subscribed && !isEmpty) {
