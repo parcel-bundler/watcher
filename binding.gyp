@@ -3,17 +3,17 @@
     {
       "target_name": "fschanges",
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
-      "sources": [ "src/FSChanges.cc" ],
+      "sources": [ "src/FSChanges.cc", "src/Watcher.cc", "src/Backend.cc" ],
       "include_dirs" : ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
-      "cflags!": ["-fexceptions"],
-      "cflags_cc!": ["-fexceptions"],
+      'cflags!': [ '-fno-exceptions' ],
+      'cflags_cc!': [ '-fno-exceptions' ],
       "conditions": [
         ['OS=="mac"', {
           "sources": [
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
-            "src/shared/brute.cc",
+            "src/shared/BruteForceBackend.cc",
             "src/unix/fts.cc",
             "src/macos/FSEvents.cc"
           ],
@@ -33,22 +33,30 @@
           "sources": [
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
-            "src/shared/brute.cc",
+            "src/shared/BruteForceBackend.cc",
+            "src/linux/InotifyBackend.cc",
             "src/unix/fts.cc"
           ],
           "defines": [
             "WATCHMAN",
+            "INOTIFY",
             "BRUTE_FORCE"
           ]
         }],
         ['OS=="win"', {
           "sources": [
-            "src/shared/brute.cc",
-            "src/windows/win.cc"
+            "src/shared/BruteForceBackend.cc",
+            "src/windows/WindowsBackend.cc"
           ],
           "defines": [
+            "WINDOWS",
             "BRUTE_FORCE"
-          ]
+          ],
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "ExceptionHandling": 1,  # /EHsc
+            }
+          }
         }]
       ]
     }

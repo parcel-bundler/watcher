@@ -4,27 +4,56 @@
 #include <node_api.h>
 #include "Event.hh"
 #include "Backend.hh"
+#include "Watcher.hh"
 
 using namespace Napi;
 
 class FSAsyncRunner;
 typedef void (*AsyncFunction)(FSAsyncRunner *);
 
+std::unordered_set<std::string> getIgnore(Env env, Value opts) {
+  std::unordered_set<std::string> ignore;
+
+  if (opts.IsObject()) {
+    Value v = opts.As<Object>().Get(String::New(env, "ignore"));
+    if (v.IsArray()) {
+      Array items = v.As<Array>();
+      for (size_t i = 0; i < items.Length(); i++) {
+        Value item = items.Get(Number::New(env, i));
+        if (item.IsString()) {
+          ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
+        }
+      }
+    }
+  }
+
+  return ignore;
+}
+
+std::shared_ptr<Backend> getBackend(Env env, Value opts) {
+  Value b = opts.As<Object>().Get(String::New(env, "backend"));
+  std::string backendName;
+  if (b.IsString()) {
+    backendName = std::string(b.As<String>().Utf8Value().c_str());
+  }
+
+  return Backend::getShared(backendName);
+}
+
 class FSAsyncRunner {
 public:
   const Env env;
 
-  std::string directory;
+  std::shared_ptr<Backend> backend;
+  std::shared_ptr<Watcher> watcher;
   std::string snapshotPath;
-  std::string backend;
-
-  std::unordered_set<std::string> ignore;
-  EventList *events;
+  bool returnEvents;
 
   FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
-    : env(env), directory(std::string(dir.As<String>().Utf8Value().c_str())),
+    : env(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
-      events(nullptr), func(func), deferred(r) {
+      returnEvents(false),
+      func(func), deferred(r) {
 
     napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
                                                 OnExecute, OnWorkComplete, this, &this->work);
@@ -38,29 +67,12 @@ public:
         Error::New(env).ThrowAsJavaScriptException();
     }
 
-    if (opts.IsObject()) {
-      Value v = opts.As<Object>().Get(String::New(env, "ignore"));
-      if (v.IsArray()) {
-        Array items = v.As<Array>();
-        for (size_t i = 0; i < items.Length(); i++) {
-          Value item = items.Get(Number::New(env, i));
-          if (item.IsString()) {
-            this->ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
-          }
-        }
-      }
-    }
+    watcher = Watcher::getShared(
+      std::string(dir.As<String>().Utf8Value().c_str()),
+      getIgnore(env, opts)
+    );
 
-    Value b = opts.As<Object>().Get(String::New(env, "backend"));
-    if (b.IsString()) {
-      backend = std::string(b.As<String>().Utf8Value().c_str());
-    }
-  }
-
-  ~FSAsyncRunner() {
-    if (this->events) {
-      delete this->events;
-    }
+    backend = getBackend(env, opts);
   }
 
   void Queue() {
@@ -114,26 +126,31 @@ private:
     HandleScope scope(env);
     Value result;
 
-    if (this->events) {
-      result = this->events->toJS(env);
+    if (this->returnEvents) {
+      result = watcher->mEvents.toJS(env);
     } else {
       result = env.Null();
     }
 
+    watcher->unref();
+    backend->unref();
     this->deferred.Resolve(result);
   }
 
   void OnError(const Error& e) {
+    watcher->unref();
+    backend->unref();
     this->deferred.Reject(e.Value());
   }
 };
 
 void writeSnapshotAsync(FSAsyncRunner *runner) {
-  GET_BACKEND(runner->backend, writeSnapshot)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  runner->backend->writeSnapshot(*runner->watcher, &runner->snapshotPath);
 }
 
 void getEventsSinceAsync(FSAsyncRunner *runner) {
-  runner->events = GET_BACKEND(runner->backend, getEventsSince)(&runner->directory, &runner->snapshotPath, &runner->ignore);
+  runner->backend->getEventsSince(*runner->watcher, &runner->snapshotPath);
+  runner->returnEvents = true;
 }
 
 Value queueWork(const CallbackInfo& info, AsyncFunction func) {
@@ -168,6 +185,76 @@ Value getEventsSince(const CallbackInfo& info) {
   return queueWork(info, getEventsSinceAsync);
 }
 
+Value subscribe(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() < 2 || !info[1].IsFunction()) {
+    TypeError::New(env, "Expected a function").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 3 && !info[2].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  try {
+    std::shared_ptr<Watcher> watcher = Watcher::getShared(
+      std::string(info[0].As<String>().Utf8Value().c_str()), 
+      getIgnore(env, info[2])
+    );
+
+    bool added = watcher->watch(info[1].As<Function>());
+    if (added) {
+      std::shared_ptr<Backend> b = getBackend(env, info[2]);;
+      b->watch(*watcher);
+    }
+  } catch (const char *err) {
+    Error::New(env, err).ThrowAsJavaScriptException();
+  }
+
+  return env.Null();
+}
+
+Value unsubscribe(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() < 2 || !info[1].IsFunction()) {
+    TypeError::New(env, "Expected a function").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 3 && !info[2].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  try {
+    std::shared_ptr<Watcher> watcher = Watcher::getShared(
+      std::string(info[0].As<String>().Utf8Value().c_str()),
+      getIgnore(env, info[2])
+    );
+
+    bool removed =  watcher->unwatch(info[1].As<Function>());
+    if (removed) {
+      std::shared_ptr<Backend> b = getBackend(env, info[2]);;
+      b->unwatch(*watcher);
+    }
+  } catch (const char *err) {
+    Error::New(env, err).ThrowAsJavaScriptException();
+  }
+  
+  return env.Null();
+}
+
 Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "writeSnapshot"),
@@ -176,6 +263,14 @@ Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "getEventsSince"),
     Function::New(env, getEventsSince)
+  );
+  exports.Set(
+    String::New(env, "subscribe"),
+    Function::New(env, subscribe)
+  );
+  exports.Set(
+    String::New(env, "unsubscribe"),
+    Function::New(env, unsubscribe)
   );
   return exports;
 }

@@ -1,22 +1,28 @@
-#include <sys/stat.h>
 #include <string>
+#define __THROW // weird error on linux
 #include <fts.h>
 #include "../DirTree.hh"
+#include "../shared/BruteForceBackend.hh"
 
-DirTree *getDirTree(std::string *dir, std::unordered_set<std::string> *ignore) {
+#define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
+#if __APPLE__
+#define st_mtim st_mtimespec
+#endif
+
+DirTree *BruteForceBackend::readTree(Watcher &watcher) {
   DirTree *tree = new DirTree();
 
-  char *paths[2] {(char *)dir->c_str(), NULL};
+  char *paths[2] {(char *)watcher.mDir.c_str(), NULL};
   FTS *fts = fts_open(paths, FTS_NOCHDIR | FTS_PHYSICAL, NULL);
   FTSENT *node;
 
   while ((node = fts_read(fts)) != NULL) {
-    if (ignore->count(std::string(node->fts_path)) > 0) {
+    if (watcher.mIgnore.count(std::string(node->fts_path)) > 0) {
       fts_set(fts, node, FTS_SKIP);
       continue;
     }
 
-    tree->entries.insert(DirEntry(node->fts_path, node->fts_statp->st_mtime));
+    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
   }
 
   fts_close(fts);
