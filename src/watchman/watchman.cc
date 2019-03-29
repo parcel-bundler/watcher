@@ -202,7 +202,7 @@ WatchmanBackend::~WatchmanBackend() {
   // Mark the watcher as stopped, close the socket, and trigger the lock.
   // This will cause the read loop to be broken and the thread to exit.
   mStopped = true;
-  close(mSock);
+  shutdown(mSock, SHUT_RDWR);
   mRequestSignal.notify();
 
   // If not ended yet, wait.
