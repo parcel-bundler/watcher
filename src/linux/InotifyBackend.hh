@@ -17,7 +17,6 @@ private:
   int mPipe[2];
   int mInotify;
   std::unordered_map<int, DirEntry *> mSubscriptions;
-  bool mEnded;
   Signal mEndedSignal;
 
   void watchDir(Watcher &watcher, DirEntry *entry);

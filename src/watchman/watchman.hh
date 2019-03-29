@@ -9,7 +9,7 @@ class WatchmanBackend : public Backend {
 public:
   static bool checkAvailable();
   void start() override;
-  WatchmanBackend() : mSock(-1), mStopped(false), mEnded(false) {};
+  WatchmanBackend() : mSock(-1), mStopped(false) {};
   ~WatchmanBackend();
   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
@@ -22,7 +22,6 @@ private:
   BSER::Object mResponse;
   std::unordered_map<std::string, Watcher *> mSubscriptions;
   bool mStopped;
-  bool mEnded;
   Signal mEndedSignal;
 
   std::string clock(Watcher &watcher);

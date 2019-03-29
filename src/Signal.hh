@@ -6,9 +6,12 @@
 
 class Signal {
 public:
+  Signal() : mFlag(false) {}
   void wait() {
     std::unique_lock<std::mutex> lock(mMutex);
-    mCond.wait(lock);
+    while (!mFlag) {
+      mCond.wait(lock);
+    }
   }
 
   std::cv_status waitFor(std::chrono::milliseconds ms) {
@@ -17,10 +20,18 @@ public:
   }
 
   void notify() {
+    std::unique_lock<std::mutex> lock(mMutex);
+    mFlag = true;
     mCond.notify_all();
   }
 
+  void reset() {
+    std::unique_lock<std::mutex> lock(mMutex);
+    mFlag = false;
+  }
+
 private:
+  bool mFlag;
   std::mutex mMutex;
   std::condition_variable mCond;
 };

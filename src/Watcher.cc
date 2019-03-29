@@ -68,6 +68,7 @@ void Watcher::triggerCallbacks() {
   if (mCallbacks.size() > 0 && mEvents.size() > 0) {
     if (mCallingCallbacks) {
       mCallbackSignal.wait();
+      mCallbackSignal.reset();
     }
 
     mCallbackEvents = mEvents;
@@ -101,7 +102,6 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     watcher->unref();
   }
 
-  // watcher->mEvents.clear();
   watcher->mCallbackSignal.notify();
 }
 

@@ -74,18 +74,16 @@ void removeShared(Backend *backend) {
 }
 
 void Backend::run() {
-  mStarted = false;
   mThread = std::thread([this] () {
     start();
   });
 
-  if (mThread.joinable() && !mStarted) {
+  if (mThread.joinable()) {
     mStartedSignal.wait();
   }
 }
 
 void Backend::notifyStarted() {
-  mStarted = true;
   mStartedSignal.notify();
 }
 

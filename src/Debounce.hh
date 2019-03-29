@@ -19,7 +19,6 @@ public:
 
   Debounce() {
     mRunning = true;
-    mTriggered = false;
     mThread = std::thread([this] () {
       loop();
     });
@@ -38,13 +37,11 @@ public:
 
   void trigger() {
     std::unique_lock<std::mutex> lock(mMutex);
-    mTriggered = true;
     mWaitSignal.notify();
   }
   
 private:
   bool mRunning;
-  bool mTriggered;
   std::mutex mMutex;
   Signal mWaitSignal;
   std::thread mThread;
@@ -52,10 +49,7 @@ private:
 
   void loop() {
     while (mRunning) {
-      if (!mTriggered) {
-        mWaitSignal.wait();
-      }
-
+      mWaitSignal.wait();
       if (!mRunning) {
         break;
       }
@@ -75,7 +69,7 @@ private:
       cb();
     }
 
-    mTriggered = false;
+    mWaitSignal.reset();
   }
 };
 

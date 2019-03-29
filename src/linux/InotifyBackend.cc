@@ -52,16 +52,12 @@ void InotifyBackend::start() {
   close(mPipe[1]);
   close(mInotify);
 
-  mEnded = true;
   mEndedSignal.notify();
 }
 
 InotifyBackend::~InotifyBackend() {
-  mEnded = false;
   write(mPipe[1], "X", 1);
-  if (!mEnded) {
-    mEndedSignal.wait();
-  }
+  mEndedSignal.wait();
 }
 
 void InotifyBackend::subscribe(Watcher &watcher) {

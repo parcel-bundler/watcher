@@ -91,6 +91,7 @@ BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
 
   mRequestSignal.notify();
   mResponseSignal.wait();
+  mResponseSignal.reset();
   return mResponse;
 }
 
@@ -156,6 +157,7 @@ void WatchmanBackend::start() {
     // If there are no subscriptions we are reading, wait for a request.
     if (mSubscriptions.size() == 0) {
       mRequestSignal.wait();
+      mRequestSignal.reset();
     }
 
     // Break out of loop if we are stopped.
@@ -192,7 +194,6 @@ void WatchmanBackend::start() {
     }
   }
 
-  mEnded = true;
   mEndedSignal.notify();
 }
 
@@ -206,9 +207,7 @@ WatchmanBackend::~WatchmanBackend() {
   mRequestSignal.notify();
 
   // If not ended yet, wait.
-  if (!mEnded) {
-    mEndedSignal.wait();
-  }
+  mEndedSignal.wait();
 }
 
 std::string WatchmanBackend::clock(Watcher &watcher) {

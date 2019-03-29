@@ -28,7 +28,6 @@ public:
   std::thread mThread;
 private:
   std::unordered_set<Watcher *> mSubscriptions;
-  bool mStarted;
   Signal mStartedSignal;
 };
 
