@@ -327,7 +327,7 @@ describe('watcher', () => {
           let f2 = getFilename();
           await fs.writeFile(f1, 'hello world');
           await fs.writeFile(f2, 'hello world');
-          await fs.unlink(f2);
+          fs.unlink(f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -338,7 +338,7 @@ describe('watcher', () => {
         it('should coalese create and update events', async () => {
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
-          await fs.writeFile(f1, 'updated');
+          fs.writeFile(f1, 'updated');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -350,7 +350,7 @@ describe('watcher', () => {
           let f1 = getFilename();
           let f2 = getFilename();
           await fs.writeFile(f1, 'hello world');
-          await fs.rename(f1, f2);
+          fs.rename(f1, f2);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -366,7 +366,7 @@ describe('watcher', () => {
           await fs.writeFile(f1, 'hello world');
           await fs.rename(f1, f2);
           await fs.rename(f2, f3);
-          await fs.rename(f3, f4);
+          fs.rename(f3, f4);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -376,12 +376,12 @@ describe('watcher', () => {
 
         it('should coalese multiple update events', async () => {
           let f1 = getFilename();
-          await fs.writeFile(f1, 'hello world');
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
           await fs.writeFile(f1, 'update');
           await fs.writeFile(f1, 'update2');
-          await fs.writeFile(f1, 'update3');
+          fs.writeFile(f1, 'update3');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -391,11 +391,11 @@ describe('watcher', () => {
 
         it('should coalese update and delete events', async () => {
           let f1 = getFilename();
-          await fs.writeFile(f1, 'hello world');
+          fs.writeFile(f1, 'hello world');
           await nextEvent();
 
           await fs.writeFile(f1, 'update');
-          await fs.unlink(f1);
+          fs.unlink(f1);
 
           let res = await nextEvent();
           assert.deepEqual(res, [
