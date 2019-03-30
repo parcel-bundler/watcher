@@ -55,6 +55,11 @@ void FSEventsCallback(
       break;
     }
 
+    // FSEvents exclusion paths only apply to sub-paths, not the path itself.
+    if (watcher->mIgnore.count(paths[i]) > 0) {
+      continue;
+    }
+
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
       watcher->mTree->add(paths[i], 0, isDir);

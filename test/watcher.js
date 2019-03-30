@@ -36,16 +36,19 @@ describe('watcher', () => {
 
       let c = 0;
       const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
+      let ignoreDir, ignoreFile;
 
       before(async () => {
         tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
         fs.mkdirpSync(tmpDir);
+        ignoreDir = getFilename();
+        ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        fschanges.subscribe(tmpDir, fn, {backend});
+        fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       after(async () => {
-        fschanges.unsubscribe(tmpDir, fn, {backend});
+        fschanges.unsubscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       describe('files', () => {
@@ -400,6 +403,34 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [
             {type: 'delete', path: f1}
+          ]);
+        });
+      });
+
+      describe('ignore', () => {
+        it('should ignore a directory', async () => {
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(ignoreDir));
+          await fs.mkdir(ignoreDir);
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(f2, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: f1}
+          ]);
+        });
+
+        it('should ignore a file', async () => {
+          let f1 = getFilename();
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(ignoreFile, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: f1}
           ]);
         });
       });

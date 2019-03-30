@@ -30,8 +30,12 @@ DirTree *BruteForceBackend::readTree(Watcher &watcher) {
     do {
       if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
         std::string fullPath = path + "\\" + ffd.cFileName;
+        if (watcher.mIgnore.count(fullPath) > 0) {
+          continue;
+        }
+
         tree->add(fullPath, CONVERT_TIME(ffd.ftLastWriteTime), ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
-        if ((ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && watcher.mIgnore.count(fullPath) == 0) {
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
           directories.push(fullPath);
         }
       }
@@ -176,6 +180,9 @@ public:
 
   void processEvent(PFILE_NOTIFY_INFORMATION info) {
     std::string path = mWatcher->mDir + "\\" + utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
+    if (mWatcher->isIgnored(path)) {
+      return;
+    }
 
     switch (info->Action) {
       case FILE_ACTION_ADDED:

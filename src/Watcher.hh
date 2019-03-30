@@ -32,6 +32,7 @@ struct Watcher {
   bool watch(Function callback);
   bool unwatch(Function callback);
   void unref();
+  bool isIgnored(std::string path);
 
   static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignore);
 
