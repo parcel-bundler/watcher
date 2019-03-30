@@ -8,6 +8,7 @@
   IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF | IN_MOVED_FROM | \
   IN_MOVED_TO | IN_DONT_FOLLOW | IN_ONLYDIR | IN_EXCL_UNLINK
 #define BUFFER_SIZE 8192
+#define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
 
 void InotifyBackend::start() {
   // Create a pipe that we will write to when we want to end the thread.
@@ -157,7 +158,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, InotifySubs
 
     struct stat st;
     stat(path.c_str(), &st);
-    DirEntry *entry = watcher->mTree->add(path, st.st_mtime, S_ISDIR(st.st_mode));
+    DirEntry *entry = watcher->mTree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
       watchDir(*watcher, entry);
@@ -167,7 +168,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, InotifySubs
 
     struct stat st;
     stat(path.c_str(), &st);
-    watcher->mTree->update(path, st.st_mtime);
+    watcher->mTree->update(path, CONVERT_TIME(st.st_mtim));
   } else if (event->mask & (IN_DELETE | IN_DELETE_SELF | IN_MOVED_FROM | IN_MOVE_SELF)) {
     // Ignore delete/move self events unless this is the recursive watch root
     if ((event->mask & (IN_DELETE_SELF | IN_MOVE_SELF)) && path != watcher->mDir) {
