@@ -546,7 +546,7 @@ describe('watcher', () => {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           await fschanges.writeSnapshot(dir, snapshot, {backend});
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 1000));
 
           await fs.writeFile(path.join(dir, 'test2.txt'), 'hello2');
           await new Promise(resolve => setTimeout(resolve, 100));
