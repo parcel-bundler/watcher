@@ -439,6 +439,43 @@ describe('since', () => {
           ]);
         });
       });
+
+      describe('ignore', () => {
+        it('should ignore a directory', async () => {
+          let f1 = getFilename();
+          let dir = getFilename();
+          let f2 = getFilename(path.basename(dir));
+          let ignore = [dir];
+          await fs.mkdir(dir);
+          await sleep();
+          await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend, ignore});
+
+          await fs.writeFile(f1, 'hello');
+          await fs.writeFile(f2, 'sup');
+          await sleep();
+
+          let res = await fschanges.getEventsSince(tmpDir, snapshotPath, {backend, ignore});
+          assert.deepEqual(res, [
+            {type: 'create', path: f1}
+          ]);
+        });
+
+        it('should ignore a file', async () => {
+          let f1 = getFilename();
+          let f2 = getFilename();
+          let ignore = [f2];
+          await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend, ignore});
+
+          await fs.writeFile(f1, 'hello');
+          await fs.writeFile(f2, 'sup');
+          await sleep();
+
+          let res = await fschanges.getEventsSince(tmpDir, snapshotPath, {backend, ignore});
+          assert.deepEqual(res, [
+            {type: 'create', path: f1}
+          ]);
+        });
+      });
     });
   });
 });
