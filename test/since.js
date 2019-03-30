@@ -449,6 +449,9 @@ describe('since', () => {
           await fs.mkdir(dir);
           await sleep();
           await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend, ignore});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
 
           await fs.writeFile(f1, 'hello');
           await fs.writeFile(f2, 'sup');
@@ -465,6 +468,9 @@ describe('since', () => {
           let f2 = getFilename();
           let ignore = [f2];
           await fschanges.writeSnapshot(tmpDir, snapshotPath, {backend, ignore});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
 
           await fs.writeFile(f1, 'hello');
           await fs.writeFile(f2, 'sup');
