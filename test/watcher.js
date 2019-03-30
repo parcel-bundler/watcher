@@ -434,6 +434,96 @@ describe('watcher', () => {
           ]);
         });
       });
+
+      describe('multiple', () => {
+        it('should support multiple watchers for the same directory', async () => {
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.mkdirpSync(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          function listen() {
+            return new Promise(resolve => {
+              let fn = events => {
+                setImmediate(() => resolve(events));
+                fschanges.unsubscribe(dir, fn, {backend});
+              };
+              
+              fschanges.subscribe(dir, fn, {backend});
+            });
+          }
+
+          let l1 = listen();
+          let l2 = listen();
+
+          fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
+
+          let res = await Promise.all([l1, l2]);
+          assert.deepEqual(res, [
+            [{type: 'create', path: path.join(dir, 'test1.txt')}],
+            [{type: 'create', path: path.join(dir, 'test1.txt')}]
+          ]);
+        });
+
+        it('should support multiple watchers for the same directory with different ignore paths', async () => {
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.mkdirpSync(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          function listen(ignore) {
+            return new Promise(resolve => {
+              let fn = events => {
+                setImmediate(() => resolve(events));
+                fschanges.unsubscribe(dir, fn, {backend, ignore});
+              };
+              
+              fschanges.subscribe(dir, fn, {backend, ignore});
+            });
+          }
+
+          let l1 = listen([path.join(dir, 'test1.txt')]);
+          let l2 = listen([path.join(dir, 'test2.txt')]);
+
+          fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
+          fs.writeFile(path.join(dir, 'test2.txt'), 'test1');
+
+          let res = await Promise.all([l1, l2]);
+          assert.deepEqual(res, [
+            [{type: 'create', path: path.join(dir, 'test2.txt')}],
+            [{type: 'create', path: path.join(dir, 'test1.txt')}]
+          ]);
+        });
+
+        it('should support multiple watchers for different directories', async () => {
+          let dir1 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir2 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.mkdirpSync(dir1);
+          fs.mkdirpSync(dir2);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          function listen(dir) {
+            return new Promise(resolve => {
+              let fn = events => {
+                setImmediate(() => resolve(events));
+                fschanges.unsubscribe(dir, fn, {backend});
+              };
+              
+              fschanges.subscribe(dir, fn, {backend});
+            });
+          }
+
+          let l1 = listen(dir1);
+          let l2 = listen(dir2);
+
+          fs.writeFile(path.join(dir1, 'test1.txt'), 'test1');
+          fs.writeFile(path.join(dir2, 'test1.txt'), 'test1');
+
+          let res = await Promise.all([l1, l2]);
+          assert.deepEqual(res, [
+            [{type: 'create', path: path.join(dir1, 'test1.txt')}],
+            [{type: 'create', path: path.join(dir2, 'test1.txt')}]
+          ]);
+        });
+      });
     });
   });
 });

@@ -22,9 +22,10 @@ struct Watcher {
   DirTree *mTree;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignore);
+  ~Watcher();
 
   bool operator==(const Watcher &other) const {
-    return mDir == other.mDir;
+    return mDir == other.mDir && mIgnore == other.mIgnore;
   }
 
   void wait();

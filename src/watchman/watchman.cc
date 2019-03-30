@@ -16,7 +16,9 @@ BSER readBSER(T &&do_read) {
   int r;
   int64_t len = -1;
   do {
-    r = do_read(buffer, sizeof(buffer));
+    // Start by reading a minimal amount of data in order to decode the length.
+    // After that, attempt to read the remaining length, up to the buffer size.
+    r = do_read(buffer, len == -1 ? 20 : (len < 256 ? len : 256));
     if (r < 0) {
       throw strerror(errno);
     }
@@ -142,8 +144,8 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
 
 void WatchmanBackend::handleSubscription(BSER::Object obj) {
   std::unique_lock<std::mutex> lock(mMutex);
-  auto root = obj.find("root")->second.stringValue();
-  auto it = mSubscriptions.find(root);
+  auto subscription = obj.find("subscription")->second.stringValue();
+  auto it = mSubscriptions.find(subscription);
   if (it == mSubscriptions.end()) {
     return;
   }
@@ -257,14 +259,23 @@ void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   handleFiles(watcher, obj);
 }
 
+std::string getId(Watcher &watcher) {
+  std::ostringstream id;
+  id << "fschanges-";
+  id << (void *)&watcher;
+  return id.str();
+}
+
 void WatchmanBackend::subscribe(Watcher &watcher) {
   watchmanWatch(watcher.mDir);
-  mSubscriptions.emplace(watcher.mDir, &watcher);
+
+  std::string id = getId(watcher);
+  mSubscriptions.emplace(id, &watcher);
 
   BSER::Array cmd;
   cmd.push_back("subscribe");
   cmd.push_back(watcher.mDir);
-  cmd.push_back("fschanges");
+  cmd.push_back(id);
 
   BSER::Array fields;
   fields.push_back("name");
@@ -303,13 +314,14 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 }
 
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
-  auto erased = mSubscriptions.erase(watcher.mDir);
+  std::string id = getId(watcher);
+  auto erased = mSubscriptions.erase(id);
   
   if (erased) {
     BSER::Array cmd;
     cmd.push_back("unsubscribe");
     cmd.push_back(watcher.mDir);
-    cmd.push_back("fschanges");
+    cmd.push_back(id);
 
     watchmanRequest(cmd);
   }
