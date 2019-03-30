@@ -2,6 +2,7 @@
 #define DEBOUNCE_H
 
 #include <thread>
+#include <unordered_map>
 #include "Signal.hh"
 
 class Debounce {
@@ -30,9 +31,14 @@ public:
     mThread.join();
   }
 
-  void add(std::function<void()> cb) {
+  void add(void *key, std::function<void()> cb) {
     std::unique_lock<std::mutex> lock(mMutex);
-    mCallbacks.push_back(cb);
+    mCallbacks.emplace(key, cb);
+  }
+
+  void remove(void *key) {
+    std::unique_lock<std::mutex> lock(mMutex);
+    mCallbacks.erase(key);
   }
 
   void trigger() {
@@ -45,7 +51,7 @@ private:
   std::mutex mMutex;
   Signal mWaitSignal;
   std::thread mThread;
-  std::vector<std::function<void()>> mCallbacks;
+  std::unordered_map<void *, std::function<void()>> mCallbacks;
 
   void loop() {
     while (mRunning) {
@@ -65,7 +71,7 @@ private:
     std::unique_lock<std::mutex> lock(mMutex);
 
     for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-      auto cb = *it;
+      auto cb = it->second;
       cb();
     }
 

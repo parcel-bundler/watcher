@@ -7,6 +7,11 @@
 #include "../DirTree.hh"
 #include "../Signal.hh"
 
+struct InotifySubscription {
+  DirEntry *entry;
+  Watcher *watcher;
+};
+
 class InotifyBackend : public BruteForceBackend {
 public:
   void start() override;
@@ -16,12 +21,13 @@ public:
 private:
   int mPipe[2];
   int mInotify;
-  std::unordered_map<int, DirEntry *> mSubscriptions;
+  std::unordered_multimap<int, InotifySubscription *> mSubscriptions;
   Signal mEndedSignal;
 
   void watchDir(Watcher &watcher, DirEntry *entry);
   void handleEvents();
-  Watcher *handleEvent(struct inotify_event *event);
+  void handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers);
+  bool handleSubscription(struct inotify_event *event, InotifySubscription *sub);
 };
 
 #endif

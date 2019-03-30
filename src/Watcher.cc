@@ -45,10 +45,15 @@ Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
     mAsync(NULL),
     mCallingCallbacks(false) {
       mDebounce = Debounce::getShared();
-      mDebounce->add([this] () {
+      mDebounce->add(this, [this] () {
         triggerCallbacks();
       });
     }
+
+Watcher::~Watcher() {
+  std::unique_lock<std::mutex> lk(mMutex);
+  mDebounce->remove(this);
+}
 
 void Watcher::wait() {
   std::unique_lock<std::mutex> lk(mMutex);
@@ -74,7 +79,6 @@ void Watcher::triggerCallbacks() {
     mCallbackEvents = mEvents;
     mEvents.clear();
 
-    // mDebounce->trigger();
     uv_async_send(mAsync);
   }
 }
@@ -100,9 +104,9 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   watcher->mCallingCallbacks = false;
   if (watcher->mCallbacks.size() == 0) {
     watcher->unref();
+  } else {
+    watcher->mCallbackSignal.notify();
   }
-
-  watcher->mCallbackSignal.notify();
 }
 
 bool Watcher::watch(Function callback) {

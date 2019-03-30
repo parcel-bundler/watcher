@@ -77,8 +77,10 @@ void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry) {
     throw "inotify_add_watch failed";
   }
 
-  entry->state = (void *)&watcher;
-  mSubscriptions.emplace(wd, entry);
+  InotifySubscription *sub = new InotifySubscription;
+  sub->entry = entry;
+  sub->watcher = &watcher;
+  mSubscriptions.emplace(wd, sub);
 }
 
 void InotifyBackend::handleEvents() {
@@ -110,10 +112,7 @@ void InotifyBackend::handleEvents() {
         continue;
       }
 
-      Watcher *watcher = handleEvent(event);
-      if (watcher) {
-        watchers.insert(watcher);
-      }
+      handleEvent(event, watchers);
     }
   }
 
@@ -122,25 +121,33 @@ void InotifyBackend::handleEvents() {
   }
 }
 
-Watcher *InotifyBackend::handleEvent(struct inotify_event *event) {
+void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers) {
   std::unique_lock<std::mutex> lock(mMutex);
 
-  // Find a subscription for this watch descriptor
-  auto entry = mSubscriptions.find(event->wd);
-  if (entry == mSubscriptions.end()) {
-    // Unknown path
-    return NULL;
+  // Find the subscriptions for this watch descriptor
+  auto range = mSubscriptions.equal_range(event->wd);
+  std::unordered_set<InotifySubscription *> set;
+  for (auto it = range.first; it != range.second; it++) {
+    set.insert(it->second);
   }
 
+  for (auto it = set.begin(); it != set.end(); it++) {
+    if (handleSubscription(event, *it)) {
+      watchers.insert((*it)->watcher);
+    }
+  }
+}
+
+bool InotifyBackend::handleSubscription(struct inotify_event *event, InotifySubscription *sub) {
   // Build full path and check if its in our ignore list.
-  Watcher *watcher = (Watcher *)entry->second->state;
-  std::string path = std::string(entry->second->path);
+  Watcher *watcher = sub->watcher;
+  std::string path = std::string(sub->entry->path);
   if (event->len > 0) { 
     path += "/" + std::string(event->name);
   }
 
   if (watcher->mIgnore.count(path) > 0) {
-    return NULL;
+    return false;
   }
 
   // If this is a create, check if it's a directory and start watching if it is.
@@ -164,15 +171,15 @@ Watcher *InotifyBackend::handleEvent(struct inotify_event *event) {
   } else if (event->mask & (IN_DELETE | IN_DELETE_SELF | IN_MOVED_FROM | IN_MOVE_SELF)) {
     // Ignore delete/move self events unless this is the recursive watch root
     if ((event->mask & (IN_DELETE_SELF | IN_MOVE_SELF)) && path != watcher->mDir) {
-      return NULL;
+      return false;
     }
 
     // If the entry being deleted/moved is a directory, remove it from the list of subscriptions
     auto entry = watcher->mTree->find(path);
     if (entry && entry->isDir) {
       for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
-        if (it->second == &*entry) {
-          it->second->state = NULL;
+        if (it->second->entry == &*entry) {
+          delete it->second;
           mSubscriptions.erase(it);
           break;
         }
@@ -183,19 +190,21 @@ Watcher *InotifyBackend::handleEvent(struct inotify_event *event) {
     watcher->mTree->remove(path);
   }
 
-  return watcher;
+  return true;
 }
 
 void InotifyBackend::unsubscribe(Watcher &watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-    if (it->second->state == &watcher) {
-      int err = inotify_rm_watch(mInotify, it->first);
-      if (err == -1) {
-        throw "Unable to remove watcher";
+    if (it->second->watcher == &watcher) {
+      if (mSubscriptions.count(it->first) == 1) {
+        int err = inotify_rm_watch(mInotify, it->first);
+        if (err == -1) {
+          throw "Unable to remove watcher";
+        }
       }
 
-      it->second->state = NULL;
+      delete it->second;
       it = mSubscriptions.erase(it);
     } else {
       it++;
