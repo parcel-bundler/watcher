@@ -7,6 +7,12 @@
 #include <istream>
 #include "Event.hh"
 
+#ifdef _WIN32
+#define DIR_SEP "\\"
+#else
+#define DIR_SEP "/"
+#endif
+
 struct DirEntry {
   std::string path;
   uint64_t mtime;
@@ -93,7 +99,7 @@ struct DirTree {
 
     // Remove all sub-entries if this is a directory
     if (found && found->isDir) {
-      std::string pathStart = path + "/";
+      std::string pathStart = path + DIR_SEP;
       for (auto it = entries.begin(); it != entries.end();) {
         if (it->first.rfind(pathStart, 0) == 0) {
           it = entries.erase(it);

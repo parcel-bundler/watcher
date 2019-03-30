@@ -125,7 +125,7 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
     auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
-    auto path = watcher.mDir + "/" + name;
+    auto path = watcher.mDir + DIR_SEP + name;
     if (watcher.isIgnored(path)) {
       continue;
     }
@@ -282,7 +282,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
     anyOf.push_back("anyof");
 
     for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
-      std::string pathStart = watcher.mDir + "/";
+      std::string pathStart = watcher.mDir + DIR_SEP;
       if (it->rfind(pathStart, 0) == 0) {
         auto relative = it->substr(pathStart.size());
         BSER::Array dirname;

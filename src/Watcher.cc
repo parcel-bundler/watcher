@@ -156,7 +156,7 @@ void Watcher::onClose(uv_handle_t *handle) {
 
 bool Watcher::isIgnored(std::string path) {
   for (auto it = mIgnore.begin(); it != mIgnore.end(); it++) {
-    auto dir = *it + "/";
+    auto dir = *it + DIR_SEP;
     if (*it == path || path.compare(0, dir.size(), dir) == 0) {
       return true;
     }
