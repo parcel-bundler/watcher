@@ -31,11 +31,11 @@ jobs:
     - task: ExtractFiles@1
       inputs:
         archiveFilePatterns: 'watchman.zip'
-        destinationFolder: '%USERPROFILE%'
+        destinationFolder: $(Agent.HomeDirectory)
       displayName: Extract Watchman
     - script: |
-        set PATH=%PATH%;%USERPROFILE%\watchman
-        echo "##vso[task.setvariable variable=PATH]%PATH%;%USERPROFILE%\watchman"
+        set PATH=%PATH%;$(Agent.HomeDirectory)\watchman
+        echo "##vso[task.setvariable ovariable=PATH]%PATH%;$(Agent.HomeDirectory)\watchman"
         watchman -v
       displayName: Install Watchman
 
