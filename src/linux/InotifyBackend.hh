@@ -25,7 +25,7 @@ private:
   std::unordered_multimap<int, std::shared_ptr<InotifySubscription>> mSubscriptions;
   Signal mEndedSignal;
 
-  void watchDir(Watcher &watcher, DirEntry *entry);
+  void watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree);
   void handleEvents();
   void handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers);
   bool handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub);
