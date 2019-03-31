@@ -56,7 +56,7 @@ std::string getSockPath() {
 
 std::unique_ptr<IPC> watchmanConnect() {
   std::string path = getSockPath();
-  return std::make_unique<IPC>(path);
+  return std::unique_ptr<IPC>(new IPC(path));
 }
 
 BSER watchmanRead(IPC *ipc) {
