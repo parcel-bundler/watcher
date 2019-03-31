@@ -27,6 +27,7 @@ public:
       );
 
       if (mPipe == INVALID_HANDLE_VALUE) {
+        printf("Could not open pipe\n");
         throw "Could not open pipe";
       }
 
@@ -77,10 +78,12 @@ public:
       DWORD written;
       success = GetOverlappedResult(mPipe, &overlapped, &written, true);
       if (!success) {
+        printf("GetOverlappedResult failed\n");
         throw "GetOverlappedResult failed";
       }
 
       if (written != buf.size()) {
+        printf("Wrong number of bytes written\n");
         throw "Wrong number of bytes written";
       }
     #else
@@ -112,6 +115,7 @@ public:
 
       if (!success) {
         if (GetLastError() != ERROR_IO_PENDING) {
+          printf("Read error\n");
           throw "Read error";
         }
       }
@@ -119,6 +123,7 @@ public:
       DWORD read;
       success = GetOverlappedResult(mPipe, &overlapped, &read, true);
       if (!success) {
+        printf("GetOverlappedResult failed\n");
         throw "GetOverlappedResult failed";
       }
       
