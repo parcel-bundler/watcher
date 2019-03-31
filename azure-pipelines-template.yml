@@ -32,6 +32,7 @@ jobs:
       inputs:
         archiveFilePatterns: 'watchman.zip'
         destinationFolder: $(Agent.HomeDirectory)
+        cleanDestinationFolder: false
       displayName: Extract Watchman
     - script: |
         set PATH=%PATH%;$(Agent.HomeDirectory)\watchman
