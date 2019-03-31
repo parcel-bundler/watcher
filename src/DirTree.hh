@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <ostream>
 #include <istream>
+#include <memory>
 #include "Event.hh"
 
 #ifdef _WIN32
