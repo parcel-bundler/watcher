@@ -31,7 +31,7 @@ jobs:
     - task: ExtractFiles@1
       inputs:
         archiveFilePatterns: 'watchman.zip'
-        destinationFolder: $(Agent.HomeDirectory)
+        destinationFolder: $(Agent.HomeDirectory)\watchman
         cleanDestinationFolder: false
       displayName: Extract Watchman
     - script: |
