@@ -15,20 +15,31 @@
 class IPC {
 public:
   IPC(std::string path) {
+    mStopped = false;
     #ifdef _WIN32
-      mPipe = CreateFile( 
-        path.data(), // pipe name 
-        GENERIC_READ | GENERIC_WRITE, // read and write access 
-        0, // no sharing 
-        NULL, // default security attributes
-        OPEN_EXISTING, // opens existing pipe 
-        FILE_FLAG_OVERLAPPED, // attributes 
-        NULL // no template file
-      );
+      while (true) {
+        mPipe = CreateFile(
+          path.data(), // pipe name 
+          GENERIC_READ | GENERIC_WRITE, // read and write access 
+          0, // no sharing 
+          NULL, // default security attributes
+          OPEN_EXISTING, // opens existing pipe 
+          FILE_FLAG_OVERLAPPED, // attributes 
+          NULL // no template file
+        );
 
-      if (mPipe == INVALID_HANDLE_VALUE) {
-        printf("Could not open pipe\n");
-        throw "Could not open pipe";
+        if (mPipe != INVALID_HANDLE_VALUE) {
+          break;
+        }
+
+        if (GetLastError() != ERROR_PIPE_BUSY) {
+          throw "Could not open pipe";
+        }
+
+        // Wait for pipe to become available if it is busy
+        if (!WaitNamedPipe(path.data(), 30000)) {
+          throw "Error waiting for pipe";
+        }
       }
 
       mReader = CreateEvent(NULL, true, false, NULL);
@@ -47,6 +58,7 @@ public:
   }
 
   ~IPC() {
+    mStopped = true;
     #ifdef _WIN32
       CancelIo(mPipe);
       CloseHandle(mPipe);
@@ -69,6 +81,10 @@ public:
         &overlapped // overlapped 
       );
 
+      if (mStopped) {
+        return;
+      }
+
       if (!success) {
         if (GetLastError() != ERROR_IO_PENDING) {
           throw "Write error";
@@ -78,12 +94,10 @@ public:
       DWORD written;
       success = GetOverlappedResult(mPipe, &overlapped, &written, true);
       if (!success) {
-        printf("GetOverlappedResult failed\n");
         throw "GetOverlappedResult failed";
       }
 
       if (written != buf.size()) {
-        printf("Wrong number of bytes written\n");
         throw "Wrong number of bytes written";
       }
     #else
@@ -93,6 +107,8 @@ public:
         if (r == -1) {
           if (errno == EAGAIN) {
             r = 0;
+          } else if (mStopped) {
+            return;
           } else {
             throw "Write error";
           }
@@ -113,24 +129,26 @@ public:
         &overlapped // overlapped 
       );
 
-      if (!success) {
+      if (!success && !mStopped) {
         if (GetLastError() != ERROR_IO_PENDING) {
-          printf("Read error\n");
           throw "Read error";
         }
       }
 
-      DWORD read;
+      DWORD read = 0;
       success = GetOverlappedResult(mPipe, &overlapped, &read, true);
-      if (!success) {
-        printf("GetOverlappedResult failed\n");
+      if (!success && !mStopped) {
         throw "GetOverlappedResult failed";
       }
       
       return read;
     #else
-      int r = ::read(mSock, buf, len);
+      int r = ::read(mSock, buf, len);      
       if (r < 0) {
+        if (mStopped) {
+          return 0;
+        }
+
         throw strerror(errno);
       }
 
@@ -139,6 +157,7 @@ public:
   }
 
 private:
+  bool mStopped;
   #ifdef _WIN32
     HANDLE mPipe;
     HANDLE mReader;
