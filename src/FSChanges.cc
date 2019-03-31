@@ -48,11 +48,13 @@ public:
   std::shared_ptr<Watcher> watcher;
   std::string snapshotPath;
   bool returnEvents;
+  bool useSharedWatcher;
 
-  FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func)
+  FSAsyncRunner(Env env, Value dir, Value snap, Value opts, Promise::Deferred r, AsyncFunction func, bool useSharedWatcher)
     : env(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
       returnEvents(false),
+      useSharedWatcher(useSharedWatcher),
       func(func), deferred(r) {
 
     napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
@@ -67,10 +69,17 @@ public:
         Error::New(env).ThrowAsJavaScriptException();
     }
 
-    watcher = Watcher::getShared(
-      std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnore(env, opts)
-    );
+    if (useSharedWatcher) {
+      watcher = Watcher::getShared(
+        std::string(dir.As<String>().Utf8Value().c_str()),
+        getIgnore(env, opts)
+      );
+    } else {
+      watcher = std::make_shared<Watcher>(
+        std::string(dir.As<String>().Utf8Value().c_str()),
+        getIgnore(env, opts)
+      );
+    }
 
     backend = getBackend(env, opts);
   }
@@ -153,7 +162,7 @@ void getEventsSinceAsync(FSAsyncRunner *runner) {
   runner->returnEvents = true;
 }
 
-Value queueWork(const CallbackInfo& info, AsyncFunction func) {
+Value queueWork(const CallbackInfo& info, AsyncFunction func, bool useSharedWatcher) {
   Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
     TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
@@ -171,18 +180,18 @@ Value queueWork(const CallbackInfo& info, AsyncFunction func) {
   }
 
   Promise::Deferred deferred = Promise::Deferred::New(env);
-  FSAsyncRunner *runner = new FSAsyncRunner(info.Env(), info[0], info[1], info[2], deferred, func);
+  FSAsyncRunner *runner = new FSAsyncRunner(info.Env(), info[0], info[1], info[2], deferred, func, useSharedWatcher);
   runner->Queue();
 
   return deferred.Promise();
 }
 
 Value writeSnapshot(const CallbackInfo& info) {
-  return queueWork(info, writeSnapshotAsync);
+  return queueWork(info, writeSnapshotAsync, true);
 }
 
 Value getEventsSince(const CallbackInfo& info) {
-  return queueWork(info, getEventsSinceAsync);
+  return queueWork(info, getEventsSinceAsync, false);
 }
 
 Value subscribe(const CallbackInfo& info) {

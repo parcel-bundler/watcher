@@ -454,6 +454,7 @@ describe('watcher', () => {
 
           let l1 = listen();
           let l2 = listen();
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
 
@@ -482,6 +483,7 @@ describe('watcher', () => {
 
           let l1 = listen([path.join(dir, 'test1.txt')]);
           let l2 = listen([path.join(dir, 'test2.txt')]);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
           fs.writeFile(path.join(dir, 'test2.txt'), 'test1');
@@ -513,6 +515,7 @@ describe('watcher', () => {
 
           let l1 = listen(dir1);
           let l2 = listen(dir2);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir1, 'test1.txt'), 'test1');
           fs.writeFile(path.join(dir2, 'test1.txt'), 'test1');
@@ -522,6 +525,47 @@ describe('watcher', () => {
             [{type: 'create', path: path.join(dir1, 'test1.txt')}],
             [{type: 'create', path: path.join(dir2, 'test1.txt')}]
           ]);
+        });
+
+        it('should work when getting events since a snapshot on an already watched directory', async () => {
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let snapshot = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.mkdirpSync(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          function listen(dir) {
+            return new Promise(resolve => {
+              let fn = events => {
+                setImmediate(() => resolve([events, fn]));
+              };
+              
+              fschanges.subscribe(dir, fn, {backend});
+            });
+          }
+
+          let l = listen(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          await fs.writeFile(path.join(dir, 'test1.txt'), 'hello1');
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          await fschanges.writeSnapshot(dir, snapshot, {backend});
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          await fs.writeFile(path.join(dir, 'test2.txt'), 'hello2');
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          let [watched, fn] = await l;
+          assert.deepEqual(watched, [
+            {type: 'create', path: path.join(dir, 'test1.txt')}
+          ]);
+
+          let since = await fschanges.getEventsSince(dir, snapshot, {backend});
+          assert.deepEqual(since, [
+            {type: 'create', path: path.join(dir, 'test2.txt')}
+          ]);
+
+          fschanges.unsubscribe(dir, fn, {backend});
         });
       });
     });

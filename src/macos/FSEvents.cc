@@ -8,6 +8,8 @@
 #include "./FSEvents.hh"
 #include "../Watcher.hh"
 
+#define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
+
 void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
   FSEventStreamStop(stream);
   FSEventStreamUnscheduleFromRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
@@ -17,12 +19,9 @@ void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
 
 struct State {
   FSEventStreamRef stream;
-  struct timespec since;
+  std::shared_ptr<DirTree> tree;
+  uint64_t since;
 };
-
-bool operator <=(const timespec& lhs, const timespec& rhs) {
-  return lhs.tv_sec == rhs.tv_sec ? lhs.tv_nsec <= rhs.tv_nsec : lhs.tv_sec <= rhs.tv_sec;
-}
 
 void FSEventsCallback(
   ConstFSEventStreamRef streamRef,
@@ -36,7 +35,7 @@ void FSEventsCallback(
   Watcher *watcher = (Watcher *)clientCallBackInfo;
   EventList *list = &watcher->mEvents;
   State *state = (State *)watcher->state;
-  struct timespec since = state->since;
+  uint64_t since = state->since;
 
   for (size_t i = 0; i < numEvents; ++i) {
     bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
@@ -62,21 +61,21 @@ void FSEventsCallback(
 
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
-      watcher->mTree->add(paths[i], 0, isDir);
+      state->tree->add(paths[i], 0, isDir);
       list->create(paths[i]);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
-      watcher->mTree->remove(paths[i]);
+      state->tree->remove(paths[i]);
       list->remove(paths[i]);
     } else if (isModified && !(isCreated || isRemoved || isRenamed)) {
-      watcher->mTree->update(paths[i], 0);
+      state->tree->update(paths[i], 0);
       list->update(paths[i]);
     } else {
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // We also check our local cache of recently modified files to see if we knew about it before.
       // This helps disambiguate creates, updates, and deletes.
-      auto existed = watcher->mTree->find(paths[i]);
+      auto existed = !since && state->tree->find(paths[i]);
       struct stat file;
-      if (stat(paths[i], &file) != 0) {
+      if (stat(paths[i], &file)) {
         // File does not exist now. If it existed before in our local cache,
         // or was removed/renamed and we don't have a cache (querying since a snapshot)
         // then the file was probably removed. This is not exact since the flags set by
@@ -84,8 +83,8 @@ void FSEventsCallback(
         // know whether the create and delete both happened since our snapshot (in which case
         // we'd rather ignore this event completely). This will result in some extra delete events 
         // being emitted for files we don't know about, but that is the best we can do.
-        if (existed || (since.tv_sec != 0 && (isRemoved || isRenamed))) {
-          watcher->mTree->remove(paths[i]);
+        if (existed || (since && (isRemoved || isRenamed))) {
+          state->tree->remove(paths[i]);
           list->remove(paths[i]);
         }
 
@@ -93,11 +92,12 @@ void FSEventsCallback(
       }
 
       // If the file was modified, and existed before, then this is an update, otherwise a create.
-      if (isModified && (existed || file.st_birthtimespec <= since)) {
-        watcher->mTree->update(paths[i], file.st_mtime);
+      uint64_t mtime = CONVERT_TIME(file.st_birthtimespec);
+      if (isModified && (existed || mtime <= since)) {
+        state->tree->update(paths[i], mtime);
         list->update(paths[i]);
       } else {
-        watcher->mTree->add(paths[i], file.st_mtime, S_ISDIR(file.st_mode));
+        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
         list->create(paths[i]);
       }
     }
@@ -108,9 +108,7 @@ void FSEventsCallback(
   }
 }
 
-void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
-  watcher.mTree = new DirTree();
-  
+void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {  
   CFAbsoluteTime latency = 0.01;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
@@ -155,6 +153,7 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   CFRelease(fileWatchPath);
 
   State *s = (State *)watcher.state;
+  s->tree = std::make_shared<DirTree>(watcher.mDir);
   s->stream = stream;
 }
 
@@ -186,9 +185,7 @@ void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
 
   struct timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
-  ofs << now.tv_sec;
-  ofs << "\n";
-  ofs << now.tv_nsec;
+  ofs << CONVERT_TIME(now);
 }
 
 void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
@@ -199,11 +196,9 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   }
 
   FSEventStreamEventId id;
+  uint64_t since;
   ifs >> id;
-
-  struct timespec since;
-  ifs >> since.tv_sec;
-  ifs >> since.tv_nsec;
+  ifs >> since;
 
   State *s = new State;
   s->since = since;
@@ -215,16 +210,11 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 
   delete s;
   watcher.state = NULL;
-
-  delete watcher.mTree;
-  watcher.mTree = NULL;
 }
 
 void FSEventsBackend::subscribe(Watcher &watcher) {
   State *s = new State;
-  struct timespec since;
-  memset(&since, 0, sizeof(since));
-  s->since = since;
+  s->since = 0;
   watcher.state = (void *)s;
   startStream(watcher, kFSEventStreamEventIdSinceNow);
 }
@@ -235,7 +225,4 @@ void FSEventsBackend::unsubscribe(Watcher &watcher) {
 
   delete s;
   watcher.state = NULL;
-
-  delete watcher.mTree;
-  watcher.mTree = NULL;
 }

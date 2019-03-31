@@ -9,9 +9,7 @@
 #define st_mtim st_mtimespec
 #endif
 
-DirTree *BruteForceBackend::readTree(Watcher &watcher) {
-  DirTree *tree = new DirTree();
-
+void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
   char *paths[2] {(char *)watcher.mDir.c_str(), NULL};
   FTS *fts = fts_open(paths, FTS_NOCHDIR | FTS_PHYSICAL, NULL);
   FTSENT *node;
@@ -26,5 +24,4 @@ DirTree *BruteForceBackend::readTree(Watcher &watcher) {
   }
 
   fts_close(fts);
-  return tree;
 }
