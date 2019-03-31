@@ -26,7 +26,7 @@ jobs:
 
   - ${{ if eq(parameters.name, 'Windows') }}:
     - script: |
-        curl -sSf -o watchman.zip https://ci.appveyor.com/api/buildjobs/vkp4mmk1cri9jsel/artifacts/watchman.zip
+        curl -o watchman.zip https://ci.appveyor.com/api/buildjobs/vkp4mmk1cri9jsel/artifacts/watchman.zip
         dir
       displayName: Download Watchman
     - task: ExtractFiles@1
