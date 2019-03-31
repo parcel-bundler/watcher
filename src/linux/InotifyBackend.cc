@@ -78,7 +78,7 @@ void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr
     throw "inotify_add_watch failed";
   }
 
-  std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>;
+  std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>();
   sub->tree = tree;
   sub->entry = entry;
   sub->watcher = &watcher;
