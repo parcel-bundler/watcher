@@ -42,19 +42,19 @@ public:
     BSERType type = decodeType(iss);
 
     switch (type) {
-      case INT8:
+      case BSER_INT8:
         iss.read(reinterpret_cast<char*>(&int8), sizeof(int8));
         value = int8;
         break;
-      case INT16:
+      case BSER_INT16:
         iss.read(reinterpret_cast<char*>(&int16), sizeof(int16));
         value = int16;
         break;
-      case INT32:
+      case BSER_INT32:
         iss.read(reinterpret_cast<char*>(&int32), sizeof(int32));
         value = int32;
         break;
-      case INT64:
+      case BSER_INT64:
         iss.read(reinterpret_cast<char*>(&int64), sizeof(int64));
         value = int64;
         break;
@@ -69,19 +69,19 @@ public:
 
   void encode(std::ostream &oss) override {
     if (value <= INT8_MAX) {
-      encodeType(oss, INT8);
+      encodeType(oss, BSER_INT8);
       int8_t v = (int8_t)value;
       oss.write(reinterpret_cast<char*>(&v), sizeof(v));
     } else if (value <= INT16_MAX) {
-      encodeType(oss, INT16);
+      encodeType(oss, BSER_INT16);
       int16_t v = (int16_t)value;
       oss.write(reinterpret_cast<char*>(&v), sizeof(v));
     } else if (value <= INT32_MAX) {
-      encodeType(oss, INT32);
+      encodeType(oss, BSER_INT32);
       int32_t v = (int32_t)value;
       oss.write(reinterpret_cast<char*>(&v), sizeof(v));
     } else {
-      encodeType(oss, INT64);
+      encodeType(oss, BSER_INT64);
       oss.write(reinterpret_cast<char*>(&value), sizeof(value));
     }
   }
@@ -92,7 +92,7 @@ public:
   BSERArray() : Value() {}
   BSERArray(BSER::Array value) : Value(value) {}
   BSERArray(std::istream &iss) {
-    expectType(iss, ARRAY);
+    expectType(iss, BSER_ARRAY);
     int64_t len = BSERInteger(iss).intValue();
     for (int64_t i = 0; i < len; i++) {
       value.push_back(BSER(iss));
@@ -104,7 +104,7 @@ public:
   }
 
   void encode(std::ostream &oss) override {
-    encodeType(oss, ARRAY);
+    encodeType(oss, BSER_ARRAY);
     BSERInteger(value.size()).encode(oss);
     for (auto it = value.begin(); it != value.end(); it++) {
       it->encode(oss);
@@ -116,7 +116,7 @@ class BSERString : public Value<std::string> {
 public:
   BSERString(std::string value) : Value(value) {}
   BSERString(std::istream &iss) {
-    expectType(iss, STRING);
+    expectType(iss, BSER_STRING);
     int64_t len = BSERInteger(iss).intValue();
     value.resize(len);
     iss.read(&value[0], len);
@@ -127,7 +127,7 @@ public:
   }
 
   void encode(std::ostream &oss) override {
-    encodeType(oss, STRING);
+    encodeType(oss, BSER_STRING);
     BSERInteger(value.size()).encode(oss);
     oss << value;
   }
@@ -138,7 +138,7 @@ public:
   BSERObject() : Value() {}
   BSERObject(BSER::Object value) : Value(value) {}
   BSERObject(std::istream &iss) {
-    expectType(iss, OBJECT);
+    expectType(iss, BSER_OBJECT);
     int64_t len = BSERInteger(iss).intValue();
     for (int64_t i = 0; i < len; i++) {
       auto key = BSERString(iss).stringValue();
@@ -152,7 +152,7 @@ public:
   }
 
   void encode(std::ostream &oss) override {
-    encodeType(oss, OBJECT);
+    encodeType(oss, BSER_OBJECT);
     BSERInteger(value.size()).encode(oss);
     for (auto it = value.begin(); it != value.end(); it++) {
       BSERString(it->first).encode(oss);
@@ -165,7 +165,7 @@ class BSERDouble : public Value<double> {
 public:
   BSERDouble(double value) : Value(value) {}
   BSERDouble(std::istream &iss) {
-    expectType(iss, REAL);
+    expectType(iss, BSER_REAL);
     iss.read(reinterpret_cast<char*>(&value), sizeof(value));
   }
 
@@ -174,7 +174,7 @@ public:
   }
 
   void encode(std::ostream &oss) override {
-    encodeType(oss, REAL);
+    encodeType(oss, BSER_REAL);
     oss.write(reinterpret_cast<char*>(&value), sizeof(value));
   }
 };
@@ -184,7 +184,7 @@ public:
   BSERBoolean(bool value) : Value(value) {}
   bool boolValue() override { return value; }
   void encode(std::ostream &oss) override {
-    int8_t t = value == true ? BOOL_TRUE : BOOL_FALSE;
+    int8_t t = value == true ? BSER_BOOL_TRUE : BSER_BOOL_FALSE;
     oss.write(reinterpret_cast<char*>(&t), sizeof(t));
   }
 };
@@ -193,12 +193,12 @@ class BSERNull : public Value<bool> {
 public:
   BSERNull() : Value(false) {}
   void encode(std::ostream &oss) override {
-    encodeType(oss, NUL);
+    encodeType(oss, BSER_NULL);
   }
 };
 
 std::shared_ptr<BSERArray> decodeTemplate(std::istream &iss) {
-  expectType(iss, TEMPLATE);
+  expectType(iss, BSER_TEMPLATE);
   auto keys = BSERArray(iss).arrayValue();
   auto len = BSERInteger(iss).intValue();
   std::shared_ptr<BSERArray> arr = std::make_shared<BSERArray>();
@@ -223,37 +223,37 @@ BSER::BSER(std::istream &iss) {
   iss.unget();
 
   switch (type) {
-    case ARRAY:
+    case BSER_ARRAY:
       m_ptr = std::make_shared<BSERArray>(iss);
       break;
-    case OBJECT:
+    case BSER_OBJECT:
       m_ptr = std::make_shared<BSERObject>(iss);
       break;
-    case STRING:
+    case BSER_STRING:
       m_ptr = std::make_shared<BSERString>(iss);
       break;
-    case INT8:
-    case INT16:
-    case INT32:
-    case INT64:
+    case BSER_INT8:
+    case BSER_INT16:
+    case BSER_INT32:
+    case BSER_INT64:
       m_ptr = std::make_shared<BSERInteger>(iss);
       break;
-    case REAL:
+    case BSER_REAL:
       m_ptr = std::make_shared<BSERDouble>(iss);
       break;
-    case BOOL_TRUE:
+    case BSER_BOOL_TRUE:
       iss.ignore(1);
       m_ptr = std::make_shared<BSERBoolean>(true);
       break;
-    case BOOL_FALSE:
+    case BSER_BOOL_FALSE:
       iss.ignore(1);
       m_ptr = std::make_shared<BSERBoolean>(false);
       break;
-    case NUL:
+    case BSER_NULL:
       iss.ignore(1);
       m_ptr = std::make_shared<BSERNull>();
       break;
-    case TEMPLATE:
+    case BSER_TEMPLATE:
       m_ptr = decodeTemplate(iss);
       break;
     default:

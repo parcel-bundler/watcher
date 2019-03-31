@@ -1,13 +1,17 @@
 #include <string>
 #include <fstream>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+#include <algorithm>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
 #include "./watchman.hh"
+
+#ifdef _WIN32
+#define S_ISDIR(mode) ((mode & _S_IFDIR) == _S_IFDIR)
+#define popen _popen
+#define pclose _pclose
+#endif
 
 template<typename T>
 BSER readBSER(T &&do_read) {
@@ -19,10 +23,6 @@ BSER readBSER(T &&do_read) {
     // Start by reading a minimal amount of data in order to decode the length.
     // After that, attempt to read the remaining length, up to the buffer size.
     r = do_read(buffer, len == -1 ? 20 : (len < 256 ? len : 256));
-    if (r < 0) {
-      throw strerror(errno);
-    }
-
     oss << std::string(buffer, r);
 
     if (len == -1) {
@@ -41,8 +41,7 @@ std::string getSockPath() {
     return std::string(var);
   }
 
-  FILE *fp;
-  fp = popen("watchman --output-encoding=bser get-sockname", "r");
+  FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
     throw "Failed to execute watchman";
   }
@@ -55,41 +54,20 @@ std::string getSockPath() {
   return b.objectValue().find("sockname")->second.stringValue();
 }
 
-int watchmanConnect() {
+std::unique_ptr<IPC> watchmanConnect() {
   std::string path = getSockPath();
-  struct sockaddr_un addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, path.c_str(), sizeof(addr.sun_path) - 1);
-
-  int sock = socket(AF_UNIX, SOCK_STREAM, 0);
-  if (connect(sock, (struct sockaddr *) &addr, sizeof(struct sockaddr_un))) {
-    throw "Error connecting to watchman";
-  }
-
-  return sock;
+  return std::make_unique<IPC>(path);
 }
 
-BSER watchmanRead(int sock) {
-  return readBSER([sock] (char *buf, size_t len) {
-    return read(sock, buf, len);
+BSER watchmanRead(IPC *ipc) {
+  return readBSER([ipc] (char *buf, size_t len) {
+    return ipc->read(buf, len);
   });
 }
 
 BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
   std::string cmd = b.encode();
-
-  int r = 0;
-  for (unsigned int i = 0; i != cmd.size(); i += r) {
-    r = write(mSock, &cmd[i], cmd.size() - i);
-    if (r == -1) {
-      if (errno == EAGAIN) {
-        r = 0;
-      } else {
-        throw "Write error";
-      }
-    }
-  }
+  mIPC->write(cmd);
 
   mRequestSignal.notify();
   mResponseSignal.wait();
@@ -106,8 +84,7 @@ void WatchmanBackend::watchmanWatch(std::string dir) {
 
 bool WatchmanBackend::checkAvailable() {
   try {
-    int sock = watchmanConnect();
-    close(sock);
+    watchmanConnect();
     return true;
   } catch (const char *err) {
     return false;
@@ -124,6 +101,9 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
   for (auto it = files.begin(); it != files.end(); it++) {
     auto file = it->objectValue();
     auto name = file.find("name")->second.stringValue();
+    #ifdef _WIN32
+      std::replace(name.begin(), name.end(), '/', '\\');
+    #endif
     auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
@@ -156,7 +136,7 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 }
 
 void WatchmanBackend::start() {
-  mSock = watchmanConnect();
+  mIPC = watchmanConnect();
   notifyStarted();
 
   while (true) {
@@ -175,7 +155,7 @@ void WatchmanBackend::start() {
     // If there is an error and we are stopped, break.
     BSER b;
     try {
-      b = watchmanRead(mSock);
+      b = watchmanRead(&*mIPC);
     } catch (const char *err) {
       if (mStopped) {
         break;
@@ -209,7 +189,7 @@ WatchmanBackend::~WatchmanBackend() {
   // Mark the watcher as stopped, close the socket, and trigger the lock.
   // This will cause the read loop to be broken and the thread to exit.
   mStopped = true;
-  shutdown(mSock, SHUT_RDWR);
+  mIPC.reset();
   mRequestSignal.notify();
 
   // If not ended yet, wait.
