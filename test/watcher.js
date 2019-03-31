@@ -454,6 +454,7 @@ describe('watcher', () => {
 
           let l1 = listen();
           let l2 = listen();
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
 
@@ -482,6 +483,7 @@ describe('watcher', () => {
 
           let l1 = listen([path.join(dir, 'test1.txt')]);
           let l2 = listen([path.join(dir, 'test2.txt')]);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir, 'test1.txt'), 'test1');
           fs.writeFile(path.join(dir, 'test2.txt'), 'test1');
@@ -513,6 +515,7 @@ describe('watcher', () => {
 
           let l1 = listen(dir1);
           let l2 = listen(dir2);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           fs.writeFile(path.join(dir1, 'test1.txt'), 'test1');
           fs.writeFile(path.join(dir2, 'test1.txt'), 'test1');
@@ -541,6 +544,7 @@ describe('watcher', () => {
           }
 
           let l = listen(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           await fs.writeFile(path.join(dir, 'test1.txt'), 'hello1');
           await new Promise(resolve => setTimeout(resolve, 100));

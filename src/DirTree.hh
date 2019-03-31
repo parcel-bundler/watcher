@@ -19,123 +19,29 @@ struct DirEntry {
   bool isDir;
   mutable void *state;
 
-  DirEntry(std::string p, uint64_t t, bool d) {
-    path = p;
-    mtime = t;
-    isDir = d;
-    state = NULL;
-  }
-  
-  DirEntry(std::istream &stream) {
-    size_t size;
-
-    if (stream >> size) {
-      path.resize(size);
-      if (stream.read(&path[0], size)) {
-        stream >> mtime;
-        stream >> isDir;
-      }
-    }
-  }
-
+  DirEntry(std::string p, uint64_t t, bool d);
+  DirEntry(std::istream &stream);
+  void write(std::ostream &stream) const;
   bool operator==(const DirEntry &other) const {
     return path == other.path;
   }
-
-  void write(std::ostream &stream) const {
-    stream << path.size() << path << mtime << " " << isDir << "\n";
-  }
 };
 
-namespace std {
-  template <>
-  struct hash<DirEntry> {
-    std::size_t operator()(const DirEntry& k) const {
-      return hash<string>()(k.path);
-    }
-  };
-}
-
 struct DirTree {
+  std::string root;
+  bool isComplete;
   std::unordered_map<std::string, DirEntry> entries;
-  DirTree() {}
 
-  DirTree(std::istream &stream) {
-    size_t size;
-    if (stream >> size) {
-      for (size_t i = 0; i < size; i++) {
-        DirEntry entry(stream);
-        entries.emplace(entry.path, entry);
-      }
-    }
-  }
+  static std::shared_ptr<DirTree> getCached(std::string root);
+  DirTree(std::string root) : root(root), isComplete(false) {}
+  DirTree(std::string root, std::istream &stream);
 
-  DirEntry *add(std::string path, uint64_t mtime, bool isDir) {
-    DirEntry entry(path, mtime, isDir);
-    auto it = entries.emplace(entry.path, entry);
-    return &it.first->second;
-  }
-
-  DirEntry *find(std::string path) {
-    auto found = entries.find(path);
-    if (found == entries.end()) {
-      return NULL;
-    }
-
-    return &found->second;
-  }
-
-  DirEntry *update(std::string path, uint64_t mtime) {
-    DirEntry *found = find(path);
-    if (found) {
-      found->mtime = mtime;
-    }
-
-    return found;
-  }
-
-  void remove(std::string path) {
-    DirEntry *found = find(path);
-
-    // Remove all sub-entries if this is a directory
-    if (found && found->isDir) {
-      std::string pathStart = path + DIR_SEP;
-      for (auto it = entries.begin(); it != entries.end();) {
-        if (it->first.rfind(pathStart, 0) == 0) {
-          it = entries.erase(it);
-        } else {
-          it++;
-        }
-      }
-    }
-
-    entries.erase(path);
-  }
-
-  void write(std::ostream &stream) {
-    stream << entries.size() << "\n";
-    for (auto it = entries.begin(); it != entries.end(); it++) {
-      it->second.write(stream);
-    }
-  }
-
-  void getChanges(DirTree *snapshot, EventList &events) {
-    for (auto it = entries.begin(); it != entries.end(); it++) {
-      auto found = snapshot->entries.find(it->first);
-      if (found == snapshot->entries.end()) {
-        events.create(it->second.path);
-      } else if (found->second.mtime != it->second.mtime && !found->second.isDir && !it->second.isDir) {
-        events.update(it->second.path);
-      }
-    }
-
-    for (auto it = snapshot->entries.begin(); it != snapshot->entries.end(); it++) {
-      size_t count = entries.count(it->first);
-      if (count == 0) {
-        events.remove(it->second.path);
-      }
-    }
-  }
+  DirEntry *add(std::string path, uint64_t mtime, bool isDir);
+  DirEntry *find(std::string path);
+  DirEntry *update(std::string path, uint64_t mtime);
+  void remove(std::string path);
+  void write(std::ostream &stream);
+  void getChanges(DirTree *snapshot, EventList &events);
 };
 
 #endif

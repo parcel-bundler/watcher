@@ -4,12 +4,16 @@
 #include "../Event.hh"
 #include "./BruteForceBackend.hh"
 
-DirTree *BruteForceBackend::getTree(Watcher &watcher) {
-  if (!watcher.mTree) {
-    watcher.mTree = readTree(watcher);
+std::shared_ptr<DirTree> BruteForceBackend::getTree(Watcher &watcher, bool shouldRead) {
+  auto tree = DirTree::getCached(watcher.mDir);
+
+  // If the tree is not complete, read it if needed.
+  if (!tree->isComplete && shouldRead) {
+    readTree(watcher, tree);
+    tree->isComplete = true;
   }
 
-  return watcher.mTree;
+  return tree;
 }
 
 void BruteForceBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
@@ -26,7 +30,7 @@ void BruteForceBackend::getEventsSince(Watcher &watcher, std::string *snapshotPa
     return;
   }
 
-  auto snapshot = new DirTree(ifs);
+  auto snapshot = DirTree(watcher.mDir, ifs);
   auto now = getTree(watcher);
-  now->getChanges(snapshot, watcher.mEvents);
+  now->getChanges(&snapshot, watcher.mEvents);
 }

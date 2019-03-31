@@ -7,8 +7,7 @@
 
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-DirTree *BruteForceBackend::readTree(Watcher &watcher) {
-  DirTree *tree = new DirTree();
+void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
   HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;
   
@@ -43,7 +42,6 @@ DirTree *BruteForceBackend::readTree(Watcher &watcher) {
   }
 
   FindClose(hFind);
-  return tree;
 }
 
 void WindowsBackend::start() {
@@ -84,9 +82,10 @@ std::string utf16ToUtf8(const WCHAR *input, size_t length) {
 
 class Subscription {
 public:
-  Subscription(Watcher *watcher) {
+  Subscription(Watcher *watcher, std::shared_ptr<DirTree> tree) {
     mRunning = true;
     mWatcher = watcher;
+    mTree = tree;
     ZeroMemory(&mOverlapped, sizeof(OVERLAPPED));
     mOverlapped.hEvent = this;
     mReadBuffer.resize(1024 * 1024);
@@ -186,25 +185,35 @@ public:
 
     switch (info->Action) {
       case FILE_ACTION_ADDED:
-      case FILE_ACTION_RENAMED_NEW_NAME:
-        mWatcher->mEvents.create(path);
+      case FILE_ACTION_RENAMED_NEW_NAME: {
+        WIN32_FILE_ATTRIBUTE_DATA data;
+        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+          mWatcher->mEvents.create(path);
+          mTree->add(path, CONVERT_TIME(data.ftLastWriteTime), data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+        }
         break;
+      }
       case FILE_ACTION_MODIFIED: {
-        DWORD attrs = GetFileAttributesW(utf8ToUtf16(path).data());
-        if (!(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-          mWatcher->mEvents.update(path);
+        WIN32_FILE_ATTRIBUTE_DATA data;
+        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+          mTree->update(path, CONVERT_TIME(data.ftLastWriteTime));
+          if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            mWatcher->mEvents.update(path);
+          }
         }
         break;
       }
       case FILE_ACTION_REMOVED:
       case FILE_ACTION_RENAMED_OLD_NAME:
         mWatcher->mEvents.remove(path);
+        mTree->remove(path);
         break;
     }
   }
 
 private:
   Watcher *mWatcher;
+  std::shared_ptr<DirTree> mTree;
   bool mRunning;
   HANDLE mDirectoryHandle;
   std::vector<BYTE> mReadBuffer;
@@ -214,7 +223,7 @@ private:
 
 void WindowsBackend::subscribe(Watcher &watcher) {
   // Create a subscription for this watcher
-  Subscription *sub = new Subscription(&watcher);
+  Subscription *sub = new Subscription(&watcher, getTree(watcher, false));
   watcher.state = (void *)sub;
 
   // Queue polling for this subscription in the correct thread.
