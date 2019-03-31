@@ -26,7 +26,8 @@ BSER readBSER(T &&do_read) {
     oss << std::string(buffer, r);
 
     if (len == -1) {
-      len = BSER::decodeLength(oss) + oss.tellg();
+      uint64_t l = BSER::decodeLength(oss);
+      len = l + oss.tellg();
     }
 
     len -= r;
@@ -43,7 +44,6 @@ std::string getSockPath() {
 
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
-    printf("Failed to execute watchman\n");
     throw "Failed to execute watchman";
   }
 
@@ -95,7 +95,6 @@ bool WatchmanBackend::checkAvailable() {
 void handleFiles(Watcher &watcher, BSER::Object obj) {
   auto found = obj.find("files");
   if (found == obj.end()) {
-    printf("Error reading changes from watchman\n");
     throw "Error reading changes from watchman";
   }
   
@@ -162,7 +161,6 @@ void WatchmanBackend::start() {
       if (mStopped) {
         break;
       } else {
-        printf("%s\n", err);
         throw err;
       }
     }
@@ -170,7 +168,6 @@ void WatchmanBackend::start() {
     auto obj = b.objectValue();
     auto error = obj.find("error");
     if (error != obj.end()) {
-      printf("%s\n", error->second.stringValue().c_str());
       throw error->second.stringValue().c_str();
     }
 
