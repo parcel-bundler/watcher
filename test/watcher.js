@@ -39,12 +39,15 @@ describe.only('watcher', () => {
       let ignoreDir, ignoreFile;
 
       before(async () => {
+        console.log('before');
         tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
+        console.log('subscribing');
         fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        console.log('subscribed');
       });
 
       after(async () => {

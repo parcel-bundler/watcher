@@ -90,8 +90,10 @@ void WatchmanBackend::watchmanWatch(std::string dir) {
 }
 
 bool WatchmanBackend::checkAvailable() {
+  printf("check\n");
   try {
     watchmanConnect();
+    printf("after connect\n");
     return true;
   } catch (const char *err) {
     printf("%s\n", err);
