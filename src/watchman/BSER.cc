@@ -283,6 +283,8 @@ void BSER::encode(std::ostream &oss) {
 int64_t BSER::decodeLength(std::istream &iss) {
   char pdu[2];
   if (!iss.read(pdu, 2) || pdu[0] != 0 || pdu[1] != 1) {
+    printf("invalid bser\n");
+    fflush(stdout);
     throw "Invalid BSER";
   }
 

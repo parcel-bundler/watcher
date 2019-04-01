@@ -28,6 +28,8 @@ BSER readBSER(T &&do_read) {
     if (len == -1) {
       uint64_t l = BSER::decodeLength(oss);
       len = l + oss.tellg();
+      printf("read length %d %d %d\n", l, len, oss.tellg());
+      fflush(stdout);
     }
 
     len -= r;
