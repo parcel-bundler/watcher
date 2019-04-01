@@ -38,31 +38,37 @@ BSER readBSER(T &&do_read) {
 
 std::string getSockPath() {
   printf("get sock\n");
+  fflush(stdout);
   auto var = getenv("WATCHMAN_SOCK");
   if (var && *var) {
     return std::string(var);
   }
 
   printf("popen\n");
+  fflush(stdout);
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
     printf("error exec\n");
+    fflush(stdout);
     throw "Failed to execute watchman";
   }
 
   printf("read\n");
+  fflush(stdout);
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
 
   pclose(fp);
   printf("here\n");
+  fflush(stdout);
   return b.objectValue().find("sockname")->second.stringValue();
 }
 
 std::unique_ptr<IPC> watchmanConnect() {
   std::string path = getSockPath();
   printf("%s\n", path.c_str());
+  fflush(stdout);
   return std::unique_ptr<IPC>(new IPC(path));
 }
 
@@ -91,12 +97,15 @@ void WatchmanBackend::watchmanWatch(std::string dir) {
 
 bool WatchmanBackend::checkAvailable() {
   printf("check\n");
+  fflush(stdout);
   try {
     watchmanConnect();
     printf("after connect\n");
+    fflush(stdout);
     return true;
   } catch (const char *err) {
     printf("%s\n", err);
+    fflush(stdout);
     return false;
   }
 }
@@ -147,8 +156,10 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 
 void WatchmanBackend::start() {
   printf("start\n");
+  fflush(stdout);
   mIPC = watchmanConnect();
   printf("got ipc\n");
+  fflush(stdout);
   notifyStarted();
 
   while (true) {

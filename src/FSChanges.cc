@@ -196,44 +196,54 @@ Value getEventsSince(const CallbackInfo& info) {
 
 Value subscribe(const CallbackInfo& info) {
   printf("subscribe c++\n");
+  fflush(stdout);
   Env env = info.Env();
   if (info.Length() < 1 || !info[0].IsString()) {
     printf("expected string\n");
+    fflush(stdout);
     TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   if (info.Length() < 2 || !info[1].IsFunction()) {
     printf("expected function\n");
+    fflush(stdout);
     TypeError::New(env, "Expected a function").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   if (info.Length() >= 3 && !info[2].IsObject()) {
     printf("expected object\n");
+    fflush(stdout);
     TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
     return env.Null();
   }
 
   printf("start subscribe\n");
+  fflush(stdout);
 
   try {
     printf("get watcher\n");
+    fflush(stdout);
     std::shared_ptr<Watcher> watcher = Watcher::getShared(
       std::string(info[0].As<String>().Utf8Value().c_str()), 
       getIgnore(env, info[2])
     );
 
     printf("watch\n");
+    fflush(stdout);
     bool added = watcher->watch(info[1].As<Function>());
     if (added) {
       printf("added\n");
+      fflush(stdout);
       std::shared_ptr<Backend> b = getBackend(env, info[2]);
       printf("got backend\n");
+      fflush(stdout);
       b->watch(*watcher);
     }
   } catch (const char *err) {
     printf("got error %s\n", err);
+    fflush(stdout);
     Error::New(env, err).ThrowAsJavaScriptException();
   }
 
