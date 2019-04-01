@@ -12,7 +12,7 @@ if (process.platform === 'darwin') {
   backends = ['windows', 'watchman'];
 }
 
-describe('watcher', () => {
+describe.only('watcher', () => {
   backends.forEach(backend => {
     describe(backend, () => {
       let tmpDir;
