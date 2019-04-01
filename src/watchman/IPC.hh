@@ -33,11 +33,13 @@ public:
         }
 
         if (GetLastError() != ERROR_PIPE_BUSY) {
+          printf("Could not open pipe\n");
           throw "Could not open pipe";
         }
 
         // Wait for pipe to become available if it is busy
         if (!WaitNamedPipe(path.data(), 30000)) {
+          printf("Error waiting for pipe\n");
           throw "Error waiting for pipe";
         }
       }
@@ -87,6 +89,7 @@ public:
 
       if (!success) {
         if (GetLastError() != ERROR_IO_PENDING) {
+          printf("Write error\n");
           throw "Write error";
         }
       }
@@ -98,6 +101,7 @@ public:
       }
 
       if (written != buf.size()) {
+        printf("Wrong number of bytes written\n");
         throw "Wrong number of bytes written";
       }
     #else
@@ -131,6 +135,7 @@ public:
 
       if (!success && !mStopped) {
         if (GetLastError() != ERROR_IO_PENDING) {
+          printf("Read error\n");
           throw "Read error";
         }
       }
@@ -138,6 +143,7 @@ public:
       DWORD read = 0;
       success = GetOverlappedResult(mPipe, &overlapped, &read, true);
       if (!success && !mStopped) {
+        printf("GetOverlappedResult failed\n");
         throw "GetOverlappedResult failed";
       }
       

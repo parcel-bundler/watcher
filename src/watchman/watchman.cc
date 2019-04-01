@@ -57,6 +57,7 @@ std::string getSockPath() {
 
 std::unique_ptr<IPC> watchmanConnect() {
   std::string path = getSockPath();
+  printf("%s\n", path.c_str());
   return std::unique_ptr<IPC>(new IPC(path));
 }
 
