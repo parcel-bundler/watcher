@@ -144,7 +144,9 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 }
 
 void WatchmanBackend::start() {
+  printf("start\n");
   mIPC = watchmanConnect();
+  printf("got ipc\n");
   notifyStarted();
 
   while (true) {

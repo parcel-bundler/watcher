@@ -10,7 +10,9 @@ class WatchmanBackend : public Backend {
 public:
   static bool checkAvailable();
   void start() override;
-  WatchmanBackend() : mStopped(false) {};
+  WatchmanBackend() : mStopped(false) {
+    printf("create backend\n");
+  };
   ~WatchmanBackend();
   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
