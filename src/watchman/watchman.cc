@@ -271,10 +271,17 @@ std::string getId(Watcher &watcher) {
 }
 
 void WatchmanBackend::subscribe(Watcher &watcher) {
+  printf("subscribe watchman\n");
+  fflush(stdout);
   watchmanWatch(watcher.mDir);
+  printf("watched\n");
+  fflush(stdout);
 
   std::string id = getId(watcher);
   mSubscriptions.emplace(id, &watcher);
+
+  printf("got id\n");
+  fflush(stdout);
 
   BSER::Array cmd;
   cmd.push_back("subscribe");
@@ -314,6 +321,8 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   }
 
   cmd.push_back(opts);
+  printf("subscribing...\n");
+  fflush(stdout);
   watchmanRequest(cmd);
 }
 

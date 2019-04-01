@@ -46,6 +46,9 @@ public:
         }
       }
 
+      printf("IPC started\n");
+      fflush(stdout);
+
       mReader = CreateEvent(NULL, true, false, NULL);
       mWriter = CreateEvent(NULL, true, false, NULL);
     #else
@@ -62,6 +65,8 @@ public:
   }
 
   ~IPC() {
+    printf("destroy ipc\n");
+    fflush(stdout);
     mStopped = true;
     #ifdef _WIN32
       CancelIo(mPipe);
@@ -85,6 +90,9 @@ public:
         &overlapped // overlapped 
       );
 
+      printf("wrote %d\n", mStopped);
+      fflush(stdout);
+
       if (mStopped) {
         return;
       }
@@ -100,6 +108,8 @@ public:
       DWORD written;
       success = GetOverlappedResult(mPipe, &overlapped, &written, true);
       if (!success) {
+        printf("GetOverlappedResult failed\n");
+        fflush(stdout);
         throw "GetOverlappedResult failed";
       }
 
@@ -136,6 +146,9 @@ public:
         NULL, // number of bytes read 
         &overlapped // overlapped 
       );
+
+      printf("read %d\n", mStopped);
+      fflush(stdout);
 
       if (!success && !mStopped) {
         if (GetLastError() != ERROR_IO_PENDING) {
