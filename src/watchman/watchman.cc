@@ -44,6 +44,7 @@ std::string getSockPath() {
 
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
+    printf("error exec\n");
     throw "Failed to execute watchman";
   }
 
@@ -52,6 +53,7 @@ std::string getSockPath() {
   });
 
   pclose(fp);
+  printf("here\n");
   return b.objectValue().find("sockname")->second.stringValue();
 }
 
@@ -89,6 +91,7 @@ bool WatchmanBackend::checkAvailable() {
     watchmanConnect();
     return true;
   } catch (const char *err) {
+    printf("%s\n", err);
     return false;
   }
 }
