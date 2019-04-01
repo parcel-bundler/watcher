@@ -37,17 +37,20 @@ BSER readBSER(T &&do_read) {
 }
 
 std::string getSockPath() {
+  printf("get sock\n");
   auto var = getenv("WATCHMAN_SOCK");
   if (var && *var) {
     return std::string(var);
   }
 
+  printf("popen\n");
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
     printf("error exec\n");
     throw "Failed to execute watchman";
   }
 
+  printf("read\n");
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
@@ -217,6 +220,7 @@ std::string WatchmanBackend::clock(Watcher &watcher) {
 
 void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
+  printf("writing snapshot\n");
   watchmanWatch(watcher.mDir);
 
   std::ofstream ofs(*snapshotPath);
