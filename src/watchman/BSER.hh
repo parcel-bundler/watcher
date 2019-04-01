@@ -8,18 +8,18 @@
 #include <memory>
 
 enum BSERType {
-  ARRAY = 0x00,
-  OBJECT = 0x01,
-  STRING = 0x02,
-  INT8 = 0x03,
-  INT16 = 0x04,
-  INT32 = 0x05,
-  INT64 = 0x06,
-  REAL = 0x07,
-  BOOL_TRUE = 0x08,
-  BOOL_FALSE = 0x09,
-  NUL = 0x0a,
-  TEMPLATE = 0x0b
+  BSER_ARRAY = 0x00,
+  BSER_OBJECT = 0x01,
+  BSER_STRING = 0x02,
+  BSER_INT8 = 0x03,
+  BSER_INT16 = 0x04,
+  BSER_INT32 = 0x05,
+  BSER_INT64 = 0x06,
+  BSER_REAL = 0x07,
+  BSER_BOOL_TRUE = 0x08,
+  BSER_BOOL_FALSE = 0x09,
+  BSER_NULL = 0x0a,
+  BSER_TEMPLATE = 0x0b
 };
 
 class BSERValue;

@@ -219,7 +219,7 @@ Value subscribe(const CallbackInfo& info) {
 
     bool added = watcher->watch(info[1].As<Function>());
     if (added) {
-      std::shared_ptr<Backend> b = getBackend(env, info[2]);;
+      std::shared_ptr<Backend> b = getBackend(env, info[2]);
       b->watch(*watcher);
     }
   } catch (const char *err) {
