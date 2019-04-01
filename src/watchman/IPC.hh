@@ -33,21 +33,14 @@ public:
         }
 
         if (GetLastError() != ERROR_PIPE_BUSY) {
-          printf("Could not open pipe\n");
-          fflush(stdout);
           throw "Could not open pipe";
         }
 
         // Wait for pipe to become available if it is busy
         if (!WaitNamedPipe(path.data(), 30000)) {
-          printf("Error waiting for pipe\n");
-          fflush(stdout);
           throw "Error waiting for pipe";
         }
       }
-
-      printf("IPC started\n");
-      fflush(stdout);
 
       mReader = CreateEvent(NULL, true, false, NULL);
       mWriter = CreateEvent(NULL, true, false, NULL);
@@ -65,8 +58,6 @@ public:
   }
 
   ~IPC() {
-    printf("destroy ipc\n");
-    fflush(stdout);
     mStopped = true;
     #ifdef _WIN32
       CancelIo(mPipe);
@@ -90,17 +81,12 @@ public:
         &overlapped // overlapped 
       );
 
-      printf("wrote %d\n", mStopped);
-      fflush(stdout);
-
       if (mStopped) {
         return;
       }
 
       if (!success) {
         if (GetLastError() != ERROR_IO_PENDING) {
-          printf("Write error\n");
-          fflush(stdout);
           throw "Write error";
         }
       }
@@ -108,14 +94,10 @@ public:
       DWORD written;
       success = GetOverlappedResult(mPipe, &overlapped, &written, true);
       if (!success) {
-        printf("GetOverlappedResult failed\n");
-        fflush(stdout);
         throw "GetOverlappedResult failed";
       }
 
       if (written != buf.size()) {
-        printf("Wrong number of bytes written\n");
-        fflush(stdout);
         throw "Wrong number of bytes written";
       }
     #else
@@ -147,13 +129,8 @@ public:
         &overlapped // overlapped 
       );
 
-      printf("read %d\n", mStopped);
-      fflush(stdout);
-
       if (!success && !mStopped) {
         if (GetLastError() != ERROR_IO_PENDING) {
-          printf("Read error\n");
-          fflush(stdout);
           throw "Read error";
         }
       }
@@ -161,8 +138,6 @@ public:
       DWORD read = 0;
       success = GetOverlappedResult(mPipe, &overlapped, &read, true);
       if (!success && !mStopped) {
-        printf("GetOverlappedResult failed\n");
-        fflush(stdout);
         throw "GetOverlappedResult failed";
       }
       

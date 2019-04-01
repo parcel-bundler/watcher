@@ -9,10 +9,10 @@ if (process.platform === 'darwin') {
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
-  backends = ['watchman'];
+  backends = ['windows', 'watchman'];
 }
 
-describe.only('watcher', () => {
+describe('watcher', () => {
   backends.forEach(backend => {
     describe(backend, () => {
       let tmpDir;
@@ -39,15 +39,12 @@ describe.only('watcher', () => {
       let ignoreDir, ignoreFile;
 
       before(async () => {
-        console.log('before');
         tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        console.log('subscribing');
         fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
-        console.log('subscribed');
       });
 
       after(async () => {

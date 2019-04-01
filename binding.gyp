@@ -48,7 +48,8 @@
             "src/watchman/BSER.cc",
             "src/watchman/watchman.cc",
             "src/shared/BruteForceBackend.cc",
-            "src/windows/WindowsBackend.cc"
+            "src/windows/WindowsBackend.cc",
+            "src/windows/win_utils.cc"
           ],
           "defines": [
             "WATCHMAN",

@@ -8,9 +8,12 @@
 #include "./watchman.hh"
 
 #ifdef _WIN32
+#include "../windows/win_utils.hh"
 #define S_ISDIR(mode) ((mode & _S_IFDIR) == _S_IFDIR)
 #define popen _popen
 #define pclose _pclose
+#else
+#define normalizePath(dir) dir
 #endif
 
 template<typename T>
@@ -28,8 +31,6 @@ BSER readBSER(T &&do_read) {
     if (len == -1) {
       uint64_t l = BSER::decodeLength(oss);
       len = l + oss.tellg();
-      printf("read length %d %d %d\n", l, len, oss.tellg());
-      fflush(stdout);
     }
 
     len -= r;
@@ -39,38 +40,26 @@ BSER readBSER(T &&do_read) {
 }
 
 std::string getSockPath() {
-  printf("get sock\n");
-  fflush(stdout);
   auto var = getenv("WATCHMAN_SOCK");
   if (var && *var) {
     return std::string(var);
   }
 
-  printf("popen\n");
-  fflush(stdout);
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
-    printf("error exec\n");
-    fflush(stdout);
     throw "Failed to execute watchman";
   }
 
-  printf("read\n");
-  fflush(stdout);
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
 
   pclose(fp);
-  printf("here\n");
-  fflush(stdout);
   return b.objectValue().find("sockname")->second.stringValue();
 }
 
 std::unique_ptr<IPC> watchmanConnect() {
   std::string path = getSockPath();
-  printf("%s\n", path.c_str());
-  fflush(stdout);
   return std::unique_ptr<IPC>(new IPC(path));
 }
 
@@ -93,21 +82,15 @@ BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
 void WatchmanBackend::watchmanWatch(std::string dir) {
   std::vector<BSER> cmd;
   cmd.push_back("watch");
-  cmd.push_back(dir);
+  cmd.push_back(normalizePath(dir));
   watchmanRequest(cmd);
 }
 
 bool WatchmanBackend::checkAvailable() {
-  printf("check\n");
-  fflush(stdout);
   try {
     watchmanConnect();
-    printf("after connect\n");
-    fflush(stdout);
     return true;
   } catch (const char *err) {
-    printf("%s\n", err);
-    fflush(stdout);
     return false;
   }
 }
@@ -157,11 +140,7 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 }
 
 void WatchmanBackend::start() {
-  printf("start\n");
-  fflush(stdout);
   mIPC = watchmanConnect();
-  printf("got ipc\n");
-  fflush(stdout);
   notifyStarted();
 
   while (true) {
@@ -226,7 +205,7 @@ WatchmanBackend::~WatchmanBackend() {
 std::string WatchmanBackend::clock(Watcher &watcher) {
   BSER::Array cmd;
   cmd.push_back("clock");
-  cmd.push_back(watcher.mDir);
+  cmd.push_back(normalizePath(watcher.mDir));
 
   BSER::Object obj = watchmanRequest(cmd);
   auto found = obj.find("clock");
@@ -239,7 +218,6 @@ std::string WatchmanBackend::clock(Watcher &watcher) {
 
 void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
-  printf("writing snapshot\n");
   watchmanWatch(watcher.mDir);
 
   std::ofstream ofs(*snapshotPath);
@@ -260,7 +238,7 @@ void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 
   BSER::Array cmd;
   cmd.push_back("since");
-  cmd.push_back(watcher.mDir);
+  cmd.push_back(normalizePath(watcher.mDir));
   cmd.push_back(clock);
 
   BSER::Object obj = watchmanRequest(cmd);
@@ -275,21 +253,14 @@ std::string getId(Watcher &watcher) {
 }
 
 void WatchmanBackend::subscribe(Watcher &watcher) {
-  printf("subscribe watchman\n");
-  fflush(stdout);
   watchmanWatch(watcher.mDir);
-  printf("watched\n");
-  fflush(stdout);
 
   std::string id = getId(watcher);
   mSubscriptions.emplace(id, &watcher);
 
-  printf("got id\n");
-  fflush(stdout);
-
   BSER::Array cmd;
   cmd.push_back("subscribe");
-  cmd.push_back(watcher.mDir);
+  cmd.push_back(normalizePath(watcher.mDir));
   cmd.push_back(id);
 
   BSER::Array fields;
@@ -325,8 +296,6 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   }
 
   cmd.push_back(opts);
-  printf("subscribing...\n");
-  fflush(stdout);
   watchmanRequest(cmd);
 }
 
@@ -337,7 +306,7 @@ void WatchmanBackend::unsubscribe(Watcher &watcher) {
   if (erased) {
     BSER::Array cmd;
     cmd.push_back("unsubscribe");
-    cmd.push_back(watcher.mDir);
+    cmd.push_back(normalizePath(watcher.mDir));
     cmd.push_back(id);
 
     watchmanRequest(cmd);

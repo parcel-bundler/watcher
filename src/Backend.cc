@@ -18,8 +18,6 @@
 static std::unordered_map<std::string, std::shared_ptr<Backend>> sharedBackends;
 
 std::shared_ptr<Backend> getBackend(std::string backend) {
-  printf("getting backend\n");
-  fflush(stdout);
   // Use FSEvents on macOS by default.
   // Use watchman by default if available on other platforms.
   // Fall back to brute force.
@@ -29,9 +27,7 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
     }
   #endif
   #ifdef WATCHMAN
-    printf("checking watchman\n");
     if ((backend == "watchman" || backend == "default") && WatchmanBackend::checkAvailable()) {
-      printf("got watchman\n");
       return std::make_shared<WatchmanBackend>();
     }
   #endif

@@ -4,6 +4,7 @@
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
 #include "./WindowsBackend.hh"
+#include "./win_utils.hh"
 
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
@@ -59,25 +60,6 @@ WindowsBackend::~WindowsBackend() {
   // Mark as stopped, and queue a noop function in the thread to break the loop
   mRunning = false;
   QueueUserAPC([](__in ULONG_PTR) {}, mThread.native_handle(), (ULONG_PTR)this);
-}
-
-std::wstring utf8ToUtf16(std::string input) {
-  unsigned int len = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, NULL, 0);
-  WCHAR *output = new WCHAR[len];
-  MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, output, len);
-  std::wstring res(output);
-  delete output;
-  return res;
-}
-
-std::string utf16ToUtf8(const WCHAR *input, size_t length) {
-  unsigned int len = WideCharToMultiByte(CP_UTF8, 0, input, length, NULL, 0, NULL, NULL);
-  char *output = new char[len + 1];
-  WideCharToMultiByte(CP_UTF8, 0, input, length, output, len, NULL, NULL);
-  output[len] = '\0';
-  std::string res(output);
-  delete output;
-  return res;
 }
 
 class Subscription {
