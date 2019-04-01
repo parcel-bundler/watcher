@@ -1,4 +1,5 @@
-.vscode
-build
-node_modules
+.vscode/
+build/
+prebuilds/
+node_modules/
 token.txt
