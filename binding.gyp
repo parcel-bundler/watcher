@@ -45,13 +45,13 @@
         }],
         ['OS=="win"', {
           "sources": [
-            # "src/watchman/BSER.cc",
-            # "src/watchman/watchman.cc",
+            "src/watchman/BSER.cc",
+            "src/watchman/watchman.cc",
             "src/shared/BruteForceBackend.cc",
             "src/windows/WindowsBackend.cc"
           ],
           "defines": [
-            # "WATCHMAN",
+            "WATCHMAN",
             "WINDOWS",
             "BRUTE_FORCE"
           ],
