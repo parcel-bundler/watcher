@@ -171,8 +171,6 @@ void WatchmanBackend::start() {
     auto obj = b.objectValue();
     auto error = obj.find("error");
     if (error != obj.end()) {
-      printf("error from watchman %s\n", error->second.stringValue().c_str());
-      fflush(stdout);
       throw error->second.stringValue().c_str();
     }
 
