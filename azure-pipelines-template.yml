@@ -47,7 +47,7 @@ jobs:
   - script: npm test
     displayName: Run tests
 
-  - ${{ if and(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), eq(parameters.publish_artifacts, true)) }}:
+  - ${{ if and(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), eq(variables['publish_artifacts'], 'true')) }}:
     - script: npm run prebuild
       displayName: Prebuild
 
