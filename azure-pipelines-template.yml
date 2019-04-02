@@ -42,7 +42,7 @@ jobs:
         watchman -v
       displayName: Install Watchman
 
-  - script: npm install
+  - script: npm install --build-from-source
     displayName: Install dependencies
   - script: npm test
     displayName: Run tests
