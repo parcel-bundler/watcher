@@ -7,7 +7,7 @@
     "url": "https://github.com/devongovett/fschanges.git"
   },
   "scripts": {
-    "install": "prebuild-install || node-gyp rebuild",
+    "install": "prebuild-install -r napi || node-gyp rebuild",
     "prebuild": "prebuild -t 3 -r napi --strip",
     "test": "mocha"
   },
