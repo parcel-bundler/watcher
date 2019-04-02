@@ -49,7 +49,7 @@ jobs:
 
   - ${{ if and(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), eq(variables['publish_artifacts'], true)) }}:
     - script: npm run prebuild
-      displayName: 'Prebuild'
+      displayName: Prebuild
 
     - task: PublishBuildArtifacts@1
       displayName: Publish Artifacts
