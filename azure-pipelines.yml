@@ -42,7 +42,7 @@ jobs:
           inputs:
             gitHubConnection: devongovett
             repositoryName: devongovett/fschanges
-            assets: $(System.DefaultWorkingDirectory)/prebuilds/*
+            assets: $(System.DefaultWorkingDirectory)/prebuilds/@parcel/*
         - task: Npm@1
           displayName: NPM Release
           inputs:
