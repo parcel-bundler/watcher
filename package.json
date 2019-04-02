@@ -1,5 +1,6 @@
 {
   "name": "@parcel/watcher",
+  "version": "2.0.0-alpha.0",
   "main": "index.js",
   "repository" : {
     "type" : "git",
@@ -8,7 +9,6 @@
   "scripts": {
     "install": "prebuild-install || node-gyp rebuild",
     "prebuild": "prebuild -t 3 -r napi --strip",
-    "prebuild-upload": "prebuild --all -u <github-token>",
     "test": "mocha"
   },
   "dependencies": {
