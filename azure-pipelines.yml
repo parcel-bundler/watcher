@@ -1,15 +1,42 @@
 jobs:
-- template: azure-pipelines-template.yml
-  parameters:
-    name: macOS
-    vmImage: macOS-10.13
+  - template: azure-pipelines-template.yml
+    parameters:
+      name: macOS
+      vmImage: macOS-10.13
 
-- template: azure-pipelines-template.yml
-  parameters:
-    name: Linux
-    vmImage: ubuntu-16.04
+  - template: azure-pipelines-template.yml
+    parameters:
+      name: Linux
+      vmImage: ubuntu-16.04
 
-- template: azure-pipelines-template.yml
-  parameters:
-   name: Windows
-   vmImage: vs2017-win2016
+  - template: azure-pipelines-template.yml
+    parameters:
+      name: Windows
+      vmImage: vs2017-win2016
+
+  - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
+    - job: Publish
+      condition: succeeded()
+      dependsOn:
+        - macOS
+        - Linux
+        - Windows
+      pool: 
+        vmImage: ubuntu-16.04
+      steps:
+        - task: DownloadBuildArtifacts@0
+          displayName: Download Artifacts
+          inputs:
+            artifactName: prebuilds
+            downloadPath: "$(System.DefaultWorkingDirectory)"
+        - task: GitHubRelease@0
+          displayName: Github Release
+          inputs:
+            gitHubConnection: devongovett
+            repositoryName: devongovett/fschanges
+            assets: $(System.DefaultWorkingDirectory)/prebuilds/*
+        - task: Npm@1
+          displayName: NPM Release
+          inputs:
+            command: 'publish'
+            publishEndpoint: npm

@@ -1,13 +1,29 @@
 {
-  "main": "build/Release/fschanges.node",
+  "name": "@parcel/watcher",
+  "version": "2.0.0-alpha.0",
+  "main": "index.js",
+  "repository" : {
+    "type" : "git",
+    "url": "https://github.com/devongovett/fschanges.git"
+  },
   "scripts": {
+    "install": "prebuild-install || node-gyp rebuild",
+    "prebuild": "prebuild -t 3 -r napi --strip",
     "test": "mocha"
   },
   "dependencies": {
-    "node-addon-api": "^1.6.2"
+    "bindings": "^1.5.0",
+    "node-addon-api": "^1.6.2",
+    "prebuild-install": "^5.2.5"
   },
   "devDependencies": {
     "fs-extra": "^7.0.1",
-    "mocha": "^6.0.2"
+    "mocha": "^6.0.2",
+    "prebuild": "^8.2.1"
+  },
+  "binary": {
+    "napi_versions": [
+      3
+    ]
   }
 }

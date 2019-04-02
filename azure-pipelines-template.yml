@@ -8,8 +8,10 @@ jobs:
     matrix:
       node_8_x:
         node_version: 8.x
+        publish_artifacts: false
       node_10_x:
         node_version: 10.x
+        publish_artifacts: true
     maxParallel: 3
   steps:
   - task: NodeTool@0
@@ -41,6 +43,16 @@ jobs:
       displayName: Install Watchman
 
   - script: npm install
-    displayName: 'Install dependencies'
+    displayName: Install dependencies
   - script: npm test
-    displayName: 'Run tests'
+    displayName: Run tests
+
+  - ${{ if and(startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), eq(variables['publish_artifacts'], true)) }}:
+    - script: npm run prebuild
+      displayName: Prebuild
+
+    - task: PublishBuildArtifacts@1
+      displayName: Publish Artifacts
+      inputs:
+        artifactName: prebuilds
+        pathtoPublish: '$(System.DefaultWorkingDirectory)/prebuilds'
