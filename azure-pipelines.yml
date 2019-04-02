@@ -4,7 +4,7 @@ trigger:
       - '*'
   tags:
     include:
-      - 'v*'
+      - '*'
 
 jobs:
   - template: azure-pipelines-template.yml
