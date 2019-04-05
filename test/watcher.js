@@ -36,7 +36,7 @@ describe('watcher', () => {
 
       let c = 0;
       const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
-      let ignoreDir, ignoreFile;
+      let ignoreDir, ignoreFile, sub;
 
       before(async () => {
         tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
@@ -44,11 +44,11 @@ describe('watcher', () => {
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        await fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        sub = await fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       after(async () => {
-        await fschanges.unsubscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        await sub.unsubscribe();
       });
 
       describe('files', () => {
@@ -442,13 +442,11 @@ describe('watcher', () => {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen() {
-            return new Promise(resolve => {
-              let fn = events => {
+            return new Promise(async resolve => {
+              let sub = await fschanges.subscribe(dir, async events => {
                 setImmediate(() => resolve(events));
-                fschanges.unsubscribe(dir, fn, {backend});
-              };
-              
-              fschanges.subscribe(dir, fn, {backend});
+                await sub.unsubscribe();
+              }, {backend});
             });
           }
 
@@ -471,13 +469,11 @@ describe('watcher', () => {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(ignore) {
-            return new Promise(resolve => {
-              let fn = events => {
+            return new Promise(async resolve => {
+              let sub = await fschanges.subscribe(dir, async events => {
                 setImmediate(() => resolve(events));
-                fschanges.unsubscribe(dir, fn, {backend, ignore});
-              };
-              
-              fschanges.subscribe(dir, fn, {backend, ignore});
+                await sub.unsubscribe();
+              }, {backend, ignore});
             });
           }
 
@@ -503,13 +499,11 @@ describe('watcher', () => {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(dir) {
-            return new Promise(resolve => {
-              let fn = events => {
+            return new Promise(async resolve => {
+              let sub = await fschanges.subscribe(dir, async events => {
                 setImmediate(() => resolve(events));
-                fschanges.unsubscribe(dir, fn, {backend});
-              };
-              
-              fschanges.subscribe(dir, fn, {backend});
+                await sub.unsubscribe();
+              }, {backend});
             });
           }
 
@@ -534,12 +528,10 @@ describe('watcher', () => {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(dir) {
-            return new Promise(resolve => {
-              let fn = events => {
-                setImmediate(() => resolve([events, fn]));
-              };
-              
-              fschanges.subscribe(dir, fn, {backend});
+            return new Promise(async resolve => {
+              let sub = await fschanges.subscribe(dir, events => {
+                setImmediate(() => resolve([events, sub]));
+              });
             });
           }
 
@@ -555,7 +547,7 @@ describe('watcher', () => {
           await fs.writeFile(path.join(dir, 'test2.txt'), 'hello2');
           await new Promise(resolve => setTimeout(resolve, 100));
 
-          let [watched, fn] = await l;
+          let [watched, sub] = await l;
           assert.deepEqual(watched, [
             {type: 'create', path: path.join(dir, 'test1.txt')}
           ]);
@@ -565,7 +557,7 @@ describe('watcher', () => {
             {type: 'create', path: path.join(dir, 'test2.txt')}
           ]);
 
-          fschanges.unsubscribe(dir, fn, {backend});
+          await sub.unsubscribe();
         });
       });
     });
