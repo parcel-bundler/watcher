@@ -3,7 +3,7 @@
     {
       "target_name": "fschanges",
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
-      "sources": [ "src/FSChanges.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc" ],
+      "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc" ],
       "include_dirs" : ["<!@(node -p \"require('node-addon-api').include\")"],
       "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
       'cflags!': [ '-fno-exceptions' ],
@@ -12,10 +12,10 @@
         ['OS=="mac"', {
           "sources": [
             "src/watchman/BSER.cc",
-            "src/watchman/watchman.cc",
+            "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/unix/fts.cc",
-            "src/macos/FSEvents.cc"
+            "src/macos/FSEventsBackend.cc"
           ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
@@ -32,7 +32,7 @@
         ['OS=="linux"', {
           "sources": [
             "src/watchman/BSER.cc",
-            "src/watchman/watchman.cc",
+            "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/linux/InotifyBackend.cc",
             "src/unix/fts.cc"
@@ -46,7 +46,7 @@
         ['OS=="win"', {
           "sources": [
             "src/watchman/BSER.cc",
-            "src/watchman/watchman.cc",
+            "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/windows/WindowsBackend.cc",
             "src/windows/win_utils.cc"

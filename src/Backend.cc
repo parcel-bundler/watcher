@@ -1,8 +1,8 @@
 #ifdef FS_EVENTS
-#include "macos/FSEvents.hh"
+#include "macos/FSEventsBackend.hh"
 #endif
 #ifdef WATCHMAN
-#include "watchman/watchman.hh"
+#include "watchman/WatchmanBackend.hh"
 #endif
 #ifdef WINDOWS
 #include "windows/WindowsBackend.hh"

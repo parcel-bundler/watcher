@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include "../Event.hh"
 #include "../Backend.hh"
-#include "./FSEvents.hh"
+#include "./FSEventsBackend.hh"
 #include "../Watcher.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)

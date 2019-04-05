@@ -5,7 +5,7 @@
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
-#include "./watchman.hh"
+#include "./WatchmanBackend.hh"
 
 #ifdef _WIN32
 #include "../windows/win_utils.hh"
