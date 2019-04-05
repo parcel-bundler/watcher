@@ -44,11 +44,11 @@ describe('watcher', () => {
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        await fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       after(async () => {
-        fschanges.unsubscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        await fschanges.unsubscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       describe('files', () => {
