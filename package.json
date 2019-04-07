@@ -2,9 +2,9 @@
   "name": "@parcel/watcher",
   "version": "2.0.0-alpha.2",
   "main": "index.js",
-  "repository" : {
-    "type" : "git",
-    "url": "https://github.com/devongovett/fschanges.git"
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/parcel-bundler/watcher.git"
   },
   "scripts": {
     "install": "prebuild-install -r napi || node-gyp rebuild",

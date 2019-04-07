@@ -41,7 +41,7 @@ jobs:
           displayName: Github Release
           inputs:
             gitHubConnection: devongovett
-            repositoryName: devongovett/fschanges
+            repositoryName: parcel-bundler/watcher
             assets: $(System.DefaultWorkingDirectory)/prebuilds/@parcel/*
         - task: Npm@1
           displayName: NPM Release

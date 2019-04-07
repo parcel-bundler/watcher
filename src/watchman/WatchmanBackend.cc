@@ -261,7 +261,7 @@ void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
 
 std::string getId(Watcher &watcher) {
   std::ostringstream id;
-  id << "fschanges-";
+  id << "parcel-";
   id << (void *)&watcher;
   return id.str();
 }

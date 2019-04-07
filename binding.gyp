@@ -1,7 +1,7 @@
 {
   "targets": [
     {
-      "target_name": "fschanges",
+      "target_name": "watcher",
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc" ],
       "include_dirs" : ["<!@(node -p \"require('node-addon-api').include\")"],

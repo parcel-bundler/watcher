@@ -1,4 +1,4 @@
-const fschanges = require('../');
+const watcher = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
@@ -49,7 +49,7 @@ describe('watcher', () => {
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        sub = await fschanges.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        sub = await watcher.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
       });
 
       after(async () => {
@@ -448,7 +448,7 @@ describe('watcher', () => {
 
           function listen() {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async (err, events) => {
+              let sub = await watcher.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend});
@@ -475,7 +475,7 @@ describe('watcher', () => {
 
           function listen(ignore) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async (err, events) => {
+              let sub = await watcher.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend, ignore});
@@ -505,7 +505,7 @@ describe('watcher', () => {
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async (err, events) => {
+              let sub = await watcher.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend});
@@ -534,7 +534,7 @@ describe('watcher', () => {
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, (err, events) => {
+              let sub = await watcher.subscribe(dir, (err, events) => {
                 setImmediate(() => resolve([events, sub]));
               }, {backend});
             });
@@ -546,7 +546,7 @@ describe('watcher', () => {
           await fs.writeFile(path.join(dir, 'test1.txt'), 'hello1');
           await new Promise(resolve => setTimeout(resolve, 100));
 
-          await fschanges.writeSnapshot(dir, snapshot, {backend});
+          await watcher.writeSnapshot(dir, snapshot, {backend});
           await new Promise(resolve => setTimeout(resolve, 1000));
 
           await fs.writeFile(path.join(dir, 'test2.txt'), 'hello2');
@@ -557,7 +557,7 @@ describe('watcher', () => {
             {type: 'create', path: path.join(dir, 'test1.txt')}
           ]);
 
-          let since = await fschanges.getEventsSince(dir, snapshot, {backend});
+          let since = await watcher.getEventsSince(dir, snapshot, {backend});
           assert.deepEqual(since, [
             {type: 'create', path: path.join(dir, 'test2.txt')}
           ]);
@@ -572,7 +572,7 @@ describe('watcher', () => {
 
           let threw = false;
           try {
-            await fschanges.subscribe(dir, (err, events) => {
+            await watcher.subscribe(dir, (err, events) => {
               assert(false, 'Should not get here');
             }, {backend});
           } catch (err) {
@@ -593,7 +593,7 @@ describe('watcher', () => {
 
           let threw = false;
           try {
-            await fschanges.subscribe(file, (err, events) => {
+            await watcher.subscribe(file, (err, events) => {
               assert(false, 'Should not get here');
             }, {backend});
           } catch (err) {
@@ -613,7 +613,7 @@ describe('watcher', () => {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       let p = new Promise(resolve => {
-        fschanges.subscribe(dir, (err, events) => {
+        watcher.subscribe(dir, (err, events) => {
           setImmediate(() => resolve(err));
         }, {backend: 'watchman'});
       });

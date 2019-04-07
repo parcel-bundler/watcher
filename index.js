@@ -1,4 +1,4 @@
-const binding = require('bindings')('fschanges.node');
+const binding = require('bindings')('watcher.node');
 const path = require('path');
 
 function normalizeOptions(dir, opts = {}) {

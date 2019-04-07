@@ -223,4 +223,4 @@ Object Init(Env env, Object exports) {
   return exports;
 }
 
-NODE_API_MODULE(fschanges, Init)
+NODE_API_MODULE(watcher, Init)
