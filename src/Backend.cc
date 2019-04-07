@@ -75,7 +75,14 @@ void removeShared(Backend *backend) {
 
 void Backend::run() {
   mThread = std::thread([this] () {
-    start();
+    try {
+      start();
+    } catch (WatcherError &err) {
+      handleWatcherError(err);
+    } catch (std::exception &err) {
+      mThread.detach();
+      handleError(err);
+    }
   });
 
   if (mThread.joinable()) {
@@ -92,13 +99,6 @@ void Backend::start() {
 }
 
 Backend::~Backend() {
-  std::unique_lock<std::mutex> lock(mMutex);
-
-  // Unwatch all subscriptions so that their state gets cleaned up
-  for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
-    unwatch(**it);
-  }
-
   // Wait for thread to stop
   if (mThread.joinable()) {
     mThread.join();
@@ -107,9 +107,15 @@ Backend::~Backend() {
 
 void Backend::watch(Watcher &watcher) {
   std::unique_lock<std::mutex> lock(mMutex);
-  auto res = mSubscriptions.insert(&watcher);
-  if (res.second) {
-    this->subscribe(watcher);
+  auto res = mSubscriptions.find(&watcher);
+  if (res == mSubscriptions.end()) {
+    try {
+      this->subscribe(watcher);
+      mSubscriptions.insert(&watcher);
+    } catch (std::exception &err) {
+      unref();
+      throw;
+    }
   }
 }
 
@@ -126,4 +132,18 @@ void Backend::unref() {
   if (mSubscriptions.size() == 0) {
     removeShared(this);
   }
+}
+
+void Backend::handleWatcherError(WatcherError &err) {
+  unwatch(*err.mWatcher);
+  err.mWatcher->notifyError(err);
+}
+
+void Backend::handleError(std::exception &err) {
+  std::unique_lock<std::mutex> lock(mMutex);
+  for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
+    (*it)->notifyError(err);
+  }
+
+  removeShared(this);
 }

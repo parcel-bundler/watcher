@@ -47,7 +47,7 @@ std::string getSockPath() {
 
   FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
   if (fp == NULL || errno == ECHILD) {
-    throw "Failed to execute watchman";
+    throw std::runtime_error("Failed to execute watchman");
   }
 
   BSER b = readBSER([fp] (char *buf, size_t len) {
@@ -72,10 +72,17 @@ BSER watchmanRead(IPC *ipc) {
 BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
   std::string cmd = b.encode();
   mIPC->write(cmd);
-
   mRequestSignal.notify();
+
   mResponseSignal.wait();
   mResponseSignal.reset();
+
+  if (!mError.empty()) {
+    std::runtime_error err = std::runtime_error(mError);
+    mError = "";
+    throw err;
+  }
+
   return mResponse;
 }
 
@@ -90,7 +97,7 @@ bool WatchmanBackend::checkAvailable() {
   try {
     watchmanConnect();
     return true;
-  } catch (const char *err) {
+  } catch (std::exception &err) {
     return false;
   }
 }
@@ -98,7 +105,7 @@ bool WatchmanBackend::checkAvailable() {
 void handleFiles(Watcher &watcher, BSER::Object obj) {
   auto found = obj.find("files");
   if (found == obj.end()) {
-    throw "Error reading changes from watchman";
+    throw WatcherError("Error reading changes from watchman", &watcher);
   }
   
   auto files = found->second.arrayValue();
@@ -160,18 +167,25 @@ void WatchmanBackend::start() {
     BSER b;
     try {
       b = watchmanRead(&*mIPC);
-    } catch (const char *err) {
+    } catch (std::exception &err) {
       if (mStopped) {
         break;
+      } else if (mResponseSignal.isWaiting()) {
+        mError = err.what();
+        mResponseSignal.notify();
       } else {
-        throw err;
+        // Throwing causes the backend to be destroyed, but we never reach the code below to notify the signal
+        mEndedSignal.notify();
+        throw;
       }
     }
 
     auto obj = b.objectValue();
     auto error = obj.find("error");
     if (error != obj.end()) {
-      throw error->second.stringValue().c_str();
+      mError = error->second.stringValue();
+      mResponseSignal.notify();
+      continue;
     }
 
     // If this message is for a subscription, handle it, otherwise notify the request.
@@ -188,8 +202,6 @@ void WatchmanBackend::start() {
 }
 
 WatchmanBackend::~WatchmanBackend() {
-  std::unique_lock<std::mutex> lock(mMutex);
-
   // Mark the watcher as stopped, close the socket, and trigger the lock.
   // This will cause the read loop to be broken and the thread to exit.
   mStopped = true;
@@ -208,7 +220,7 @@ std::string WatchmanBackend::clock(Watcher &watcher) {
   BSER::Object obj = watchmanRequest(cmd);
   auto found = obj.find("clock");
   if (found == obj.end()) {
-    throw "Error reading clock from watchman";
+    throw WatcherError("Error reading clock from watchman", &watcher);
   }
 
   return found->second.stringValue();
@@ -254,8 +266,6 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   watchmanWatch(watcher.mDir);
 
   std::string id = getId(watcher);
-  mSubscriptions.emplace(id, &watcher);
-
   BSER::Array cmd;
   cmd.push_back("subscribe");
   cmd.push_back(normalizePath(watcher.mDir));
@@ -295,6 +305,9 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 
   cmd.push_back(opts);
   watchmanRequest(cmd);
+
+  mSubscriptions.emplace(id, &watcher);
+  mRequestSignal.notify();
 }
 
 void WatchmanBackend::unsubscribe(Watcher &watcher) {

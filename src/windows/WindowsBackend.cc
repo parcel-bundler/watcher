@@ -6,6 +6,8 @@
 #include "./WindowsBackend.hh"
 #include "./win_utils.hh"
 
+#define DEFAULT_BUF_SIZE 1024 * 1024
+#define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
 void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
@@ -70,8 +72,8 @@ public:
     mTree = tree;
     ZeroMemory(&mOverlapped, sizeof(OVERLAPPED));
     mOverlapped.hEvent = this;
-    mReadBuffer.resize(1024 * 1024);
-    mWriteBuffer.resize(1024 * 1024);
+    mReadBuffer.resize(DEFAULT_BUF_SIZE);
+    mWriteBuffer.resize(DEFAULT_BUF_SIZE);
 
     mDirectoryHandle = CreateFileW(
       utf8ToUtf16(watcher->mDir).data(),
@@ -84,7 +86,7 @@ public:
     );
 
     if (mDirectoryHandle == INVALID_HANDLE_VALUE) {
-      throw "Invalid handle";
+      throw WatcherError("Invalid handle", mWatcher);
     }
   }
 
@@ -111,12 +113,20 @@ public:
       &mOverlapped,
       [](DWORD errorCode, DWORD numBytes, LPOVERLAPPED overlapped) {
         auto subscription = reinterpret_cast<Subscription *>(overlapped->hEvent);
-        subscription->processEvents(errorCode);
+        subscription->handleEvents(errorCode);
       }
     );
 
     if (!success) {
-      throw "Unexpected shutdown";
+      throw WatcherError("Failed to read changes", mWatcher);
+    }
+  }
+
+  void handleEvents(DWORD errorCode) {
+    try {
+      processEvents(errorCode);
+    } catch (std::exception &err) {
+      mWatcher->notifyError(err);
     }
   }
 
@@ -125,17 +135,20 @@ public:
       return;
     }
     
-    // TODO: error handling
     switch (errorCode) {
       case ERROR_OPERATION_ABORTED:
         return;
       case ERROR_INVALID_PARAMETER:
+        // resize buffers to network size (64kb), and try again
+        mReadBuffer.resize(NETWORK_BUF_SIZE);
+        mWriteBuffer.resize(NETWORK_BUF_SIZE);
+        poll();
         return;
       case ERROR_NOTIFY_ENUM_DIR:
-        return;
+        throw WatcherError("Buffer overflow. Some events may have been lost.", mWatcher);
       default:
         if (errorCode != ERROR_SUCCESS) {
-          throw "Unknown error";
+          throw WatcherError("Unknown error", mWatcher);
         }
     }
 
@@ -209,10 +222,14 @@ void WindowsBackend::subscribe(Watcher &watcher) {
   watcher.state = (void *)sub;
 
   // Queue polling for this subscription in the correct thread.
-  QueueUserAPC([](__in ULONG_PTR ptr) {
+  bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
     Subscription *sub = (Subscription *)ptr;
     sub->poll();
   }, mThread.native_handle(), (ULONG_PTR)sub);
+
+  if (!success) {
+    throw std::runtime_error("Unable to queue APC");
+  }
 }
 
 void WindowsBackend::unsubscribe(Watcher &watcher) {

@@ -41,13 +41,14 @@ public:
 
 private:
   napi_async_work work;
+  std::string error;
 
   static void onExecute(napi_env env, void *this_pointer) {
     PromiseRunner* self = (PromiseRunner*) this_pointer;
     try {
       self->execute();
-    } catch (const char *err) {
-      self->onError(Error::New(env, err));
+    } catch (std::exception &err) {
+      self->error = err.what();
     }
   }
 
@@ -58,7 +59,11 @@ private:
       if (status == napi_ok) {
         status = napi_delete_async_work(self->env, self->work);
         if (status == napi_ok) {
-          self->onOK();
+          if (self->error.size() == 0) {
+            self->onOK();
+          } else {
+            self->onError(Error::New(self->env, self->error));
+          }
           delete self;
           return;
         }
@@ -87,7 +92,7 @@ private:
     deferred.Resolve(result);
   }
 
-  void onError(const Error& e) {
+  void onError(const Error &e) {
     deferred.Reject(e.Value());
   }
 };

@@ -482,6 +482,35 @@ describe('since', () => {
           ]);
         });
       });
+
+      describe('errors', () => {
+        it('should error if the watched directory does not exist', async () => {
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+
+          let threw = false;
+          try {
+            await fschanges.writeSnapshot(dir, snapshotPath, {backend});
+          } catch (err) {
+            threw = true;
+          }
+
+          assert(threw, 'did not throw');
+        });
+
+        it('should error if the watched path is not a directory', async () => {
+          let file = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.writeFileSync(file, 'test');
+
+          let threw = false;
+          try {
+            await fschanges.writeSnapshot(file, snapshotPath, {backend});
+          } catch (err) {
+            threw = true;
+          }
+
+          assert(threw, 'did not throw');
+        });
+      });
     });
   });
 });

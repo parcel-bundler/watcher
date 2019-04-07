@@ -135,18 +135,17 @@ public:
     );
 
     backend = getBackend(env, opts);
-    shouldWatch = watcher->watch(fn.As<Function>());
+    callback = Persistent(fn.As<Function>());
   }
 
 private:
   std::shared_ptr<Watcher> watcher;
   std::shared_ptr<Backend> backend;
-  bool shouldWatch;
+  FunctionReference callback;
 
   void execute() override {
-    if (shouldWatch) {
-      backend->watch(*watcher);
-    }
+    backend->watch(*watcher);
+    watcher->watch(std::move(callback));
   }
 };
 

@@ -14,13 +14,13 @@ void InotifyBackend::start() {
   // Create a pipe that we will write to when we want to end the thread.
   int err = pipe2(mPipe, O_CLOEXEC | O_NONBLOCK);
   if (err == -1) {
-    throw "Unable to open pipe";
+    throw std::runtime_error(std::string("Unable to open pipe: ") + strerror(errno));
   }
 
   // Init inotify file descriptor.
   mInotify = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
   if (mInotify == -1) {
-    throw "Unable to initialize inotify";
+    throw std::runtime_error(std::string("Unable to initialize inotify: ") + strerror(errno));
   }
 
   pollfd pollfds[2];
@@ -37,7 +37,7 @@ void InotifyBackend::start() {
   while (true) {
     int result = poll(pollfds, 2, 500);
     if (result < 0) {
-      throw "Unable to poll";
+      throw std::runtime_error(std::string("Unable to poll: ") + strerror(errno));
     }
 
     if (pollfds[0].revents) {
@@ -75,7 +75,7 @@ void InotifyBackend::subscribe(Watcher &watcher) {
 void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree) {
   int wd = inotify_add_watch(mInotify, entry->path.c_str(), INOTIFY_MASK);
   if (wd == -1) {
-    throw "inotify_add_watch failed";
+    throw WatcherError(std::string("inotify_add_watch failed: ") + strerror(errno), &watcher);
   }
 
   std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>();
@@ -99,7 +99,7 @@ void InotifyBackend::handleEvents() {
         break;
       }
 
-      throw "Error reading from inotify";
+      throw std::runtime_error(std::string("Error reading from inotify: ") + strerror(errno));
     }
 
     if (n == 0) {
@@ -201,7 +201,7 @@ void InotifyBackend::unsubscribe(Watcher &watcher) {
       if (mSubscriptions.count(it->first) == 1) {
         int err = inotify_rm_watch(mInotify, it->first);
         if (err == -1) {
-          throw "Unable to remove watcher";
+          throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), &watcher);
         }
       }
 

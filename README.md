@@ -18,7 +18,7 @@ const watcher = require('@parcel/watcher');
 const path = require('path');
 
 // Subscribe to events
-let subscription = await watcher.subscribe(process.cwd(), (events) => {
+let subscription = await watcher.subscribe(process.cwd(), (err, events) => {
   console.log(events);
 });
 
@@ -42,7 +42,7 @@ Events are throttled and coalesced for performance during large changes like `gi
 Only one notification will be emitted per file. For example, if a file was both created and updated since the last event, you'll get only a `create` event. If a file is both created and deleted, you will not be notifed of that file. Renames cause two events: a `delete` for the old name, and a `create` for the new name.
 
 ```javascript
-let subscription = await watcher.subscribe(process.cwd(), (events) => {
+let subscription = await watcher.subscribe(process.cwd(), (err, events) => {
   console.log(events);
 });
 ```

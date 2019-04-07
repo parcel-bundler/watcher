@@ -29,6 +29,9 @@ public:
 private:
   std::unordered_set<Watcher *> mSubscriptions;
   Signal mStartedSignal;
+
+  void handleWatcherError(WatcherError &err);
+  void handleError(std::exception &err);
 };
 
 #endif

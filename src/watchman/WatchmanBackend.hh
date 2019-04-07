@@ -21,6 +21,7 @@ private:
   Signal mRequestSignal;
   Signal mResponseSignal;
   BSER::Object mResponse;
+  std::string mError;
   std::unordered_map<std::string, Watcher *> mSubscriptions;
   bool mStopped;
   Signal mEndedSignal;
