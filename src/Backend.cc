@@ -77,10 +77,7 @@ void Backend::run() {
   mThread = std::thread([this] () {
     try {
       start();
-    } catch (WatcherError &err) {
-      handleWatcherError(err);
     } catch (std::exception &err) {
-      mThread.detach();
       handleError(err);
     }
   });
@@ -101,7 +98,12 @@ void Backend::start() {
 Backend::~Backend() {
   // Wait for thread to stop
   if (mThread.joinable()) {
-    mThread.join();
+    // If the backend is being destroyed from the thread itself, detach, otherwise join.
+    if (mThread.get_id() == std::this_thread::get_id()) {
+      mThread.detach();
+    } else {
+      mThread.join();
+    }
   }
 }
 

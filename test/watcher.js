@@ -583,12 +583,17 @@ describe('watcher', () => {
         });
 
         it('should error if the watched path is not a directory', async () => {
+          if (backend === 'watchman' && process.platform === 'win32') {
+            // There is a bug in watchman on windows where the `watch` command hangs if the path is not a directory.
+            return;
+          }
+          
           let file = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
           fs.writeFileSync(file, 'test');
 
           let threw = false;
           try {
-            await fschanges.subscribe(file, events => {
+            await fschanges.subscribe(file, (err, events) => {
               assert(false, 'Should not get here');
             }, {backend});
           } catch (err) {

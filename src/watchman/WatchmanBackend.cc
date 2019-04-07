@@ -79,7 +79,7 @@ BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
 
   if (!mError.empty()) {
     std::runtime_error err = std::runtime_error(mError);
-    mError = "";
+    mError = std::string();
     throw err;
   }
 
@@ -142,8 +142,12 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
   }
 
   auto watcher = it->second;
-  handleFiles(*watcher, obj);
-  watcher->notify();
+  try {
+    handleFiles(*watcher, obj);
+    watcher->notify();
+  } catch (WatcherError &err) {
+    handleWatcherError(err);
+  }
 }
 
 void WatchmanBackend::start() {

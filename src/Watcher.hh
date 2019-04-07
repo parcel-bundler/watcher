@@ -58,6 +58,7 @@ class WatcherError : public std::runtime_error {
 public:
   Watcher *mWatcher;
   WatcherError(std::string msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
+  WatcherError(const char *msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
 };
 
 #endif

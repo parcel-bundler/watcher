@@ -76,9 +76,6 @@ void Watcher::notifyError(std::exception &err) {
 
   mError = err.what();
   triggerCallbacks();
-  
-  // mCallbackSignal.wait();
-  // mCallbackSignal.reset();
 }
 
 void Watcher::triggerCallbacks() {
