@@ -10,7 +10,7 @@ BSERType decodeType(std::istream &iss) {
 void expectType(std::istream &iss, BSERType expected) {
   BSERType got = decodeType(iss);
   if (got != expected) {
-    throw "Unexpected BSER type";
+    throw std::runtime_error("Unexpected BSER type");
   }
 }
 
@@ -59,7 +59,7 @@ public:
         value = int64;
         break;
       default:
-        throw "Invalid BSER int type";
+        throw std::runtime_error("Invalid BSER int type");
     }
   }
 
@@ -257,7 +257,7 @@ BSER::BSER(std::istream &iss) {
       m_ptr = decodeTemplate(iss);
       break;
     default:
-      throw "unknown BSER type";
+      throw std::runtime_error("unknown BSER type");
   }
 }
 
@@ -283,7 +283,7 @@ void BSER::encode(std::ostream &oss) {
 int64_t BSER::decodeLength(std::istream &iss) {
   char pdu[2];
   if (!iss.read(pdu, 2) || pdu[0] != 0 || pdu[1] != 1) {
-    throw "Invalid BSER";
+    throw std::runtime_error("Invalid BSER");
   }
 
   return BSERInteger(iss).intValue();

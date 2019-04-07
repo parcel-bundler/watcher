@@ -33,12 +33,12 @@ public:
         }
 
         if (GetLastError() != ERROR_PIPE_BUSY) {
-          throw "Could not open pipe";
+          throw std::runtime_error("Could not open pipe");
         }
 
         // Wait for pipe to become available if it is busy
         if (!WaitNamedPipe(path.data(), 30000)) {
-          throw "Error waiting for pipe";
+          throw std::runtime_error("Error waiting for pipe");
         }
       }
 
@@ -52,7 +52,7 @@ public:
 
       mSock = socket(AF_UNIX, SOCK_STREAM, 0);
       if (connect(mSock, (struct sockaddr *) &addr, sizeof(struct sockaddr_un))) {
-        throw "Error connecting to socket";
+        throw std::runtime_error("Error connecting to socket");
       }
     #endif
   }
@@ -87,18 +87,18 @@ public:
 
       if (!success) {
         if (GetLastError() != ERROR_IO_PENDING) {
-          throw "Write error";
+          throw std::runtime_error("Write error");
         }
       }
 
       DWORD written;
       success = GetOverlappedResult(mPipe, &overlapped, &written, true);
       if (!success) {
-        throw "GetOverlappedResult failed";
+        throw std::runtime_error("GetOverlappedResult failed");
       }
 
       if (written != buf.size()) {
-        throw "Wrong number of bytes written";
+        throw std::runtime_error("Wrong number of bytes written");
       }
     #else
       int r = 0;
@@ -110,7 +110,7 @@ public:
           } else if (mStopped) {
             return;
           } else {
-            throw "Write error";
+            throw std::runtime_error("Write error");
           }
         }
       }
@@ -131,25 +131,29 @@ public:
 
       if (!success && !mStopped) {
         if (GetLastError() != ERROR_IO_PENDING) {
-          throw "Read error";
+          throw std::runtime_error("Read error");
         }
       }
 
       DWORD read = 0;
       success = GetOverlappedResult(mPipe, &overlapped, &read, true);
       if (!success && !mStopped) {
-        throw "GetOverlappedResult failed";
+        throw std::runtime_error("GetOverlappedResult failed");
       }
       
       return read;
     #else
-      int r = ::read(mSock, buf, len);      
+      int r = ::read(mSock, buf, len);
+      if (r == 0 && !mStopped) {
+        throw std::runtime_error("Socket ended unexpectedly");
+      }
+
       if (r < 0) {
         if (mStopped) {
           return 0;
         }
 
-        throw strerror(errno);
+        throw std::runtime_error(strerror(errno));
       }
 
       return r;

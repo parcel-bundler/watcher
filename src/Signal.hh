@@ -6,10 +6,11 @@
 
 class Signal {
 public:
-  Signal() : mFlag(false) {}
+  Signal() : mFlag(false), mWaiting(false) {}
   void wait() {
     std::unique_lock<std::mutex> lock(mMutex);
     while (!mFlag) {
+      mWaiting = true;
       mCond.wait(lock);
     }
   }
@@ -28,10 +29,16 @@ public:
   void reset() {
     std::unique_lock<std::mutex> lock(mMutex);
     mFlag = false;
+    mWaiting = false;
+  }
+  
+  bool isWaiting() {
+    return mWaiting;
   }
 
 private:
   bool mFlag;
+  bool mWaiting;
   std::mutex mMutex;
   std::condition_variable mCond;
 };

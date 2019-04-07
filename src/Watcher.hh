@@ -29,7 +29,8 @@ struct Watcher {
 
   void wait();
   void notify();
-  bool watch(Function callback);
+  void notifyError(std::exception &err);
+  bool watch(FunctionReference callback);
   bool unwatch(Function callback);
   void unref();
   bool isIgnored(std::string path);
@@ -46,10 +47,18 @@ private:
   EventList mCallbackEvents;
   std::shared_ptr<Debounce> mDebounce;
   Signal mCallbackSignal;
+  std::string mError;
 
   void triggerCallbacks();
   static void fireCallbacks(uv_async_t *handle);
   static void onClose(uv_handle_t *handle);
+};
+
+class WatcherError : public std::runtime_error {
+public:
+  Watcher *mWatcher;
+  WatcherError(std::string msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
+  WatcherError(const char *msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
 };
 
 #endif

@@ -2,6 +2,7 @@ const fschanges = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
+const {execSync} = require('child_process');
 
 let backends = [];
 if (process.platform === 'darwin') {
@@ -24,7 +25,11 @@ describe('watcher', () => {
         });
       };
 
-      let fn = events => {
+      let fn = (err, events) => {
+        if (err) {
+          throw err;
+        }
+        
         setImmediate(() => {
           for (let cb of cbs) {
             cb(events);
@@ -443,7 +448,7 @@ describe('watcher', () => {
 
           function listen() {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async events => {
+              let sub = await fschanges.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend});
@@ -470,7 +475,7 @@ describe('watcher', () => {
 
           function listen(ignore) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async events => {
+              let sub = await fschanges.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend, ignore});
@@ -500,7 +505,7 @@ describe('watcher', () => {
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, async events => {
+              let sub = await fschanges.subscribe(dir, async (err, events) => {
                 setImmediate(() => resolve(events));
                 await sub.unsubscribe();
               }, {backend});
@@ -529,9 +534,9 @@ describe('watcher', () => {
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await fschanges.subscribe(dir, events => {
+              let sub = await fschanges.subscribe(dir, (err, events) => {
                 setImmediate(() => resolve([events, sub]));
-              });
+              }, {backend});
             });
           }
 
@@ -560,6 +565,63 @@ describe('watcher', () => {
           await sub.unsubscribe();
         });
       });
+
+      describe('errors', () => {
+        it('should error if the watched directory does not exist', async () => {
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+
+          let threw = false;
+          try {
+            await fschanges.subscribe(dir, (err, events) => {
+              assert(false, 'Should not get here');
+            }, {backend});
+          } catch (err) {
+            threw = true;
+          }
+
+          assert(threw, 'did not throw');
+        });
+
+        it('should error if the watched path is not a directory', async () => {
+          if (backend === 'watchman' && process.platform === 'win32') {
+            // There is a bug in watchman on windows where the `watch` command hangs if the path is not a directory.
+            return;
+          }
+          
+          let file = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          fs.writeFileSync(file, 'test');
+
+          let threw = false;
+          try {
+            await fschanges.subscribe(file, (err, events) => {
+              assert(false, 'Should not get here');
+            }, {backend});
+          } catch (err) {
+            threw = true;
+          }
+
+          assert(threw, 'did not throw');
+        });
+      });
+    });
+  });
+
+  describe('watchman errors', () => {
+    it('should emit an error when watchman dies', async () => {
+      let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+      fs.mkdirpSync(dir);
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      let p = new Promise(resolve => {
+        fschanges.subscribe(dir, (err, events) => {
+          setImmediate(() => resolve(err));
+        }, {backend: 'watchman'});
+      });
+
+      execSync('watchman shutdown-server');
+
+      let err = await p;
+      assert(err, 'No error was emitted');
     });
   });
 });

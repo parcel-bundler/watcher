@@ -6,6 +6,8 @@
 #include "./WindowsBackend.hh"
 #include "./win_utils.hh"
 
+#define DEFAULT_BUF_SIZE 1024 * 1024
+#define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
 void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
@@ -23,6 +25,11 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     hFind = FindFirstFile(spec.c_str(), &ffd);
 
     if (hFind == INVALID_HANDLE_VALUE)  {
+      if (path == watcher.mDir) {
+        FindClose(hFind);
+        throw WatcherError("Error opening directory", &watcher);
+      }
+      
       tree->remove(path);
       continue;
     }
@@ -55,8 +62,6 @@ void WindowsBackend::start() {
 }
 
 WindowsBackend::~WindowsBackend() {
-  std::unique_lock<std::mutex> lock(mMutex);
-
   // Mark as stopped, and queue a noop function in the thread to break the loop
   mRunning = false;
   QueueUserAPC([](__in ULONG_PTR) {}, mThread.native_handle(), (ULONG_PTR)this);
@@ -64,14 +69,15 @@ WindowsBackend::~WindowsBackend() {
 
 class Subscription {
 public:
-  Subscription(Watcher *watcher, std::shared_ptr<DirTree> tree) {
+  Subscription(WindowsBackend *backend, Watcher *watcher, std::shared_ptr<DirTree> tree) {
     mRunning = true;
+    mBackend = backend;
     mWatcher = watcher;
     mTree = tree;
     ZeroMemory(&mOverlapped, sizeof(OVERLAPPED));
     mOverlapped.hEvent = this;
-    mReadBuffer.resize(1024 * 1024);
-    mWriteBuffer.resize(1024 * 1024);
+    mReadBuffer.resize(DEFAULT_BUF_SIZE);
+    mWriteBuffer.resize(DEFAULT_BUF_SIZE);
 
     mDirectoryHandle = CreateFileW(
       utf8ToUtf16(watcher->mDir).data(),
@@ -84,7 +90,22 @@ public:
     );
 
     if (mDirectoryHandle == INVALID_HANDLE_VALUE) {
-      throw "Invalid handle";
+      throw WatcherError("Invalid handle", mWatcher);
+    }
+
+    // Ensure that the path is a directory
+    BY_HANDLE_FILE_INFORMATION info;
+    bool success = GetFileInformationByHandle(
+      mDirectoryHandle,
+      &info
+    );
+
+    if (!success) {
+      throw WatcherError("Could not get file information", mWatcher);
+    }
+
+    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+      throw WatcherError("Not a directory", mWatcher);
     }
   }
 
@@ -92,6 +113,14 @@ public:
     mRunning = false;
     CancelIo(mDirectoryHandle);
     CloseHandle(mDirectoryHandle);
+  }
+
+  void run() {
+    try {
+      poll();
+    } catch (WatcherError &err) {
+      mBackend->handleWatcherError(err);
+    }
   }
 
   void poll() {
@@ -111,12 +140,16 @@ public:
       &mOverlapped,
       [](DWORD errorCode, DWORD numBytes, LPOVERLAPPED overlapped) {
         auto subscription = reinterpret_cast<Subscription *>(overlapped->hEvent);
-        subscription->processEvents(errorCode);
+        try {
+          subscription->processEvents(errorCode);
+        } catch (WatcherError &err) {
+          subscription->mBackend->handleWatcherError(err);
+        }
       }
     );
 
     if (!success) {
-      throw "Unexpected shutdown";
+      throw WatcherError("Failed to read changes", mWatcher);
     }
   }
 
@@ -125,17 +158,20 @@ public:
       return;
     }
     
-    // TODO: error handling
     switch (errorCode) {
       case ERROR_OPERATION_ABORTED:
         return;
       case ERROR_INVALID_PARAMETER:
+        // resize buffers to network size (64kb), and try again
+        mReadBuffer.resize(NETWORK_BUF_SIZE);
+        mWriteBuffer.resize(NETWORK_BUF_SIZE);
+        poll();
         return;
       case ERROR_NOTIFY_ENUM_DIR:
-        return;
+        throw WatcherError("Buffer overflow. Some events may have been lost.", mWatcher);
       default:
         if (errorCode != ERROR_SUCCESS) {
-          throw "Unknown error";
+          throw WatcherError("Unknown error", mWatcher);
         }
     }
 
@@ -194,6 +230,7 @@ public:
   }
 
 private:
+  WindowsBackend *mBackend;
   Watcher *mWatcher;
   std::shared_ptr<DirTree> mTree;
   bool mRunning;
@@ -205,14 +242,18 @@ private:
 
 void WindowsBackend::subscribe(Watcher &watcher) {
   // Create a subscription for this watcher
-  Subscription *sub = new Subscription(&watcher, getTree(watcher, false));
+  Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false));
   watcher.state = (void *)sub;
 
   // Queue polling for this subscription in the correct thread.
-  QueueUserAPC([](__in ULONG_PTR ptr) {
+  bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
     Subscription *sub = (Subscription *)ptr;
-    sub->poll();
+    sub->run();
   }, mThread.native_handle(), (ULONG_PTR)sub);
+
+  if (!success) {
+    throw std::runtime_error("Unable to queue APC");
+  }
 }
 
 void WindowsBackend::unsubscribe(Watcher &watcher) {

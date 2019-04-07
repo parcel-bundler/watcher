@@ -23,12 +23,15 @@ public:
   void watch(Watcher &watcher);
   void unwatch(Watcher &watcher);
   void unref();
+  void handleWatcherError(WatcherError &err);
 
   std::mutex mMutex;
   std::thread mThread;
 private:
   std::unordered_set<Watcher *> mSubscriptions;
   Signal mStartedSignal;
+
+  void handleError(std::exception &err);
 };
 
 #endif

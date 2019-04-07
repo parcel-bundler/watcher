@@ -50,7 +50,6 @@ Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
     }
 
 Watcher::~Watcher() {
-  std::unique_lock<std::mutex> lk(mMutex);
   mDebounce->remove(this);
 }
 
@@ -68,8 +67,19 @@ void Watcher::notify() {
   }
 }
 
+void Watcher::notifyError(std::exception &err) {
+  std::unique_lock<std::mutex> lk(mMutex);
+  if (mCallingCallbacks) {
+    mCallbackSignal.wait();
+    mCallbackSignal.reset();
+  }
+
+  mError = err.what();
+  triggerCallbacks();
+}
+
 void Watcher::triggerCallbacks() {
-  if (mCallbacks.size() > 0 && mEvents.size() > 0) {
+  if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mError.size() > 0)) {
     if (mCallingCallbacks) {
       mCallbackSignal.wait();
       mCallbackSignal.reset();
@@ -90,7 +100,9 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   while (watcher->mCallbacksIterator != watcher->mCallbacks.end()) {
     auto it = watcher->mCallbacksIterator;
     HandleScope scope(it->Env());
-    it->Call(std::initializer_list<napi_value>{watcher->mCallbackEvents.toJS(it->Env())});
+    auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
+    auto events = watcher->mCallbackEvents.toJS(it->Env());
+    it->Call(std::initializer_list<napi_value>{err, events});
 
     // If the iterator was changed, then the callback trigged an unwatch.
     // The iterator will have been set to the next valid callback.
@@ -101,6 +113,11 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   }
 
   watcher->mCallingCallbacks = false;
+
+  if (watcher->mError.size() > 0) {
+    watcher->mCallbacks.clear();
+  }
+
   if (watcher->mCallbacks.size() == 0) {
     watcher->unref();
   } else {
@@ -108,9 +125,9 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   }
 }
 
-bool Watcher::watch(Function callback) {
+bool Watcher::watch(FunctionReference callback) {
   std::unique_lock<std::mutex> lk(mMutex);
-  auto res = mCallbacks.insert(Persistent(callback));
+  auto res = mCallbacks.insert(std::move(callback));
   if (res.second && !mWatched) {
     mAsync = new uv_async_t;
     mAsync->data = (void *)this;

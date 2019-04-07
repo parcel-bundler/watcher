@@ -108,7 +108,20 @@ void FSEventsCallback(
   }
 }
 
-void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {  
+void checkWatcher(Watcher &watcher) {
+  struct stat file;
+  if (stat(watcher.mDir.c_str(), &file)) {
+    throw WatcherError(strerror(errno), &watcher);
+  }
+
+  if (!S_ISDIR(file.st_mode)) {
+    throw WatcherError(strerror(ENOTDIR), &watcher);
+  }
+}
+
+void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
+  checkWatcher(watcher);
+
   CFAbsoluteTime latency = 0.01;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
@@ -148,9 +161,15 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   FSEventStreamSetExclusionPaths(stream, exclusions);
 
   FSEventStreamScheduleWithRunLoop(stream, mRunLoop, kCFRunLoopDefaultMode);
-  FSEventStreamStart(stream);
+  bool started = FSEventStreamStart(stream);
+
   CFRelease(pathsToWatch);
   CFRelease(fileWatchPath);
+
+  if (!started) {
+    FSEventStreamRelease(stream);
+    throw WatcherError("Error starting FSEvents stream", &watcher);
+  }
 
   State *s = (State *)watcher.state;
   s->tree = std::make_shared<DirTree>(watcher.mDir);
@@ -178,6 +197,8 @@ FSEventsBackend::~FSEventsBackend() {
 
 void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
+  checkWatcher(watcher);
+  
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
   std::ofstream ofs(*snapshotPath);
   ofs << id;
