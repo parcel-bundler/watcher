@@ -40,7 +40,7 @@ jobs:
         - task: GitHubRelease@0
           displayName: Github Release
           inputs:
-            gitHubConnection: devongovett
+            gitHubConnection: parcel
             repositoryName: parcel-bundler/watcher
             assets: $(System.DefaultWorkingDirectory)/prebuilds/@parcel/*
         - task: Npm@1
