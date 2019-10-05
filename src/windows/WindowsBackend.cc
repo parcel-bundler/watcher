@@ -2,7 +2,7 @@
 #include <sstream>
 #include <stack>
 #include "../DirTree.hh"
-#include "../shared/BruteForceBackend.hh"
+#include "../Backend.hh"
 #include "./WindowsBackend.hh"
 #include "./win_utils.hh"
 
@@ -10,7 +10,7 @@
 #define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
+void Backend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
   HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;
   

@@ -4,6 +4,7 @@
 #include "Event.hh"
 #include "Watcher.hh"
 #include "Signal.hh"
+#include "DirTree.hh"
 #include <thread>
 
 class Backend {
@@ -17,6 +18,7 @@ public:
   virtual void getEventsSince(Watcher &watcher, std::string *snapshotPath) = 0;
   virtual void subscribe(Watcher &watcher) = 0;
   virtual void unsubscribe(Watcher &watcher) = 0;
+  virtual void readTree(Watcher &watcher, std::shared_ptr<DirTree> tree);
 
   static std::shared_ptr<Backend> getShared(std::string backend);
 
@@ -24,6 +26,7 @@ public:
   void unwatch(Watcher &watcher);
   void unref();
   void handleWatcherError(WatcherError &err);
+  std::shared_ptr<DirTree> getTree(Watcher &watcher, bool shouldRead = true);
 
   std::mutex mMutex;
   std::thread mThread;

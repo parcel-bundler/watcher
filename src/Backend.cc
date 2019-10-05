@@ -149,3 +149,17 @@ void Backend::handleError(std::exception &err) {
 
   removeShared(this);
 }
+
+std::shared_ptr<DirTree> Backend::getTree(Watcher &watcher, bool shouldRead) {
+  auto tree = watcher.tree != NULL ? watcher.tree : DirTree::getCached(watcher.mDir);
+
+  // If the tree is not complete, read it if needed.
+  if (!tree->isComplete && shouldRead) {
+    printf("Read tree\n");
+    readTree(watcher, tree);
+    tree->isComplete = true;
+    watcher.tree = tree;
+  }
+
+  return tree;
+}

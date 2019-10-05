@@ -6,6 +6,7 @@
 #include <ostream>
 #include <istream>
 #include <memory>
+#include <napi.h>
 #include "Event.hh"
 
 #ifdef _WIN32
@@ -23,6 +24,7 @@ struct DirEntry {
   DirEntry(std::string p, uint64_t t, bool d);
   DirEntry(std::istream &stream);
   void write(std::ostream &stream) const;
+  Value toJS(const Env& env);
   bool operator==(const DirEntry &other) const {
     return path == other.path;
   }
@@ -43,6 +45,8 @@ struct DirTree {
   void remove(std::string path);
   void write(std::ostream &stream);
   void getChanges(DirTree *snapshot, EventList &events);
+
+   Value toJS(const Env& env);
 };
 
 #endif

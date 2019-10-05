@@ -173,6 +173,35 @@ private:
   }
 };
 
+class GetTreeRunner : public PromiseRunner {
+public:
+  GetTreeRunner(Env env, Value dir, Value opts) : PromiseRunner(env) {
+    watcher = Watcher::getShared(
+      std::string(dir.As<String>().Utf8Value().c_str()), 
+      getIgnore(env, opts)
+    );
+
+    backend = getBackend(env, opts);
+  }
+
+  ~GetTreeRunner() {
+    watcher->unref();
+    backend->unref();
+  }
+private:
+  std::shared_ptr<Watcher> watcher;
+  std::shared_ptr<Backend> backend;
+  std::shared_ptr<DirTree> tree;
+
+  void execute() override {
+    tree = backend->getTree(*watcher);
+  }
+
+  Value getResult() override {
+    return tree->toJS(env);
+  }
+};
+
 template<class Runner>
 Value queueSubscriptionWork(const CallbackInfo& info) {
   Env env = info.Env();
@@ -203,6 +232,22 @@ Value unsubscribe(const CallbackInfo& info) {
   return queueSubscriptionWork<UnsubscribeRunner>(info);
 }
 
+Value getTree(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 2 && !info[1].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  GetTreeRunner *runner = new GetTreeRunner(info.Env(), info[0], info[1]);
+  return runner->queue();
+}
+
 Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "writeSnapshot"),
@@ -219,6 +264,10 @@ Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "unsubscribe"),
     Function::New(env, unsubscribe)
+  );
+  exports.Set(
+    String::New(env, "getTree"),
+    Function::New(env, getTree)
   );
   return exports;
 }

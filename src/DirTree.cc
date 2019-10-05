@@ -101,6 +101,18 @@ void DirTree::getChanges(DirTree *snapshot, EventList &events) {
   }
 }
 
+Value DirTree::toJS(const Env& env) {
+  EscapableHandleScope scope(env);
+  Array arr = Array::New(env, entries.size());
+  size_t i = 0;
+
+  for (auto it = entries.begin(); it != entries.end(); it++) {
+    arr.Set(i++, String::New(env, it->second.path));
+  }
+
+  return scope.Escape(arr);
+}
+
 DirEntry::DirEntry(std::string p, uint64_t t, bool d) {
   path = p;
   mtime = t;

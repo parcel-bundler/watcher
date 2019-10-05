@@ -2,14 +2,14 @@
 #define __THROW // weird error on linux
 #include <fts.h>
 #include "../DirTree.hh"
-#include "../shared/BruteForceBackend.hh"
+#include "../Backend.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
 #if __APPLE__
 #define st_mtim st_mtimespec
 #endif
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
+void Backend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
   char *paths[2] {(char *)watcher.mDir.c_str(), NULL};
   FTS *fts = fts_open(paths, FTS_NOCHDIR | FTS_PHYSICAL, NULL);
   if (!fts) {

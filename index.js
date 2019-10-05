@@ -34,3 +34,7 @@ exports.subscribe = async (dir, fn, opts) => {
 exports.unsubscribe = (dir, fn, opts) => {
   return binding.unsubscribe(path.resolve(dir), fn, normalizeOptions(dir, opts));
 };
+
+exports.getTree = (dir, opts) => {
+  return binding.getTree(path.resolve(dir), normalizeOptions(dir, opts));
+};

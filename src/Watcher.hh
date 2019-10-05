@@ -19,6 +19,7 @@ struct Watcher {
   EventList mEvents;
   void *state;
   bool mWatched;
+  std::shared_ptr<DirTree> tree;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignore);
   ~Watcher();
