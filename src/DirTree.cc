@@ -1,4 +1,5 @@
 #include "DirTree.hh"
+#include "StatCache.hh"
 
 static std::unordered_map<std::string, std::weak_ptr<DirTree>> dirTreeCache;
 
@@ -37,6 +38,7 @@ DirTree::DirTree(std::string root, std::istream &stream) : root(root), isComplet
 DirEntry *DirTree::add(std::string path, uint64_t mtime, bool isDir) {
   DirEntry entry(path, mtime, isDir);
   auto it = entries.emplace(entry.path, entry);
+  StatCache::set(path, isDir ? 1 : 0);
   return &it.first->second;
 }
 
@@ -74,6 +76,7 @@ void DirTree::remove(std::string path) {
   }
 
   entries.erase(path);
+  StatCache::set(path, -1);
 }
 
 void DirTree::write(std::ostream &stream) {

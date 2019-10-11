@@ -34,3 +34,11 @@ exports.subscribe = async (dir, fn, opts) => {
 exports.unsubscribe = (dir, fn, opts) => {
   return binding.unsubscribe(path.resolve(dir), fn, normalizeOptions(dir, opts));
 };
+
+exports.check = (file) => {
+  return binding.check(path.resolve(file));
+};
+
+exports.checkSync = (file) => {
+  return binding.checkSync(path.resolve(file));
+};

@@ -6,6 +6,7 @@
 #include "Backend.hh"
 #include "Watcher.hh"
 #include "PromiseRunner.hh"
+#include "StatCache.hh"
 
 using namespace Napi;
 
@@ -173,6 +174,25 @@ private:
   }
 };
 
+
+class StatRunner : public PromiseRunner {
+public:
+  StatRunner(Env env, Value file) : PromiseRunner(env) {
+    path = std::string(file.As<String>().Utf8Value().c_str());
+  }
+
+  void execute() override {
+    result = StatCache::get(path);
+  }
+
+  Value getResult() override {
+    return Number::New(env, result);
+  }
+private:
+  std::string path;
+  int result;
+};
+
 template<class Runner>
 Value queueSubscriptionWork(const CallbackInfo& info) {
   Env env = info.Env();
@@ -203,6 +223,29 @@ Value unsubscribe(const CallbackInfo& info) {
   return queueSubscriptionWork<UnsubscribeRunner>(info);
 }
 
+Value check(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  StatRunner *runner = new StatRunner(info.Env(), info[0]);
+  return runner->queue();
+}
+
+Value checkSync(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  StatRunner runner(env, info[0]);
+  runner.execute();
+  return runner.getResult();
+}
+
 Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "writeSnapshot"),
@@ -219,6 +262,14 @@ Object Init(Env env, Object exports) {
   exports.Set(
     String::New(env, "unsubscribe"),
     Function::New(env, unsubscribe)
+  );
+  exports.Set(
+    String::New(env, "check"),
+    Function::New(env, check)
+  );
+  exports.Set(
+    String::New(env, "checkSync"),
+    Function::New(env, checkSync)
   );
   return exports;
 }
