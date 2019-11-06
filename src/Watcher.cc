@@ -102,7 +102,7 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     HandleScope scope(it->Env());
     auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
     auto events = watcher->mCallbackEvents.toJS(it->Env());
-    it->Call(std::initializer_list<napi_value>{err, events});
+    it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
 
     // If the iterator was changed, then the callback trigged an unwatch.
     // The iterator will have been set to the next valid callback.
