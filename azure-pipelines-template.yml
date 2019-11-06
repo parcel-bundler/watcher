@@ -28,16 +28,16 @@ jobs:
 
   - ${{ if eq(parameters.name, 'Windows') }}:
     - script: |
-        curl -sSf -L -o watchman.zip https://ci.appveyor.com/api/buildjobs/vkp4mmk1cri9jsel/artifacts/watchman.zip
+        curl -sSf -L -o watchman.zip https://github.com/facebook/watchman/suites/296618337/artifacts/249606
       displayName: Download Watchman
     - task: ExtractFiles@1
       inputs:
         archiveFilePatterns: 'watchman.zip'
-        destinationFolder: $(Agent.HomeDirectory)\watchman
+        destinationFolder: $(Agent.HomeDirectory)
         cleanDestinationFolder: false
       displayName: Extract Watchman
     - script: |
-        set PATH=%PATH%;$(Agent.HomeDirectory)\watchman
+        set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
         echo "##vso[task.setvariable variable=PATH]%PATH%"
         watchman -v
       displayName: Install Watchman
