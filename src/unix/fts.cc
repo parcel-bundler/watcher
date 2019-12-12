@@ -35,7 +35,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
       continue;
     }
 
-    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
+    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D, node->fts_statp->st_size);
     isRoot = false;
   }
 

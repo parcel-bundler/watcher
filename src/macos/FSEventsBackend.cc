@@ -61,7 +61,7 @@ void FSEventsCallback(
 
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
-      state->tree->add(paths[i], 0, isDir);
+      state->tree->add(paths[i], 0, isDir, 0);
       list->create(paths[i]);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
@@ -97,7 +97,7 @@ void FSEventsCallback(
         state->tree->update(paths[i], mtime);
         list->update(paths[i]);
       } else {
-        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
+        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode), file.st_size);
         list->create(paths[i]);
       }
     }

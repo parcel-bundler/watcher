@@ -7,6 +7,7 @@
 #include <istream>
 #include <memory>
 #include "Event.hh"
+#include "../vendor/xxHash/xxhash.h"
 
 #ifdef _WIN32
 #define DIR_SEP "\\"
@@ -17,15 +18,20 @@
 struct DirEntry {
   std::string path;
   uint64_t mtime;
+  uint64_t size;
+  XXH64_hash_t hash;
   bool isDir;
   mutable void *state;
 
-  DirEntry(std::string p, uint64_t t, bool d);
+  DirEntry(std::string p, uint64_t t, bool d, uint64_t s);
   DirEntry(std::istream &stream);
-  void write(std::ostream &stream) const;
+  void write(std::ostream &stream);
   bool operator==(const DirEntry &other) const {
     return path == other.path;
   }
+
+  bool compare(DirEntry &other);
+  XXH64_hash_t getHash();
 };
 
 struct DirTree {
@@ -37,7 +43,7 @@ struct DirTree {
   DirTree(std::string root) : root(root), isComplete(false) {}
   DirTree(std::string root, std::istream &stream);
 
-  DirEntry *add(std::string path, uint64_t mtime, bool isDir);
+  DirEntry *add(std::string path, uint64_t mtime, bool isDir, uint64_t size);
   DirEntry *find(std::string path);
   DirEntry *update(std::string path, uint64_t mtime);
   void remove(std::string path);

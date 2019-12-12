@@ -1,4 +1,5 @@
 #include "DirTree.hh"
+#include <fstream>
 
 static std::unordered_map<std::string, std::weak_ptr<DirTree>> dirTreeCache;
 
@@ -34,8 +35,8 @@ DirTree::DirTree(std::string root, std::istream &stream) : root(root), isComplet
   }
 }
 
-DirEntry *DirTree::add(std::string path, uint64_t mtime, bool isDir) {
-  DirEntry entry(path, mtime, isDir);
+DirEntry *DirTree::add(std::string path, uint64_t mtime, bool isDir, uint64_t size) {
+  DirEntry entry(path, mtime, isDir, size);
   auto it = entries.emplace(entry.path, entry);
   return &it.first->second;
 }
@@ -88,7 +89,7 @@ void DirTree::getChanges(DirTree *snapshot, EventList &events) {
     auto found = snapshot->entries.find(it->first);
     if (found == snapshot->entries.end()) {
       events.create(it->second.path);
-    } else if (found->second.mtime != it->second.mtime && !found->second.isDir && !it->second.isDir) {
+    } else if (!found->second.isDir && !it->second.isDir && !found->second.compare(it->second)) {
       events.update(it->second.path);
     }
   }
@@ -101,25 +102,69 @@ void DirTree::getChanges(DirTree *snapshot, EventList &events) {
   }
 }
 
-DirEntry::DirEntry(std::string p, uint64_t t, bool d) {
+DirEntry::DirEntry(std::string p, uint64_t t, bool d, uint64_t s) {
   path = p;
   mtime = t;
   isDir = d;
+  size = s;
+  hash = 0;
   state = NULL;
 }
 
 DirEntry::DirEntry(std::istream &stream) {
-  size_t size;
+  size_t numEntries;
 
-  if (stream >> size) {
-    path.resize(size);
-    if (stream.read(&path[0], size)) {
+  if (stream >> numEntries) {
+    path.resize(numEntries);
+    if (stream.read(&path[0], numEntries)) {
       stream >> mtime;
       stream >> isDir;
+      stream >> size;
+      stream >> hash;
     }
   }
 }
 
-void DirEntry::write(std::ostream &stream) const {
-  stream << path.size() << path << mtime << " " << isDir << "\n";
+void DirEntry::write(std::ostream &stream) {
+  stream << path.size() << path << mtime << " " << isDir << " " << size << " " << getHash() << "\n";
+}
+
+bool DirEntry::compare(DirEntry &other) {
+  if (size != other.size) {
+    return false;
+  }
+
+  if (mtime == other.mtime) {
+    other.hash = hash;
+    return true;
+  }
+
+  return getHash() == other.getHash();
+}
+
+inline XXH64_hash_t readHash(std::string path) {
+  XXH64_state_t* const state = XXH64_createState();
+  char buffer[1024];
+
+  XXH64_hash_t const seed = 0;
+  XXH64_reset(state, seed);
+
+  std::ifstream file(path);
+  while (file.good()) {
+    file.read(buffer, 1024);
+    XXH64_update(state, buffer, 1024);
+  }
+
+  XXH64_hash_t const hash = XXH64_digest(state);
+  XXH64_freeState(state);
+
+  return hash;
+}
+
+XXH64_hash_t DirEntry::getHash() {
+  if (hash == 0) {
+    hash = readHash(path);
+  }
+
+  return hash;
 }

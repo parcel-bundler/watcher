@@ -15,7 +15,8 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/unix/fts.cc",
-            "src/macos/FSEventsBackend.cc"
+            "src/macos/FSEventsBackend.cc",
+            "vendor/xxHash/xxhash.c"
           ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
@@ -35,7 +36,8 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/linux/InotifyBackend.cc",
-            "src/unix/fts.cc"
+            "src/unix/fts.cc",
+            "vendor/xxHash/xxhash.c"
           ],
           "defines": [
             "WATCHMAN",
@@ -49,7 +51,8 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/windows/WindowsBackend.cc",
-            "src/windows/win_utils.cc"
+            "src/windows/win_utils.cc",
+            "vendor/xxHash/xxhash.c"
           ],
           "defines": [
             "WATCHMAN",
