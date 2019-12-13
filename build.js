@@ -1,10 +1,11 @@
 const os = require("os");
 const { execSync } = require("child_process");
 
-if (os.platform() !== "linux") {
-  // windows and mac
-  execSync("npm run prebuild:current");
-} else {
-  // linux and alpine
+// windows, mac and modern linux
+execSync("npm run prebuild:current");
+
+// Run the docker builds on os x and linux
+if (os.platform() === "darwin" || os.platform() === "linux") {
+  // centos (old libc) and alpine
   execSync("npm run prebuild:docker");
 }
