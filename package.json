@@ -10,7 +10,7 @@
     "install": "prebuild-install -r napi || node-gyp rebuild",
     "prebuild": "node ./build",
     "prebuild:current": "prebuild -t 3 -r napi --strip",
-    "prebuild:docker": "make build-build-images && make run-build-images",
+    "prebuild:docker": "make build && make run",
     "test": "mocha"
   },
   "engines": {
