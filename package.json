@@ -18,16 +18,13 @@
   },
   "dependencies": {
     "bindings": "^1.5.0",
-    "docker-pull": "^1.1.0",
     "node-addon-api": "^1.6.2",
     "prebuild-install": "^5.2.5"
   },
   "devDependencies": {
-    "docker-run": "^3.1.0",
     "fs-extra": "^7.0.1",
     "mocha": "^6.0.2",
-    "prebuild": "^8.2.1",
-    "prebuild-ci": "^3.1.0"
+    "prebuild": "^8.2.1"
   },
   "binary": {
     "napi_versions": [
