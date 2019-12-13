@@ -1,5 +1,5 @@
 #include "DirTree.hh"
-#include <fstream>
+#include <cstdio>
 
 static std::unordered_map<std::string, std::weak_ptr<DirTree>> dirTreeCache;
 
@@ -142,18 +142,26 @@ bool DirEntry::compare(DirEntry &other) {
   return getHash() == other.getHash();
 }
 
+#define BUFLEN 16384
+
 inline XXH64_hash_t readHash(std::string path) {
   XXH64_state_t* const state = XXH64_createState();
-  char buffer[1024];
+  char buffer[BUFLEN];
 
   XXH64_hash_t const seed = 0;
   XXH64_reset(state, seed);
 
-  std::ifstream file(path);
-  while (file.good()) {
-    file.read(buffer, 1024);
-    XXH64_update(state, buffer, 1024);
+  FILE* file = fopen(path.c_str(), "rb");
+  if (file == NULL) {
+    return 0;
   }
+  
+  int len;
+  while ((len = fread(buffer, 1, BUFLEN, file)) > 0) {
+    XXH64_update(state, buffer, len);
+  }
+
+  fclose(file);
 
   XXH64_hash_t const hash = XXH64_digest(state);
   XXH64_freeState(state);
@@ -162,6 +170,10 @@ inline XXH64_hash_t readHash(std::string path) {
 }
 
 XXH64_hash_t DirEntry::getHash() {
+  if (isDir) {
+    return 0;
+  }
+
   if (hash == 0) {
     hash = readHash(path);
   }
