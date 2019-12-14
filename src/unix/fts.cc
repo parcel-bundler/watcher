@@ -17,7 +17,7 @@ bool Dots(const char *s) {
     return s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]));
 }
 
-void iterateDir(const char *dirname, Watcher &watcher, std::shared_ptr <DirTree> tree) {
+void iterateDir(Watcher &watcher, std::shared_ptr <DirTree> tree, const char *dirname) {
     if (DIR * dir = opendir(dirname)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
             if (!Dots(ent->d_name)) {
@@ -34,7 +34,7 @@ void iterateDir(const char *dirname, Watcher &watcher, std::shared_ptr <DirTree>
                     tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
 
                     if (isDir) {
-                        iterateDir(fullPath.c_str(), watcher, tree);
+                        iterateDir(watcher, tree, fullPath.c_str());
                     }
                 }
             }
@@ -49,7 +49,5 @@ void iterateDir(const char *dirname, Watcher &watcher, std::shared_ptr <DirTree>
 }
 
 void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr <DirTree> tree) {
-    const char *dirname = watcher.mDir.c_str();
-
-    return iterateDir(dirname, watcher, tree);
+    return iterateDir(watcher, tree, watcher.mDir.c_str());
 }
