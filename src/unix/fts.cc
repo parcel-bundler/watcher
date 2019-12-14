@@ -2,17 +2,8 @@
 
 #define __THROW // weird error on linux
 
-// TODO: Clean these includes up...
-#include <iostream>
-#include <cerrno>
-#include <cstring>
-
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <unistd.h>
 
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
@@ -33,19 +24,18 @@ void iterateDir(const char *dirname, Watcher &watcher, std::shared_ptr <DirTree>
                 // TODO: This can definitely be optimised, seems weird to convert chars to strings back to chars...
                 std::string fullPath = std::string(dirname) + "/" + std::string(ent->d_name);
 
+                // TODO: Ignore certain symlinks?  && (ent->d_type == DT_DIR || ent->d_type == DT_REG)
+                // For some reason the previous implementation had less files in a snapshot?
                 if (watcher.mIgnore.count(fullPath) == 0) {
                     struct stat attrib;
                     stat(fullPath.c_str(), &attrib);
-                    bool isDir = S_ISDIR(attrib.st_mode);
+                    bool isDir = ent->d_type == DT_DIR;
 
-                    tree->add(fullPath, attrib.st_mtime, isDir);
+                    tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
 
                     if (isDir) {
                         iterateDir(fullPath.c_str(), watcher, tree);
                     }
-
-                    // std::cout << fullPath << std::endl;
-                    // std::cout << "is dir? " << isDir << std::endl;
                 }
             }
         }
