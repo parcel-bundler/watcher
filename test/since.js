@@ -9,11 +9,11 @@ fs.mkdirpSync(tmpDir);
 
 let backends = [];
 if (process.platform === 'darwin') {
-  backends = ['fs-events', 'watchman'];
+  backends = ['fs-events', 'watchman', 'brute-force'];
 } else if (process.platform === 'linux') {
-  backends = ['inotify', 'watchman'];
+  backends = ['inotify', 'watchman', 'brute-force'];
 } else if (process.platform === 'win32') {
-  backends = ['windows', 'watchman'];
+  backends = ['windows', 'watchman', 'brute-force'];
 }
 
 let c = 0;

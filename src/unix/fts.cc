@@ -1,6 +1,19 @@
 #include <string>
+
 #define __THROW // weird error on linux
-#include <fts.h>
+
+// TODO: Clean these includes up...
+#include <iostream>
+#include <cerrno>
+#include <cstring>
+
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
+
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
 
@@ -9,35 +22,44 @@
 #define st_mtim st_mtimespec
 #endif
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
-  char *paths[2] {(char *)watcher.mDir.c_str(), NULL};
-  FTS *fts = fts_open(paths, FTS_NOCHDIR | FTS_PHYSICAL, NULL);
-  if (!fts) {
-    throw WatcherError(strerror(errno), &watcher);
-  }
+bool Dots(const char *s) {
+    return s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]));
+}
 
-  FTSENT *node;
-  bool isRoot = true;
+void iterateDir(const char *dirname, Watcher &watcher, std::shared_ptr <DirTree> tree) {
+    if (DIR * dir = opendir(dirname)) {
+        while (struct dirent *ent = (errno = 0, readdir(dir))) {
+            if (!Dots(ent->d_name)) {
+                // TODO: This can definitely be optimised, seems weird to convert chars to strings back to chars...
+                std::string fullPath = std::string(dirname) + "/" + std::string(ent->d_name);
 
-  while ((node = fts_read(fts)) != NULL) {
-    if (node->fts_errno) {
-      fts_close(fts);
-      throw WatcherError(strerror(node->fts_errno), &watcher);
+                if (watcher.mIgnore.count(fullPath) == 0) {
+                    struct stat attrib;
+                    stat(fullPath.c_str(), &attrib);
+                    bool isDir = S_ISDIR(attrib.st_mode);
+
+                    tree->add(fullPath, attrib.st_mtime, isDir);
+
+                    if (isDir) {
+                        iterateDir(fullPath.c_str(), watcher, tree);
+                    }
+
+                    // std::cout << fullPath << std::endl;
+                    // std::cout << "is dir? " << isDir << std::endl;
+                }
+            }
+        }
+
+        closedir(dir);
     }
 
-    if (isRoot && !(node->fts_info & FTS_D)) {
-      fts_close(fts);
-      throw WatcherError(strerror(ENOTDIR), &watcher);
+    if (errno) {
+        throw WatcherError(strerror(errno), &watcher);
     }
+}
 
-    if (watcher.mIgnore.count(std::string(node->fts_path)) > 0) {
-      fts_set(fts, node, FTS_SKIP);
-      continue;
-    }
+void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr <DirTree> tree) {
+    const char *dirname = watcher.mDir.c_str();
 
-    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
-    isRoot = false;
-  }
-
-  fts_close(fts);
+    return iterateDir(dirname, watcher, tree);
 }
