@@ -17,9 +17,7 @@ bool Dots(const char *s) {
     return s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]));
 }
 
-// The old implementation has less files in a snapshot about 4k diff, most symlinks and other non regular files
-// Not entirely sure why yet...
-// TODO: Figure out why tests aren't all passing
+// TODO: Figure out why some tests fail...
 void iterateDir(Watcher &watcher, std::shared_ptr <DirTree> tree, const char *dirname) {
     if (DIR * dir = opendir(dirname)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
