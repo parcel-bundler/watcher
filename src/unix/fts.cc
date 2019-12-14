@@ -17,15 +17,15 @@ bool Dots(const char *s) {
     return s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]));
 }
 
+// The old implementation has less files in a snapshot about 4k diff, most symlinks and other non regular files
+// Not entirely sure why yet...
+// TODO: Figure out why tests aren't all passing
 void iterateDir(Watcher &watcher, std::shared_ptr <DirTree> tree, const char *dirname) {
     if (DIR * dir = opendir(dirname)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
             if (!Dots(ent->d_name)) {
-                // TODO: This can definitely be optimised, seems weird to convert chars to strings back to chars...
                 std::string fullPath = std::string(dirname) + "/" + std::string(ent->d_name);
 
-                // TODO: Ignore certain symlinks?  && (ent->d_type == DT_DIR || ent->d_type == DT_REG)
-                // For some reason the previous implementation had less files in a snapshot?
                 if (watcher.mIgnore.count(fullPath) == 0) {
                     struct stat attrib;
                     stat(fullPath.c_str(), &attrib);
