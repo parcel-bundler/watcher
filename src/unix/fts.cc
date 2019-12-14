@@ -18,21 +18,25 @@ bool Dots(const char *s) {
 }
 
 // TODO: Figure out why some tests fail...
-void iterateDir(Watcher &watcher, std::shared_ptr <DirTree> tree, const char *dirname) {
+void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *dirname) {
     if (DIR * dir = opendir(dirname)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
-            if (!Dots(ent->d_name)) {
-                std::string fullPath = std::string(dirname) + "/" + std::string(ent->d_name);
+            const char* fileName = ent->d_name;
+
+            if (!Dots(fileName)) {
+                std::string fullPath = dirname + std::string("/") + fileName;
 
                 if (watcher.mIgnore.count(fullPath) == 0) {
+                    const char* fullPathChars = fullPath.c_str();
+
                     struct stat attrib;
-                    stat(fullPath.c_str(), &attrib);
+                    stat(fullPathChars, &attrib);
                     bool isDir = ent->d_type == DT_DIR;
 
                     tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
 
                     if (isDir) {
-                        iterateDir(watcher, tree, fullPath.c_str());
+                        iterateDir(watcher, tree, fullPathChars);
                     }
                 }
             }
