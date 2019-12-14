@@ -1,6 +1,6 @@
 const watcher = require("./index");
 
-const NUM_ROUNDS = 100;
+const NUM_ROUNDS = 50;
 
 async function run() {
   let minTime;
