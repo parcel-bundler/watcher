@@ -23,7 +23,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
 
             if (watcher.mIgnore.count(fullPath) == 0) {
                 struct stat attrib;
-                fstatat(dir->__dd_fd, fullPath.c_str(), &attrib, AT_SYMLINK_NOFOLLOW);
+                stat(fullPath.c_str(), &attrib);
                 bool isDir = ent->d_type == DT_DIR;
 
                 tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
