@@ -12,23 +12,18 @@
 #if __APPLE__
 #define st_mtim st_mtimespec
 #endif
-
-bool Dots(const char *s) {
-    return s[0] == '.' && (!s[1] || (s[1] == '.' && !s[2]));
-}
+#define ISDOT(a) (a[0] == '.' && (!a[1] || (a[1] == '.' && !a[2])))
 
 // TODO: Figure out why some tests fail...
 void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *dirname) {
     if (DIR * dir = opendir(dirname)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
-            const char* fileName = ent->d_name;
-
-            if (!Dots(fileName)) {
-                std::string fullPath = dirname + std::string("/") + fileName;
+            if (!ISDOT(ent->d_name)) {
+                std::string fullPath = dirname + std::string("/") + ent->d_name;
 
                 if (watcher.mIgnore.count(fullPath) == 0) {
                     struct stat attrib;
-                    fstat(ent->d_ino, &attrib);
+                    fstatat(dir->__dd_fd, fullPath.c_str(), &attrib, AT_SYMLINK_NOFOLLOW);
                     bool isDir = ent->d_type == DT_DIR;
 
                     tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
