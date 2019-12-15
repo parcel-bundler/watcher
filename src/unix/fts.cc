@@ -27,16 +27,14 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
                 std::string fullPath = dirname + std::string("/") + fileName;
 
                 if (watcher.mIgnore.count(fullPath) == 0) {
-                    const char* fullPathChars = fullPath.c_str();
-
                     struct stat attrib;
-                    stat(fullPathChars, &attrib);
+                    fstat(ent->d_ino, &attrib);
                     bool isDir = ent->d_type == DT_DIR;
 
                     tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
 
                     if (isDir) {
-                        iterateDir(watcher, tree, fullPathChars);
+                        iterateDir(watcher, tree, fullPath.c_str());
                     }
                 }
             }
