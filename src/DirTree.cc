@@ -34,7 +34,7 @@ DirTree::DirTree(std::string root, std::istream &stream) : root(root), isComplet
   }
 }
 
-DirEntry *DirTree::add(const std::string& path, uint64_t mtime, bool isDir) {
+DirEntry *DirTree::add(std::string path, uint64_t mtime, bool isDir) {
   DirEntry entry(path, mtime, isDir);
   auto it = entries.emplace(entry.path, entry);
   return &it.first->second;

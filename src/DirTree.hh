@@ -37,7 +37,7 @@ struct DirTree {
   DirTree(std::string root) : root(root), isComplete(false) {}
   DirTree(std::string root, std::istream &stream);
 
-  DirEntry *add(const std::string& path, uint64_t mtime, bool isDir);
+  DirEntry *add(std::string path, uint64_t mtime, bool isDir);
   DirEntry *find(std::string path);
   DirEntry *update(std::string path, uint64_t mtime);
   void remove(std::string path);
