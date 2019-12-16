@@ -1,6 +1,8 @@
 #include <string>
 
-#define __THROW // weird error on linux
+// weird error on linux
+#undef __THROW
+#define __THROW
 
 #ifdef _LIBC
 # include <include/sys/stat.h>
