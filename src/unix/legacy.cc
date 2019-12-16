@@ -1,7 +1,9 @@
 #include <string>
 
 // weird error on linux
+#ifdef __THROW
 #undef __THROW
+#endif
 #define __THROW
 
 #ifdef _LIBC
