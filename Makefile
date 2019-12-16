@@ -7,5 +7,6 @@ build:
 	docker build -t parcel-watcher/alpine-builder-agent -f ./alpine.Dockerfile .
 	
 run:
+	mkdir -p prebuilds/@parcel
 	docker run -v $(current_dir):/input parcel-watcher/centos-builder-agent
 	docker run -v $(current_dir):/input parcel-watcher/alpine-builder-agent
