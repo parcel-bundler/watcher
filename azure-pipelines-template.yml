@@ -44,6 +44,8 @@ jobs:
 
   - script: npm install --build-from-source
     displayName: Install dependencies
+  - script: npm run prebuild
+    displayName: Test prebuild
   - script: npm test
     displayName: Run tests
 
