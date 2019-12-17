@@ -1,5 +1,5 @@
 #!/bin/sh
 
-npm run prebuild:current
+npm run prebuild
 
 cp -rf prebuilds/@parcel/* /input/prebuilds/@parcel
