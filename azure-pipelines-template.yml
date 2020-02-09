@@ -25,21 +25,21 @@ jobs:
         brew install watchman
       displayName: Install Watchman
 
-  #- ${{ if eq(parameters.name, 'Windows') }}:
-  #  - script: |
-  #      curl -sSf -L -o watchman.zip https://github.com/facebook/watchman/suites/423326153/artifacts/1382043
-  #    displayName: Download Watchman
-  #  - task: ExtractFiles@1
-  #    inputs:
-  #      archiveFilePatterns: 'watchman.zip'
-  #      destinationFolder: $(Agent.HomeDirectory)
-  #      cleanDestinationFolder: false
-  #    displayName: Extract Watchman
-  #  - script: |
-  #      set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
-  #      echo "##vso[task.setvariable variable=PATH]%PATH%"
-  #      watchman -v
-  #    displayName: Install Watchman
+  - ${{ if eq(parameters.name, 'Windows') }}:
+    - script: |
+        curl -sSf -L -o watchman.zip https://github.com/facebook/watchman/suites/423326153/artifacts/1382043
+      displayName: Download Watchman
+    - task: ExtractFiles@1
+      inputs:
+        archiveFilePatterns: 'watchman.zip'
+        destinationFolder: $(Agent.HomeDirectory)
+        cleanDestinationFolder: false
+      displayName: Extract Watchman
+    - script: |
+        set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
+        echo "##vso[task.setvariable variable=PATH]%PATH%"
+        watchman -v
+      displayName: Install Watchman
 
   - script: npm install --build-from-source
     displayName: Install dependencies

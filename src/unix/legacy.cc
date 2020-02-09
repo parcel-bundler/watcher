@@ -27,21 +27,23 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
     int open_flags = (O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOCTTY | O_NONBLOCK | O_NOFOLLOW);
     int new_fd = openat(parent_fd, relative, open_flags);
 
+    struct stat rootAttributes;
+    fstatat(new_fd, ".", &rootAttributes, AT_SYMLINK_NOFOLLOW);
+    tree->add(dirname, CONVERT_TIME(rootAttributes.st_mtim), true);
+
     if (DIR *dir = fdopendir(new_fd)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
             if (ISDOT(ent->d_name)) continue;
-
-            std::string fullPath = dirname + "/" + ent->d_name;
 
             if (watcher.mIgnore.count(fullPath) == 0) {
                 struct stat attrib;
                 fstatat(new_fd, ent->d_name, &attrib, AT_SYMLINK_NOFOLLOW);
                 bool isDir = ent->d_type == DT_DIR;
 
-                tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
-
                 if (isDir) {
                     iterateDir(watcher, tree, ent->d_name, new_fd, fullPath);
+                } else {
+                    tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
                 }
             }
         }
@@ -58,7 +60,6 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr <DirTree> tre
     int fd = open(watcher.mDir.c_str(), O_RDONLY);
     if (fd) {
         iterateDir(watcher, tree, ".", fd, watcher.mDir);
+        close(fd);
     }
-
-    close(fd);
 }
