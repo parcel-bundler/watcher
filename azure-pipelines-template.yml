@@ -2,7 +2,7 @@ jobs:
 - job: ${{ parameters.name }}
   pool: 
     vmImage: ${{ parameters.vmImage }}
-  ${{ if or(eq(parameters.name, 'Alpine_Linux'), eq(parameters.name, 'CentOS_Linux')) }}:
+  ${{ if or(eq(parameters.name, 'Alpine'), eq(parameters.name, 'CentOS7')) }}:
     container: ${{ parameters.container }}
   strategy:
     matrix:
