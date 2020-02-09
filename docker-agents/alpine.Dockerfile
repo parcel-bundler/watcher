@@ -18,7 +18,8 @@ RUN apk add --no-cache --update \
   gcc \
   git \
   fts-dev \
-  python
+  python \
+  bash
   
 ENV WATCHMAN_VERSION=4.9.0 \
   WATCHMAN_SHA256=1f6402dc70b1d056fffc3748f2fdcecff730d8843bb6936de395b3443ce05322
