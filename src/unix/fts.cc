@@ -1,5 +1,11 @@
 #include <string>
-#define __THROW // weird error on linux
+
+// weird error on linux
+#ifdef __THROW
+#undef __THROW
+#endif
+#define __THROW
+
 #include <fts.h>
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"

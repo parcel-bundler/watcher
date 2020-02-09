@@ -35,7 +35,7 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/linux/InotifyBackend.cc",
-            "src/unix/fts.cc"
+            "src/unix/legacy.cc"
           ],
           "defines": [
             "WATCHMAN",

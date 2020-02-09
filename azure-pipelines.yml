@@ -14,8 +14,15 @@ jobs:
 
   - template: azure-pipelines-template.yml
     parameters:
-      name: Linux
+      name: Alpine
       vmImage: ubuntu-16.04
+      container: jasperdm/alpine-watchman:latest
+  
+  - template: azure-pipelines-template.yml
+    parameters:
+      name: CentOS7
+      vmImage: ubuntu-16.04
+      container: jasperdm/centos-watchman:latest
 
   - template: azure-pipelines-template.yml
     parameters:

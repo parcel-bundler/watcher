@@ -606,22 +606,24 @@ describe('watcher', () => {
     });
   });
 
-  describe('watchman errors', () => {
-    it('should emit an error when watchman dies', async () => {
-      let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
-      fs.mkdirpSync(dir);
-      await new Promise(resolve => setTimeout(resolve, 100));
+  if (backends.includes('watchman')) {
+    describe('watchman errors', () => {
+      it('should emit an error when watchman dies', async () => {
+        let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        fs.mkdirpSync(dir);
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      let p = new Promise(resolve => {
-        watcher.subscribe(dir, (err, events) => {
-          setImmediate(() => resolve(err));
-        }, {backend: 'watchman'});
+        let p = new Promise(resolve => {
+          watcher.subscribe(dir, (err, events) => {
+            setImmediate(() => resolve(err));
+          }, {backend: 'watchman'});
+        });
+
+        execSync('watchman shutdown-server');
+
+        let err = await p;
+        assert(err, 'No error was emitted');
       });
-
-      execSync('watchman shutdown-server');
-
-      let err = await p;
-      assert(err, 'No error was emitted');
     });
-  });
+  }
 });
