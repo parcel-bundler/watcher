@@ -14,7 +14,8 @@
             "src/watchman/BSER.cc",
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
-            "src/unix/fts.cc",
+            # "src/unix/fts.cc",
+            "src/unix/legacy.cc",
             "src/macos/FSEventsBackend.cc"
           ],
           "link_settings": {

@@ -10,7 +10,7 @@ if (process.platform === 'darwin') {
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
-  backends = ['windows', 'watchman'];
+  backends = ['windows'];
 }
 
 describe('watcher', () => {
