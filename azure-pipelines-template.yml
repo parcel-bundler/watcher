@@ -30,7 +30,7 @@ jobs:
         mkdir -p $(Agent.HomeDirectory)\watchman\windows\bin
       displayName: Make watchman directory
     - script: |
-        cp -rf $(System.DefaultWorkingDirectory)\watchman-bin $(Agent.HomeDirectory)\watchman\windows\bin
+        cp -rf $(System.DefaultWorkingDirectory)\watchman-bin\* $(Agent.HomeDirectory)\watchman\windows\bin
       displayName: Copy Watchman
     - script: |
         set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
