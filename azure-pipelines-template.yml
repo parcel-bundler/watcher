@@ -28,7 +28,7 @@ jobs:
 
   - ${{ if eq(parameters.name, 'Windows') }}:
     - script: |
-        curl -sSf -L -o watchman.zip https://github.com/facebook/watchman/suites/296618337/artifacts/249606
+        curl -sSf -L -o watchman.zip https://github.com/facebook/watchman/suites/423326153/artifacts/1382043
       displayName: Download Watchman
     - task: ExtractFiles@1
       inputs:
