@@ -34,7 +34,8 @@ jobs:
       condition: succeeded()
       dependsOn:
         - macOS
-        - Linux
+        - Alpine
+        - CentOS7
         - Windows
       pool: 
         vmImage: ubuntu-16.04
