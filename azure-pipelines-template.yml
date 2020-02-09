@@ -2,7 +2,7 @@ jobs:
 - job: ${{ parameters.name }}
   pool: 
     vmImage: ${{ parameters.vmImage }}
-  ${{ if eq(parameters.name, 'Linux') }}:
+  ${{ if or(eq(parameters.name, 'Alpine_Linux'), eq(parameters.name, 'CentOS_Linux')) }}:
     container: ${{ parameters.container }}
   strategy:
     matrix:
@@ -12,7 +12,6 @@ jobs:
       node_10_x:
         node_version: 10.x
         publish_artifacts: true
-    maxParallel: 3
   steps:
   - task: NodeTool@0
     inputs:

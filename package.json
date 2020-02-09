@@ -9,7 +9,6 @@
   "scripts": {
     "install": "prebuild-install -r napi || node-gyp rebuild",
     "prebuild": "prebuild -t 3 -r napi --strip",
-    "prebuild:docker": "make build && make run",
     "test": "mocha"
   },
   "engines": {
