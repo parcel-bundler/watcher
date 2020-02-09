@@ -27,10 +27,7 @@ jobs:
 
   - ${{ if eq(parameters.name, 'Windows') }}:
     - script: |
-        mkdir -p $(Agent.HomeDirectory)\watchman\windows\bin
-      displayName: Make watchman directory
-    - script: |
-        cp -rf $(System.DefaultWorkingDirectory)\watchman-bin\* $(Agent.HomeDirectory)\watchman\windows\bin
+        cp -rf $(System.DefaultWorkingDirectory)\watchman $(Agent.HomeDirectory)
       displayName: Copy Watchman
     - script: |
         set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
