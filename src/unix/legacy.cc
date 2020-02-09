@@ -23,7 +23,7 @@
 #endif
 #define ISDOT(a) (a[0] == '.' && (!a[1] || (a[1] == '.' && !a[2])))
 
-void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, std::string dirname) {
+void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, const std::string dirname) {
     int open_flags = (O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOCTTY | O_NONBLOCK | O_NOFOLLOW);
     int new_fd = openat(parent_fd, relative, open_flags);
 
