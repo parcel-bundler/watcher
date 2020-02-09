@@ -35,6 +35,8 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
             if (ISDOT(ent->d_name)) continue;
 
+            std::string fullPath = dirname + "/" + ent->d_name;
+
             if (watcher.mIgnore.count(fullPath) == 0) {
                 struct stat attrib;
                 fstatat(new_fd, ent->d_name, &attrib, AT_SYMLINK_NOFOLLOW);
