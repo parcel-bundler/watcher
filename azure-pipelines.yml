@@ -27,7 +27,7 @@ jobs:
   - template: azure-pipelines-template.yml
     parameters:
       name: Windows
-      vmImage: vs2017-win2016
+      vmImage: windows-2019
 
   - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
     - job: Publish
