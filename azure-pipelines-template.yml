@@ -44,16 +44,12 @@ jobs:
 
   - script: npm install --build-from-source
     displayName: Install dependencies
-  - script: npm run prebuild
-    displayName: Test prebuild
   - script: npm test
     displayName: Run tests
+  - script: npm run prebuild
+    displayName: Test prebuild
 
   - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
-    - script: npm run prebuild
-      displayName: Prebuild
-      condition: and(succeeded(), eq(variables['publish_artifacts'], 'true'))
-
     - task: PublishBuildArtifacts@1
       displayName: Publish Artifacts
       condition: and(succeeded(), eq(variables['publish_artifacts'], 'true'))

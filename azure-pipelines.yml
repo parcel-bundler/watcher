@@ -14,8 +14,15 @@ jobs:
 
   - template: azure-pipelines-template.yml
     parameters:
-      name: Linux
+      name: Alpine Linux
       vmImage: ubuntu-16.04
+      container: node:lts-alpine
+  
+  - template: azure-pipelines-template.yml
+    parameters:
+      name: CentOS Linux
+      vmImage: ubuntu-16.04
+      container: prebuild/centos7-devtoolset7
 
   - template: azure-pipelines-template.yml
     parameters:
