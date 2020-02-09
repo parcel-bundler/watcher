@@ -39,3 +39,4 @@ RUN cd /tmp/watchman-${WATCHMAN_VERSION} \
  && rm -rf /tmp/*
 
 RUN watchman --version
+RUN command -v bash
