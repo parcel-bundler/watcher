@@ -29,7 +29,7 @@ describe('watcher', () => {
         if (err) {
           throw err;
         }
-        
+
         setImmediate(() => {
           for (let cb of cbs) {
             cb(events);
@@ -40,16 +40,31 @@ describe('watcher', () => {
       };
 
       let c = 0;
-      const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
+      const getFilename = (...dir) =>
+        path.join(
+          tmpDir,
+          ...dir,
+          `test${c++}${Math.random()
+            .toString(31)
+            .slice(2)}`,
+        );
       let ignoreDir, ignoreFile, sub;
 
       before(async () => {
-        tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        tmpDir = path.join(
+          fs.realpathSync(require('os').tmpdir()),
+          Math.random()
+            .toString(31)
+            .slice(2),
+        );
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         await new Promise(resolve => setTimeout(resolve, 100));
-        sub = await watcher.subscribe(tmpDir, fn, {backend, ignore: [ignoreDir, ignoreFile]});
+        sub = await watcher.subscribe(tmpDir, fn, {
+          backend,
+          ignore: [ignoreDir, ignoreFile],
+        });
       });
 
       after(async () => {
@@ -61,9 +76,7 @@ describe('watcher', () => {
           let f = getFilename();
           fs.writeFile(f, 'hello world');
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f}]);
         });
 
         it('should emit when a file is updated', async () => {
@@ -73,9 +86,7 @@ describe('watcher', () => {
 
           fs.writeFile(f, 'hi');
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'update', path: f}
-          ]);
+          assert.deepEqual(res, [{type: 'update', path: f}]);
         });
 
         it('should emit when a file is renamed', async () => {
@@ -88,7 +99,7 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [
             {type: 'delete', path: f1},
-            {type: 'create', path: f2}
+            {type: 'create', path: f2},
           ]);
         });
 
@@ -99,9 +110,7 @@ describe('watcher', () => {
 
           fs.unlink(f);
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: f}
-          ]);
+          assert.deepEqual(res, [{type: 'delete', path: f}]);
         });
       });
 
@@ -110,9 +119,7 @@ describe('watcher', () => {
           let f = getFilename();
           fs.mkdir(f);
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f}]);
         });
 
         it('should emit when a directory is renamed', async () => {
@@ -126,7 +133,7 @@ describe('watcher', () => {
 
           assert.deepEqual(res, [
             {type: 'delete', path: f1},
-            {type: 'create', path: f2}
+            {type: 'create', path: f2},
           ]);
         });
 
@@ -138,9 +145,7 @@ describe('watcher', () => {
           fs.remove(f);
           let res = await nextEvent();
 
-          assert.deepEqual(res, [
-            {type: 'delete', path: f}
-          ]);
+          assert.deepEqual(res, [{type: 'delete', path: f}]);
         });
       });
 
@@ -153,9 +158,7 @@ describe('watcher', () => {
 
           fs.writeFile(f2, 'hello world');
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
 
         it('should emit when a sub-file is updated', async () => {
@@ -169,9 +172,7 @@ describe('watcher', () => {
 
           fs.writeFile(f2, 'hi');
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'update', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'update', path: f2}]);
         });
 
         it('should emit when a sub-file is renamed', async () => {
@@ -188,7 +189,7 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [
             {type: 'delete', path: f2},
-            {type: 'create', path: f3}
+            {type: 'create', path: f3},
           ]);
         });
 
@@ -197,15 +198,13 @@ describe('watcher', () => {
           let f2 = getFilename(path.basename(f1));
           fs.mkdir(f1);
           await nextEvent();
-          
+
           fs.writeFile(f2, 'hello world');
           await nextEvent();
 
           fs.unlink(f2);
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
       });
 
@@ -218,9 +217,7 @@ describe('watcher', () => {
 
           fs.mkdir(f2);
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
 
         it('should emit when a sub-directory is renamed', async () => {
@@ -238,7 +235,7 @@ describe('watcher', () => {
 
           assert.deepEqual(res, [
             {type: 'delete', path: f2},
-            {type: 'create', path: f3}
+            {type: 'create', path: f3},
           ]);
         });
 
@@ -247,7 +244,7 @@ describe('watcher', () => {
           let f2 = getFilename(path.basename(f1));
           fs.mkdir(f1);
           await nextEvent();
-          
+
           fs.writeFile(f2, 'hello world');
           await nextEvent();
 
@@ -255,7 +252,7 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [
             {type: 'delete', path: f1},
-            {type: 'delete', path: f2}
+            {type: 'delete', path: f2},
           ]);
         });
       });
@@ -270,9 +267,7 @@ describe('watcher', () => {
           fs.symlink(f1, f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
 
         it('should emit when a symlink is updated', async () => {
@@ -287,9 +282,7 @@ describe('watcher', () => {
           fs.writeFile(f2, 'hi');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'update', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'update', path: f1}]);
         });
 
         it('should emit when a symlink is renamed', async () => {
@@ -307,7 +300,7 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [
             {type: 'delete', path: f2},
-            {type: 'create', path: f3}
+            {type: 'create', path: f3},
           ]);
         });
 
@@ -323,9 +316,7 @@ describe('watcher', () => {
           fs.unlink(f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
       });
 
@@ -338,9 +329,7 @@ describe('watcher', () => {
           fs.unlink(f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
         it('should coalese create and update events', async () => {
@@ -349,9 +338,7 @@ describe('watcher', () => {
           fs.writeFile(f1, 'updated');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
         it('should coalese create and rename events', async () => {
@@ -361,9 +348,7 @@ describe('watcher', () => {
           fs.rename(f1, f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f2}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
 
         it('should coalese multiple rename events', async () => {
@@ -377,9 +362,7 @@ describe('watcher', () => {
           fs.rename(f3, f4);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f4}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f4}]);
         });
 
         it('should coalese multiple update events', async () => {
@@ -392,9 +375,7 @@ describe('watcher', () => {
           fs.writeFile(f1, 'update3');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'update', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'update', path: f1}]);
         });
 
         it('should coalese update and delete events', async () => {
@@ -406,9 +387,7 @@ describe('watcher', () => {
           fs.unlink(f1);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'delete', path: f1}]);
         });
       });
 
@@ -422,9 +401,7 @@ describe('watcher', () => {
           fs.writeFile(f2, 'sup');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
         it('should ignore a file', async () => {
@@ -434,24 +411,31 @@ describe('watcher', () => {
           fs.writeFile(ignoreFile, 'sup');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: f1}
-          ]);
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
       });
 
       describe('multiple', () => {
         it('should support multiple watchers for the same directory', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen() {
             return new Promise(async resolve => {
-              let sub = await watcher.subscribe(dir, async (err, events) => {
-                setImmediate(() => resolve(events));
-                await sub.unsubscribe();
-              }, {backend});
+              let sub = await watcher.subscribe(
+                dir,
+                async (err, events) => {
+                  setImmediate(() => resolve(events));
+                  await sub.unsubscribe();
+                },
+                {backend},
+              );
             });
           }
 
@@ -464,21 +448,30 @@ describe('watcher', () => {
           let res = await Promise.all([l1, l2]);
           assert.deepEqual(res, [
             [{type: 'create', path: path.join(dir, 'test1.txt')}],
-            [{type: 'create', path: path.join(dir, 'test1.txt')}]
+            [{type: 'create', path: path.join(dir, 'test1.txt')}],
           ]);
         });
 
         it('should support multiple watchers for the same directory with different ignore paths', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(ignore) {
             return new Promise(async resolve => {
-              let sub = await watcher.subscribe(dir, async (err, events) => {
-                setImmediate(() => resolve(events));
-                await sub.unsubscribe();
-              }, {backend, ignore});
+              let sub = await watcher.subscribe(
+                dir,
+                async (err, events) => {
+                  setImmediate(() => resolve(events));
+                  await sub.unsubscribe();
+                },
+                {backend, ignore},
+              );
             });
           }
 
@@ -492,23 +485,37 @@ describe('watcher', () => {
           let res = await Promise.all([l1, l2]);
           assert.deepEqual(res, [
             [{type: 'create', path: path.join(dir, 'test2.txt')}],
-            [{type: 'create', path: path.join(dir, 'test1.txt')}]
+            [{type: 'create', path: path.join(dir, 'test1.txt')}],
           ]);
         });
 
         it('should support multiple watchers for different directories', async () => {
-          let dir1 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
-          let dir2 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir1 = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
+          let dir2 = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
           fs.mkdirpSync(dir1);
           fs.mkdirpSync(dir2);
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await watcher.subscribe(dir, async (err, events) => {
-                setImmediate(() => resolve(events));
-                await sub.unsubscribe();
-              }, {backend});
+              let sub = await watcher.subscribe(
+                dir,
+                async (err, events) => {
+                  setImmediate(() => resolve(events));
+                  await sub.unsubscribe();
+                },
+                {backend},
+              );
             });
           }
 
@@ -522,21 +529,35 @@ describe('watcher', () => {
           let res = await Promise.all([l1, l2]);
           assert.deepEqual(res, [
             [{type: 'create', path: path.join(dir1, 'test1.txt')}],
-            [{type: 'create', path: path.join(dir2, 'test1.txt')}]
+            [{type: 'create', path: path.join(dir2, 'test1.txt')}],
           ]);
         });
 
         it('should work when getting events since a snapshot on an already watched directory', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
-          let snapshot = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
+          let snapshot = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
           function listen(dir) {
             return new Promise(async resolve => {
-              let sub = await watcher.subscribe(dir, (err, events) => {
-                setImmediate(() => resolve([events, sub]));
-              }, {backend});
+              let sub = await watcher.subscribe(
+                dir,
+                (err, events) => {
+                  setImmediate(() => resolve([events, sub]));
+                },
+                {backend},
+              );
             });
           }
 
@@ -554,12 +575,12 @@ describe('watcher', () => {
 
           let [watched, sub] = await l;
           assert.deepEqual(watched, [
-            {type: 'create', path: path.join(dir, 'test1.txt')}
+            {type: 'create', path: path.join(dir, 'test1.txt')},
           ]);
 
           let since = await watcher.getEventsSince(dir, snapshot, {backend});
           assert.deepEqual(since, [
-            {type: 'create', path: path.join(dir, 'test2.txt')}
+            {type: 'create', path: path.join(dir, 'test2.txt')},
           ]);
 
           await sub.unsubscribe();
@@ -568,13 +589,22 @@ describe('watcher', () => {
 
       describe('errors', () => {
         it('should error if the watched directory does not exist', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
 
           let threw = false;
           try {
-            await watcher.subscribe(dir, (err, events) => {
-              assert(false, 'Should not get here');
-            }, {backend});
+            await watcher.subscribe(
+              dir,
+              (err, events) => {
+                assert(false, 'Should not get here');
+              },
+              {backend},
+            );
           } catch (err) {
             threw = true;
           }
@@ -587,15 +617,24 @@ describe('watcher', () => {
             // There is a bug in watchman on windows where the `watch` command hangs if the path is not a directory.
             return;
           }
-          
-          let file = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+
+          let file = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
           fs.writeFileSync(file, 'test');
 
           let threw = false;
           try {
-            await watcher.subscribe(file, (err, events) => {
-              assert(false, 'Should not get here');
-            }, {backend});
+            await watcher.subscribe(
+              file,
+              (err, events) => {
+                assert(false, 'Should not get here');
+              },
+              {backend},
+            );
           } catch (err) {
             threw = true;
           }
@@ -609,14 +648,23 @@ describe('watcher', () => {
   if (backends.includes('watchman')) {
     describe('watchman errors', () => {
       it('should emit an error when watchman dies', async () => {
-        let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        let dir = path.join(
+          fs.realpathSync(require('os').tmpdir()),
+          Math.random()
+            .toString(31)
+            .slice(2),
+        );
         fs.mkdirpSync(dir);
         await new Promise(resolve => setTimeout(resolve, 100));
 
         let p = new Promise(resolve => {
-          watcher.subscribe(dir, (err, events) => {
-            setImmediate(() => resolve(err));
-          }, {backend: 'watchman'});
+          watcher.subscribe(
+            dir,
+            (err, events) => {
+              setImmediate(() => resolve(err));
+            },
+            {backend: 'watchman'},
+          );
         });
 
         execSync('watchman shutdown-server');

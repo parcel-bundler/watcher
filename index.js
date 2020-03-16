@@ -4,7 +4,7 @@ const path = require('path');
 function normalizeOptions(dir, opts = {}) {
   if (Array.isArray(opts.ignore)) {
     opts = Object.assign({}, opts, {
-      ignore: opts.ignore.map(ignore => path.resolve(dir, ignore))
+      ignore: opts.ignore.map(ignore => path.resolve(dir, ignore)),
     });
   }
 
@@ -12,11 +12,19 @@ function normalizeOptions(dir, opts = {}) {
 }
 
 exports.writeSnapshot = (dir, snapshot, opts) => {
-  return binding.writeSnapshot(path.resolve(dir), path.resolve(snapshot), normalizeOptions(dir, opts));
+  return binding.writeSnapshot(
+    path.resolve(dir),
+    path.resolve(snapshot),
+    normalizeOptions(dir, opts),
+  );
 };
 
 exports.getEventsSince = (dir, snapshot, opts) => {
-  return binding.getEventsSince(path.resolve(dir), path.resolve(snapshot), normalizeOptions(dir, opts));
+  return binding.getEventsSince(
+    path.resolve(dir),
+    path.resolve(snapshot),
+    normalizeOptions(dir, opts),
+  );
 };
 
 exports.subscribe = async (dir, fn, opts) => {
@@ -27,10 +35,14 @@ exports.subscribe = async (dir, fn, opts) => {
   return {
     unsubscribe() {
       return binding.unsubscribe(dir, fn, opts);
-    }
+    },
   };
 };
 
 exports.unsubscribe = (dir, fn, opts) => {
-  return binding.unsubscribe(path.resolve(dir), fn, normalizeOptions(dir, opts));
+  return binding.unsubscribe(
+    path.resolve(dir),
+    fn,
+    normalizeOptions(dir, opts),
+  );
 };

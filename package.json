@@ -9,20 +9,29 @@
   "scripts": {
     "install": "prebuild-install -r napi || node-gyp rebuild",
     "prebuild": "prebuild -t 3 -r napi --strip",
+    "format": "prettier --write \"./**/*.{js,json,md}\"",
     "test": "mocha"
   },
   "engines": {
     "node": ">= 10.0.0"
   },
+  "lint-staged": {
+    "*.{js,json,md}": [
+      "prettier --write",
+      "git add"
+    ]
+  },
   "dependencies": {
     "bindings": "^1.5.0",
+    "lint-staged": "^10.0.8",
     "node-addon-api": "^1.6.2",
     "prebuild-install": "^5.2.5"
   },
   "devDependencies": {
     "fs-extra": "^7.0.1",
     "mocha": "^6.0.2",
-    "prebuild": "^8.2.1"
+    "prebuild": "^8.2.1",
+    "prettier": "^1.19.1"
   },
   "binary": {
     "napi_versions": [
