@@ -13,6 +13,10 @@ if (process.platform === 'darwin') {
   backends = ['windows', 'watchman'];
 }
 
+const getRandomName = () => {
+  return Math.random().toString(31).slice(2);
+}
+
 describe('watcher', () => {
   backends.forEach(backend => {
     describe(backend, () => {
@@ -40,11 +44,11 @@ describe('watcher', () => {
       };
 
       let c = 0;
-      const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
+      const getFilename = (...dir) => path.join(tmpDir, ...dir, `test${c++}${getRandomName()}`);
       let ignoreDir, ignoreFile, sub;
 
       before(async () => {
-        tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
@@ -327,6 +331,21 @@ describe('watcher', () => {
             {type: 'delete', path: f2}
           ]);
         });
+
+        it('should emit events inside a symlinked directory', async () => {
+          let tmpDir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
+          await fs.mkdir(tmpDir);
+          let tmpFile = path.join(tmpDir, getRandomName());
+          await fs.writeFile(tmpFile, 'this is the original text', 'utf-8');
+
+          let symlinkPath = getFilename();
+          fs.symlink(tmpDir, symlinkPath);
+          await nextEvent();
+
+          fs.writeFile(tmpFile, 'new text', 'utf-8');
+          let event = await nextEvent();
+          console.log(event);
+        });
       });
 
       describe('rapid changes', () => {
@@ -442,7 +461,7 @@ describe('watcher', () => {
 
       describe('multiple', () => {
         it('should support multiple watchers for the same directory', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -469,7 +488,7 @@ describe('watcher', () => {
         });
 
         it('should support multiple watchers for the same directory with different ignore paths', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -497,8 +516,8 @@ describe('watcher', () => {
         });
 
         it('should support multiple watchers for different directories', async () => {
-          let dir1 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
-          let dir2 = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir1 = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
+          let dir2 = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
           fs.mkdirpSync(dir1);
           fs.mkdirpSync(dir2);
           await new Promise(resolve => setTimeout(resolve, 100));
@@ -527,8 +546,8 @@ describe('watcher', () => {
         });
 
         it('should work when getting events since a snapshot on an already watched directory', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
-          let snapshot = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
+          let snapshot = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
           fs.mkdirpSync(dir);
           await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -568,7 +587,7 @@ describe('watcher', () => {
 
       describe('errors', () => {
         it('should error if the watched directory does not exist', async () => {
-          let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let dir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
 
           let threw = false;
           try {
@@ -588,7 +607,7 @@ describe('watcher', () => {
             return;
           }
           
-          let file = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+          let file = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
           fs.writeFileSync(file, 'test');
 
           let threw = false;
@@ -609,7 +628,7 @@ describe('watcher', () => {
   if (backends.includes('watchman')) {
     describe('watchman errors', () => {
       it('should emit an error when watchman dies', async () => {
-        let dir = path.join(fs.realpathSync(require('os').tmpdir()), Math.random().toString(31).slice(2));
+        let dir = path.join(fs.realpathSync(require('os').tmpdir()), getRandomName());
         fs.mkdirpSync(dir);
         await new Promise(resolve => setTimeout(resolve, 100));
 
