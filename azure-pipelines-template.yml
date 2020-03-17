@@ -42,10 +42,9 @@ jobs:
   - script: npm run prebuild
     displayName: Test prebuild
 
-  - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
-    - task: PublishBuildArtifacts@1
-      displayName: Publish Artifacts
-      condition: and(succeeded(), eq(variables['publish_artifacts'], 'true'))
-      inputs:
-        artifactName: prebuilds
-        pathtoPublish: '$(System.DefaultWorkingDirectory)/prebuilds'
+  - task: PublishBuildArtifacts@1
+    displayName: Publish Artifacts
+    condition: and(succeeded(), eq(variables['publish_artifacts'], 'true'))
+    inputs:
+      artifactName: prebuilds
+      pathtoPublish: '$(System.DefaultWorkingDirectory)/prebuilds'
