@@ -9,12 +9,16 @@
   "scripts": {
     "install": "prebuild-install -r napi || node-gyp rebuild",
     "prebuild": "prebuild -t 3 -r napi --strip",
-    "precommit": "lint-staged",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "test": "mocha"
   },
   "engines": {
     "node": ">= 10.0.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
   },
   "lint-staged": {
     "*.{js,json,md}": [
@@ -29,6 +33,7 @@
     "prebuild-install": "^5.2.5"
   },
   "devDependencies": {
+    "husky": "^4.2.3",
     "fs-extra": "^7.0.1",
     "mocha": "^6.0.2",
     "prebuild": "^8.2.1",
