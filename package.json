@@ -6,10 +6,18 @@
     "type": "git",
     "url": "https://github.com/parcel-bundler/watcher.git"
   },
+  "files": [
+    "src",
+    "prebuilds",
+    "index.js",
+    "package.json",
+    "binding.gyp",
+    "README.md"
+  ],
   "scripts": {
-    "install": "prebuild-install -r napi || node-gyp rebuild",
-    "prebuild": "prebuild -t 3 -r napi --strip",
+    "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
+    "postinstall": "node-gyp-build",
     "test": "mocha"
   },
   "engines": {
@@ -27,17 +35,16 @@
     ]
   },
   "dependencies": {
-    "bindings": "^1.5.0",
     "lint-staged": "^10.0.8",
-    "node-addon-api": "^1.6.2",
-    "prebuild-install": "^5.2.5"
+    "node-addon-api": "^2.0.0",
+    "node-gyp-build": "^4.2.1"
   },
   "devDependencies": {
-    "husky": "^4.2.3",
     "fs-extra": "^7.0.1",
+    "husky": "^4.2.3",
     "mocha": "^6.0.2",
-    "prebuild": "^8.2.1",
-    "prettier": "^1.19.1"
+    "prettier": "^1.19.1",
+    "prebuildify": "^3.0.4"
   },
   "binary": {
     "napi_versions": [
