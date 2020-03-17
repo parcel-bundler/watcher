@@ -18,6 +18,7 @@
     "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "postinstall": "node-gyp-build",
+    "rebuild": "node-gyp rebuild --debug",
     "test": "mocha"
   },
   "engines": {
