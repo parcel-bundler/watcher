@@ -1,4 +1,4 @@
-const binding = require('bindings')('watcher.node');
+const binding = require('node-gyp-build')(__dirname);
 const path = require('path');
 
 function normalizeOptions(dir, opts = {}) {
