@@ -45,12 +45,6 @@ jobs:
           inputs:
             artifactName: prebuilds
             downloadPath: "$(System.DefaultWorkingDirectory)"
-        - task: GitHubRelease@0
-          displayName: Github Release
-          inputs:
-            gitHubConnection: parcel
-            repositoryName: parcel-bundler/watcher
-            assets: $(System.DefaultWorkingDirectory)/prebuilds/*
         - task: Npm@1
           displayName: NPM Release
           inputs:
