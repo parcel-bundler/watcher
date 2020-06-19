@@ -50,7 +50,7 @@ jobs:
           inputs:
             gitHubConnection: parcel
             repositoryName: parcel-bundler/watcher
-            assets: $(System.DefaultWorkingDirectory)/prebuilds/@parcel/*
+            assets: $(System.DefaultWorkingDirectory)/prebuilds/*
         - task: Npm@1
           displayName: NPM Release
           inputs:
