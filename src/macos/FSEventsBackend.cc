@@ -54,8 +54,8 @@ void FSEventsCallback(
       break;
     }
 
-    // FSEvents exclusion paths only apply to sub-paths, not the path itself.
-    if (watcher->mIgnore.count(paths[i]) > 0) {
+    // FSEvents exclusion paths only apply to files, not directories.
+    if (watcher->isIgnored(paths[i])) {
       continue;
     }
 
@@ -81,7 +81,7 @@ void FSEventsCallback(
         // then the file was probably removed. This is not exact since the flags set by
         // fsevents get coalesced together (e.g. created & deleted), so there is no way to
         // know whether the create and delete both happened since our snapshot (in which case
-        // we'd rather ignore this event completely). This will result in some extra delete events 
+        // we'd rather ignore this event completely). This will result in some extra delete events
         // being emitted for files we don't know about, but that is the best we can do.
         if (existed || (since && (isRemoved || isRenamed))) {
           state->tree->remove(paths[i]);
@@ -146,7 +146,7 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
     latency,
     kFSEventStreamCreateFlagFileEvents
   );
-  
+
   CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnore.size(), NULL);
   for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
     CFStringRef path = CFStringCreateWithCString(
@@ -198,7 +198,7 @@ FSEventsBackend::~FSEventsBackend() {
 void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   checkWatcher(watcher);
-  
+
   FSEventStreamEventId id = FSEventsGetCurrentEventId();
   std::ofstream ofs(*snapshotPath);
   ofs << id;
