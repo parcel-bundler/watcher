@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "lint-staged": "^10.0.8",
-    "node-addon-api": "^2.0.0",
+    "node-addon-api": "^3.0.0",
     "node-gyp-build": "^4.2.1"
   },
   "devDependencies": {
@@ -45,7 +45,7 @@
     "husky": "^4.2.3",
     "mocha": "^6.0.2",
     "prettier": "^1.19.1",
-    "prebuildify": "^3.0.4"
+    "prebuildify": "^4.0.0"
   },
   "binary": {
     "napi_versions": [

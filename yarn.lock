@@ -951,10 +951,10 @@ node-abi@^2.0.0:
   dependencies:
     semver "^5.4.1"
 
-node-addon-api@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-2.0.0.tgz#f9afb8d777a91525244b01775ea0ddbe1125483b"
-  integrity sha512-ASCL5U13as7HhOExbT6OlWJJUV/lLzL2voOSP1UVehpRD8FbSrSDjfScK/KwAvVTI5AS6r4VwbOMlIqtvRidnA==
+node-addon-api@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-3.0.0.tgz#812446a1001a54f71663bed188314bba07e09247"
+  integrity sha512-sSHCgWfJ+Lui/u+0msF3oyCgvdkhxDbkCS6Q8uiJquzOimkJBvX6hl5aSSA7DR1XbMpdM8r7phjcF63sF4rkKg==
 
 node-environment-flags@1.0.5:
   version "1.0.5"
@@ -1149,10 +1149,10 @@ please-upgrade-node@^3.2.0:
   dependencies:
     semver-compare "^1.0.0"
 
-prebuildify@^3.0.4:
-  version "3.0.4"
-  resolved "https://registry.yarnpkg.com/prebuildify/-/prebuildify-3.0.4.tgz#64eae6eab5a539986e04745f60a62fcd58cd17ae"
-  integrity sha512-bNf66/MgPl1S/u41BXVUGlsj3seKO34ree0w4acE+y/jKBfpY4fc1o+chcN5KV345s/RnvT563VllGUQF+SSCw==
+prebuildify@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/prebuildify/-/prebuildify-4.0.0.tgz#3fbef5e5ed85cbce5597216387fc57dd7836c1be"
+  integrity sha512-SlXCXJYyrI/SC10JlDa5LVeii8/Kyk+hUL/Cbg8rYBWVwX9OwhsTVQQhike7qqpvscGOVD/n0rlImCGlI6k1MQ==
   dependencies:
     execspawn "^1.0.1"
     minimist "^1.2.0"
