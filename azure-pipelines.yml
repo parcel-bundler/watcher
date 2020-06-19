@@ -10,24 +10,24 @@ jobs:
   - template: azure-pipelines-template.yml
     parameters:
       name: macOS
-      vmImage: macOS-10.15
+      vmImage: macOS-latest
 
   - template: azure-pipelines-template.yml
     parameters:
       name: Alpine
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-latest
       container: jasperdm/alpine-watchman:latest
   
   - template: azure-pipelines-template.yml
     parameters:
       name: CentOS7
-      vmImage: ubuntu-16.04
+      vmImage: ubuntu-latest
       container: jasperdm/centos-watchman:latest
 
   - template: azure-pipelines-template.yml
     parameters:
       name: Windows
-      vmImage: vs2017-win2016
+      vmImage: windows-latest
 
   - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
     - job: Publish
