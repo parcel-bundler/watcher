@@ -28,7 +28,8 @@
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild --debug",
-    "test": "mocha"
+    "test": "mocha",
+    "stress-test": "node ./stress-test.js"
   },
   "engines": {
     "node": ">= 10.0.0"
@@ -53,8 +54,9 @@
     "fs-extra": "^7.0.1",
     "husky": "^4.2.3",
     "mocha": "^6.0.2",
+    "prebuildify": "^4.0.0",
     "prettier": "^1.19.1",
-    "prebuildify": "^4.0.0"
+    "segfault-handler": "^1.3.0"
   },
   "binary": {
     "napi_versions": [
