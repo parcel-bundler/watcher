@@ -44,7 +44,7 @@ private:
   std::set<FunctionReference> mCallbacks;
   std::set<FunctionReference>::iterator mCallbacksIterator;
   bool mCallingCallbacks;
-  EventList mCallbackEvents;
+  std::vector<Event> mCallbackEvents;
   std::shared_ptr<Debounce> mDebounce;
   Signal mCallbackSignal;
   std::string mError;

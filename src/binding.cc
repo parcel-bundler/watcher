@@ -40,7 +40,7 @@ std::shared_ptr<Backend> getBackend(Env env, Value opts) {
 
 class WriteSnapshotRunner : public PromiseRunner {
 public:
-  WriteSnapshotRunner(Env env, Value dir, Value snap, Value opts) 
+  WriteSnapshotRunner(Env env, Value dir, Value snap, Value opts)
     : PromiseRunner(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
     watcher = Watcher::getShared(
@@ -67,7 +67,7 @@ private:
 
 class GetEventsSinceRunner : public PromiseRunner {
 public:
-  GetEventsSinceRunner(Env env, Value dir, Value snap, Value opts) 
+  GetEventsSinceRunner(Env env, Value dir, Value snap, Value opts)
     : PromiseRunner(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
     watcher = std::make_shared<Watcher>(
@@ -92,7 +92,13 @@ private:
   }
 
   Value getResult() override {
-    return watcher->mEvents.toJS(env);
+    std::vector<Event> events = watcher->mEvents.getEvents();
+    Array eventsArray = Array::New(env, events.size());
+    size_t i = 0;
+    for (auto it = events.begin(); it != events.end(); it++) {
+      eventsArray.Set(i++, it->toJS(env));
+    }
+    return eventsArray;
   }
 };
 
@@ -130,7 +136,7 @@ class SubscribeRunner : public PromiseRunner {
 public:
   SubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
     watcher = Watcher::getShared(
-      std::string(dir.As<String>().Utf8Value().c_str()), 
+      std::string(dir.As<String>().Utf8Value().c_str()),
       getIgnore(env, opts)
     );
 
@@ -153,7 +159,7 @@ class UnsubscribeRunner : public PromiseRunner {
 public:
   UnsubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
     watcher = Watcher::getShared(
-      std::string(dir.As<String>().Utf8Value().c_str()), 
+      std::string(dir.As<String>().Utf8Value().c_str()),
       getIgnore(env, opts)
     );
 

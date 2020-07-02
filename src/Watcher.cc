@@ -37,7 +37,7 @@ void removeShared(Watcher *watcher) {
   }
 }
 
-Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) 
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
   : mDir(dir),
     mIgnore(ignore),
     mWatched(false),
@@ -61,7 +61,7 @@ void Watcher::wait() {
 void Watcher::notify() {
   std::unique_lock<std::mutex> lk(mMutex);
   mCond.notify_all();
-  
+
   if (mCallbacks.size() > 0 && mEvents.size() > 0) {
     mDebounce->trigger();
   }
@@ -85,7 +85,7 @@ void Watcher::triggerCallbacks() {
       mCallbackSignal.reset();
     }
 
-    mCallbackEvents = mEvents;
+    mCallbackEvents = mEvents.getEvents();
     mEvents.clear();
 
     uv_async_send(mAsync);
@@ -101,7 +101,13 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto it = watcher->mCallbacksIterator;
     HandleScope scope(it->Env());
     auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
-    auto events = watcher->mCallbackEvents.toJS(it->Env());
+
+    Array events = Array::New(it->Env(), watcher->mCallbackEvents.size());
+    size_t currentEventIndex = 0;
+    for (auto eventIterator = watcher->mCallbackEvents.begin(); eventIterator != watcher->mCallbackEvents.end(); eventIterator++) {
+      events.Set(currentEventIndex++, eventIterator->toJS(it->Env()));
+    }
+
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
 
     // If the iterator was changed, then the callback trigged an unwatch.
@@ -150,7 +156,7 @@ bool Watcher::unwatch(Function callback) {
       break;
     }
   }
-  
+
   if (removed && mCallbacks.size() == 0) {
     unref();
     return true;
