@@ -55,8 +55,7 @@
     "husky": "^4.2.3",
     "mocha": "^6.0.2",
     "prebuildify": "^4.0.0",
-    "prettier": "^1.19.1",
-    "segfault-handler": "^1.3.0"
+    "prettier": "^1.19.1"
   },
   "binary": {
     "napi_versions": [
