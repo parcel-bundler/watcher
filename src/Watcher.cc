@@ -79,6 +79,7 @@ void Watcher::notifyError(std::exception &err) {
 }
 
 void Watcher::triggerCallbacks() {
+  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
   if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mError.size() > 0)) {
     if (mCallingCallbacks) {
       mCallbackSignal.wait();
@@ -92,6 +93,22 @@ void Watcher::triggerCallbacks() {
   }
 }
 
+Value Watcher::callbackEventsToJS(const Env& env) {
+  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
+  EscapableHandleScope scope(env);
+  Array arr = Array::New(env, mCallbackEvents.size());
+  size_t currentEventIndex = 0;
+  for (auto eventIterator = mCallbackEvents.begin(); eventIterator != mCallbackEvents.end(); eventIterator++) {
+    arr.Set(currentEventIndex++, eventIterator->toJS(env));
+  }
+  return scope.Escape(arr);
+}
+
+// TODO: Doesn't this need some kind of locking?
+void Watcher::clearCallbacks() {
+  mCallbacks.clear();
+}
+
 void Watcher::fireCallbacks(uv_async_t *handle) {
   Watcher *watcher = (Watcher *)handle->data;
   watcher->mCallingCallbacks = true;
@@ -101,12 +118,7 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto it = watcher->mCallbacksIterator;
     HandleScope scope(it->Env());
     auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
-
-    Array events = Array::New(it->Env(), watcher->mCallbackEvents.size());
-    size_t currentEventIndex = 0;
-    for (auto eventIterator = watcher->mCallbackEvents.begin(); eventIterator != watcher->mCallbackEvents.end(); eventIterator++) {
-      events.Set(currentEventIndex++, eventIterator->toJS(it->Env()));
-    }
+    auto events = watcher->callbackEventsToJS(it->Env());
 
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
 
@@ -121,7 +133,7 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   watcher->mCallingCallbacks = false;
 
   if (watcher->mError.size() > 0) {
-    watcher->mCallbacks.clear();
+    watcher->clearCallbacks();
   }
 
   if (watcher->mCallbacks.size() == 0) {

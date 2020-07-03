@@ -1,6 +1,9 @@
 const watcher = require('./');
 const path = require('path');
 const fs = require('fs-extra');
+const SegfaultHandler = require('segfault-handler');
+
+SegfaultHandler.registerHandler('crash.log');
 
 let backend = [];
 if (process.platform === 'darwin') {

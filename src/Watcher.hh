@@ -39,6 +39,7 @@ struct Watcher {
 
 private:
   std::mutex mMutex;
+  std::mutex mCallbackEventsMutex;
   std::condition_variable mCond;
   uv_async_t *mAsync;
   std::set<FunctionReference> mCallbacks;
@@ -49,6 +50,8 @@ private:
   Signal mCallbackSignal;
   std::string mError;
 
+  Value callbackEventsToJS(const Env& env);
+  void clearCallbacks();
   void triggerCallbacks();
   static void fireCallbacks(uv_async_t *handle);
   static void onClose(uv_handle_t *handle);
