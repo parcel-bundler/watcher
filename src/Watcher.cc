@@ -37,7 +37,7 @@ void removeShared(Watcher *watcher) {
   }
 }
 
-Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore) 
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
   : mDir(dir),
     mIgnore(ignore),
     mWatched(false),
@@ -61,7 +61,7 @@ void Watcher::wait() {
 void Watcher::notify() {
   std::unique_lock<std::mutex> lk(mMutex);
   mCond.notify_all();
-  
+
   if (mCallbacks.size() > 0 && mEvents.size() > 0) {
     mDebounce->trigger();
   }
@@ -79,17 +79,34 @@ void Watcher::notifyError(std::exception &err) {
 }
 
 void Watcher::triggerCallbacks() {
+  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
   if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mError.size() > 0)) {
     if (mCallingCallbacks) {
       mCallbackSignal.wait();
       mCallbackSignal.reset();
     }
 
-    mCallbackEvents = mEvents;
+    mCallbackEvents = mEvents.getEvents();
     mEvents.clear();
 
     uv_async_send(mAsync);
   }
+}
+
+Value Watcher::callbackEventsToJS(const Env& env) {
+  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
+  EscapableHandleScope scope(env);
+  Array arr = Array::New(env, mCallbackEvents.size());
+  size_t currentEventIndex = 0;
+  for (auto eventIterator = mCallbackEvents.begin(); eventIterator != mCallbackEvents.end(); eventIterator++) {
+    arr.Set(currentEventIndex++, eventIterator->toJS(env));
+  }
+  return scope.Escape(arr);
+}
+
+// TODO: Doesn't this need some kind of locking?
+void Watcher::clearCallbacks() {
+  mCallbacks.clear();
 }
 
 void Watcher::fireCallbacks(uv_async_t *handle) {
@@ -101,7 +118,8 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto it = watcher->mCallbacksIterator;
     HandleScope scope(it->Env());
     auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
-    auto events = watcher->mCallbackEvents.toJS(it->Env());
+    auto events = watcher->callbackEventsToJS(it->Env());
+
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
 
     // If the iterator was changed, then the callback trigged an unwatch.
@@ -115,7 +133,7 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
   watcher->mCallingCallbacks = false;
 
   if (watcher->mError.size() > 0) {
-    watcher->mCallbacks.clear();
+    watcher->clearCallbacks();
   }
 
   if (watcher->mCallbacks.size() == 0) {
@@ -150,7 +168,7 @@ bool Watcher::unwatch(Function callback) {
       break;
     }
   }
-  
+
   if (removed && mCallbacks.size() == 0) {
     unref();
     return true;

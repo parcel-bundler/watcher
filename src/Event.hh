@@ -27,11 +27,49 @@ struct Event {
 class EventList {
 public:
   void create(std::string path) {
-    Event *event = update(path);
+    std::lock_guard<std::mutex> l(mMutex);
+    Event *event = internalUpdate(path);
     event->isCreated = true;
   }
 
   Event *update(std::string path) {
+    std::lock_guard<std::mutex> l(mMutex);
+    return internalUpdate(path);
+  }
+
+  void remove(std::string path) {
+    std::lock_guard<std::mutex> l(mMutex);
+    Event *event = internalUpdate(path);
+    if (event->isCreated) {
+      mEvents.erase(path);
+    } else {
+      event->isDeleted = true;
+    }
+  }
+
+  size_t size() {
+    std::lock_guard<std::mutex> l(mMutex);
+    return mEvents.size();
+  }
+
+  std::vector<Event> getEvents() {
+    std::lock_guard<std::mutex> l(mMutex);
+    std::vector<Event> eventsCloneVector;
+    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
+      eventsCloneVector.push_back(it->second);
+    }
+    return eventsCloneVector;
+  }
+
+  void clear() {
+    std::lock_guard<std::mutex> l(mMutex);
+    mEvents.clear();
+  }
+
+private:
+  mutable std::mutex mMutex;
+  std::map<std::string, Event> mEvents;
+  Event *internalUpdate(std::string path) {
     auto found = mEvents.find(path);
     if (found == mEvents.end()) {
       auto it = mEvents.emplace(path, Event(path));
@@ -40,38 +78,6 @@ public:
 
     return &found->second;
   }
-
-  void remove(std::string path) {
-    Event *event = update(path);
-    if (event->isCreated) {
-      mEvents.erase(path);
-    } else {
-      event->isDeleted = true;
-    }
-  }
-
-  void clear() {
-    mEvents.clear();
-  }
-
-  size_t size() {
-    return mEvents.size();
-  }
-
-  Value toJS(const Env& env) {
-    EscapableHandleScope scope(env);
-    Array arr = Array::New(env, mEvents.size());
-    size_t i = 0;
-
-    for (auto it = mEvents.begin(); it != mEvents.end(); it++) {
-      arr.Set(i++, it->second.toJS(env));
-    }
-
-    return scope.Escape(arr);
-  }
-
-private:
-  std::map<std::string, Event> mEvents;
 };
 
 #endif

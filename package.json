@@ -27,8 +27,9 @@
     "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build",
-    "rebuild": "node-gyp rebuild --debug",
-    "test": "mocha"
+    "rebuild": "node-gyp rebuild -j 8 --debug --verbose",
+    "test": "mocha",
+    "stress-test": "node ./stress-test.js"
   },
   "engines": {
     "node": ">= 10.0.0"
@@ -53,8 +54,8 @@
     "fs-extra": "^7.0.1",
     "husky": "^4.2.3",
     "mocha": "^6.0.2",
-    "prettier": "^1.19.1",
-    "prebuildify": "^4.0.0"
+    "prebuildify": "^4.0.0",
+    "prettier": "^1.19.1"
   },
   "binary": {
     "napi_versions": [
