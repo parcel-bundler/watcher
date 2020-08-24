@@ -1,47 +1,47 @@
 declare type FilePath = string;
 
 declare namespace ParcelWatcher {
-  export type WatcherBackendType = 
+  export type BackendType = 
     | 'fs-events'
     | 'watchman'
     | 'inotify'
     | 'windows'
     | 'brute-force';
-  export type WatchEventType = 'create' | 'update' | 'delete';
-  export interface WatcherOptions {
+  export type EventType = 'create' | 'update' | 'delete';
+  export interface Options {
     ignore?: FilePath[];
-    backend?: WatcherBackendType;
+    backend?: BackendType;
   }
   export type SubscribeCallback = (
     err: Error | null,
-    events: WatcherEvent[]
+    events: Event[]
   ) => unknown;
   export interface AsyncSubscription {
     unsubscribe(): Promise<void>;
   }
-  export interface WatcherEvent {
+  export interface Event {
     path: FilePath;
-    type: WatchEventType;
+    type: EventType;
   }
   export function getEventsSince(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: WatcherOptions
-  ): Promise<WatcherEvent[]>;
+    opts?: Options
+  ): Promise<Event[]>;
   export function subscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: WatcherOptions
+    opts?: Options
   ): Promise<AsyncSubscription>;
   export function unsubscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: WatcherOptions
+    opts?: Options
   ): Promise<void>;
   export function writeSnapshot(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: WatcherOptions
+    opts?: Options
   ): Promise<FilePath>;
 }
 
