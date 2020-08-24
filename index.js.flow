@@ -1,0 +1,48 @@
+// @flow
+
+declare type FilePath = string;
+export type WatcherBackendType = 
+  | 'fs-events'
+  | 'watchman'
+  | 'inotify'
+  | 'windows'
+  | 'brute-force';
+export type WatchEventType = 'create' | 'update' | 'delete';
+export type Options = {|
+  ignore?: Array<FilePath>,
+  backend?: WatcherBackendType
+|};
+export type SubscribeCallback = (
+  err: ?Error,
+  events: Array<WatchEvent>
+) => mixed;
+export type AsyncSubscription = {|
+  unsubscribe: () => Promise<void>
+|};
+export type WatchEvent = {|
+  +path: FilePath,
+  +type: WatchEventType
+|};
+
+declare module.exports: {|
+  getEventsSince(
+    dir: FilePath,
+    snapshot: FilePath,
+    opts?: Options
+  ): Promise<Array<WatchEvent>>,
+  subscribe(
+    dir: FilePath,
+    fn: SubscribeCallback,
+    opts?: Options
+  ): Promise<AsyncSubscription>,
+  unsubscribe(
+    dir: FilePath,
+    fn: SubscribeCallback,
+    opts?: Options
+  ): Promise<void>,
+  writeSnapshot(
+    dir: FilePath,
+    snapshot: FilePath,
+    opts?: Options
+  ): Promise<FilePath>,
+|};
