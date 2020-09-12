@@ -28,8 +28,7 @@
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild -j 8 --debug --verbose",
-    "test": "mocha",
-    "stress-test": "node ./stress-test.js"
+    "test": "mocha"
   },
   "engines": {
     "node": ">= 10.0.0"
