@@ -48,7 +48,7 @@ describe('watcher', () => {
             .toString(31)
             .slice(2)}`,
         );
-      let ignoreDir, ignoreFile, sub;
+      let ignoreDir, ignoreFile, fileToRename, dirToRename, sub;
 
       before(async () => {
         tmpDir = path.join(
@@ -60,6 +60,10 @@ describe('watcher', () => {
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
+        fileToRename = getFilename();
+        dirToRename = getFilename();
+        fs.writeFileSync(fileToRename, 'hi');
+        fs.mkdirpSync(dirToRename);
         await new Promise(resolve => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
@@ -103,6 +107,16 @@ describe('watcher', () => {
           ]);
         });
 
+        it('should emit when an existing file is renamed', async () => {
+          let f2 = getFilename();
+          fs.rename(fileToRename, f2);
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'delete', path: fileToRename},
+            {type: 'create', path: f2},
+          ]);
+        });
+
         it('should emit when a file is deleted', async () => {
           let f = getFilename();
           fs.writeFile(f, 'hello world');
@@ -134,6 +148,16 @@ describe('watcher', () => {
           assert.deepEqual(res, [
             {type: 'delete', path: f1},
             {type: 'create', path: f2},
+          ]);
+        });
+
+        it('should emit when an existing directory is renamed', async () => {
+          let f2 = getFilename();
+          fs.rename(dirToRename, f2);
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: f2},
+            {type: 'delete', path: dirToRename},
           ]);
         });
 
@@ -321,17 +345,6 @@ describe('watcher', () => {
       });
 
       describe('rapid changes', () => {
-        it('should ignore files that are created and deleted rapidly', async () => {
-          let f1 = getFilename();
-          let f2 = getFilename();
-          await fs.writeFile(f1, 'hello world');
-          await fs.writeFile(f2, 'hello world');
-          fs.unlink(f2);
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
-        });
-
         it('should coalese create and update events', async () => {
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
@@ -341,29 +354,42 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
-        it('should coalese create and rename events', async () => {
-          let f1 = getFilename();
-          let f2 = getFilename();
-          await fs.writeFile(f1, 'hello world');
-          fs.rename(f1, f2);
+        if (backend !== 'fs-events') {
+          it('should ignore files that are created and deleted rapidly', async () => {
+            let f1 = getFilename();
+            let f2 = getFilename();
+            await fs.writeFile(f1, 'hello world');
+            await fs.writeFile(f2, 'hello world');
+            fs.unlink(f2);
 
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f2}]);
-        });
+            let res = await nextEvent();
+            assert.deepEqual(res, [{type: 'create', path: f1}]);
+          });
 
-        it('should coalese multiple rename events', async () => {
-          let f1 = getFilename();
-          let f2 = getFilename();
-          let f3 = getFilename();
-          let f4 = getFilename();
-          await fs.writeFile(f1, 'hello world');
-          await fs.rename(f1, f2);
-          await fs.rename(f2, f3);
-          fs.rename(f3, f4);
+          it('should coalese create and rename events', async () => {
+            let f1 = getFilename();
+            let f2 = getFilename();
+            await fs.writeFile(f1, 'hello world');
+            fs.rename(f1, f2);
 
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f4}]);
-        });
+            let res = await nextEvent();
+            assert.deepEqual(res, [{type: 'create', path: f2}]);
+          });
+
+          it('should coalese multiple rename events', async () => {
+            let f1 = getFilename();
+            let f2 = getFilename();
+            let f3 = getFilename();
+            let f4 = getFilename();
+            await fs.writeFile(f1, 'hello world');
+            await fs.rename(f1, f2);
+            await fs.rename(f2, f3);
+            fs.rename(f3, f4);
+
+            let res = await nextEvent();
+            assert.deepEqual(res, [{type: 'create', path: f4}]);
+          });
+        }
 
         it('should coalese multiple update events', async () => {
           let f1 = getFilename();
