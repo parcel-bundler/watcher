@@ -41,6 +41,13 @@ function testPrecision() {
 const isSecondPrecision = testPrecision();
 
 describe('since', () => {
+  const sleep = (ms = 20) => new Promise(resolve => setTimeout(resolve, ms));
+
+  before(async () => {
+    // wait for tmp dir to be created.
+    await sleep();
+  });
+
   after(async () => {
     try {
       await fs.unlink(snapshotPath);
@@ -48,8 +55,6 @@ describe('since', () => {
   });
 
   backends.forEach(backend => {
-    const sleep = (ms = 10) => new Promise(resolve => setTimeout(resolve, ms));
-
     describe(backend, () => {
       describe('files', () => {
         it('should emit when a file is created', async () => {

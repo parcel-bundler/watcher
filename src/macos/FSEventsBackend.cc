@@ -71,29 +71,24 @@ void FSEventsCallback(
       list->update(paths[i]);
     } else {
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
-      // We also check our local cache of recently modified files to see if we knew about it before.
       // This helps disambiguate creates, updates, and deletes.
-      auto existed = !since && state->tree->find(paths[i]);
       struct stat file;
       if (stat(paths[i], &file)) {
-        // File does not exist now. If it existed before in our local cache,
-        // or was removed/renamed and we don't have a cache (querying since a snapshot)
-        // then the file was probably removed. This is not exact since the flags set by
-        // fsevents get coalesced together (e.g. created & deleted), so there is no way to
+        // File does not exist, so we have to assume it was removed. This is not exact since the
+        // flags set by fsevents get coalesced together (e.g. created & deleted), so there is no way to
         // know whether the create and delete both happened since our snapshot (in which case
         // we'd rather ignore this event completely). This will result in some extra delete events
         // being emitted for files we don't know about, but that is the best we can do.
-        if (existed || (since && (isRemoved || isRenamed))) {
-          state->tree->remove(paths[i]);
-          list->remove(paths[i]);
-        }
-
+        state->tree->remove(paths[i]);
+        list->remove(paths[i]);
         continue;
       }
 
       // If the file was modified, and existed before, then this is an update, otherwise a create.
-      uint64_t mtime = CONVERT_TIME(file.st_birthtimespec);
-      if (isModified && (existed || mtime <= since)) {
+      uint64_t ctime = CONVERT_TIME(file.st_birthtimespec);
+      uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
+      auto existed = !since && state->tree->find(paths[i]);
+      if (isModified && (existed || ctime <= since)) {
         state->tree->update(paths[i], mtime);
         list->update(paths[i]);
       } else {
