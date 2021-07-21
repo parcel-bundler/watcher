@@ -1,7 +1,8 @@
 #include "./win_utils.hh"
 
 std::wstring utf8ToUtf16(std::string input) {
-  unsigned int len = MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, NULL, 0);
+  unsigned int len =
+      MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, NULL, 0);
   WCHAR *output = new WCHAR[len];
   MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, output, len);
   std::wstring res(output);
@@ -10,7 +11,8 @@ std::wstring utf8ToUtf16(std::string input) {
 }
 
 std::string utf16ToUtf8(const WCHAR *input, size_t length) {
-  unsigned int len = WideCharToMultiByte(CP_UTF8, 0, input, length, NULL, 0, NULL, NULL);
+  unsigned int len =
+      WideCharToMultiByte(CP_UTF8, 0, input, length, NULL, 0, NULL, NULL);
   char *output = new char[len + 1];
   WideCharToMultiByte(CP_UTF8, 0, input, length, output, len, NULL, NULL);
   output[len] = '\0';

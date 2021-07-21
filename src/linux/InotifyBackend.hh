@@ -1,11 +1,13 @@
 #ifndef INOTIFY_H
 #define INOTIFY_H
 
-#include <unordered_map>
 #include <sys/inotify.h>
-#include "../shared/BruteForceBackend.hh"
+
+#include <unordered_map>
+
 #include "../DirTree.hh"
 #include "../Signal.hh"
+#include "../shared/BruteForceBackend.hh"
 
 struct InotifySubscription {
   std::shared_ptr<DirTree> tree;
@@ -14,21 +16,26 @@ struct InotifySubscription {
 };
 
 class InotifyBackend : public BruteForceBackend {
-public:
+ public:
   void start() override;
   ~InotifyBackend();
   void subscribe(Watcher &watcher) override;
   void unsubscribe(Watcher &watcher) override;
-private:
+
+ private:
   int mPipe[2];
   int mInotify;
-  std::unordered_multimap<int, std::shared_ptr<InotifySubscription>> mSubscriptions;
+  std::unordered_multimap<int, std::shared_ptr<InotifySubscription>>
+      mSubscriptions;
   Signal mEndedSignal;
 
-  void watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree);
+  void watchDir(Watcher &watcher, DirEntry *entry,
+                std::shared_ptr<DirTree> tree);
   void handleEvents();
-  void handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers);
-  bool handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub);
+  void handleEvent(struct inotify_event *event,
+                   std::unordered_set<Watcher *> &watchers);
+  bool handleSubscription(struct inotify_event *event,
+                          std::shared_ptr<InotifySubscription> sub);
 };
 
 #endif

@@ -1,11 +1,11 @@
 #ifndef BSER_H
 #define BSER_H
 
-#include <string>
-#include <sstream>
-#include <vector>
-#include <unordered_map>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 enum BSERType {
   BSER_ARRAY = 0x00,
@@ -25,7 +25,7 @@ enum BSERType {
 class BSERValue;
 
 class BSER {
-public:
+ public:
   typedef std::vector<BSER> Array;
   typedef std::unordered_map<std::string, BSER> Object;
 
@@ -49,19 +49,32 @@ public:
 
   static int64_t decodeLength(std::istream &iss);
   std::string encode();
-private:
+
+ private:
   std::shared_ptr<BSERValue> m_ptr;
 };
 
 class BSERValue {
-protected:
+ protected:
   friend class BSER;
-  virtual BSER::Array arrayValue() { return BSER::Array(); }
-  virtual BSER::Object objectValue() { return BSER::Object(); }
-  virtual std::string stringValue() { return std::string(); }
-  virtual int64_t intValue() { return 0; }
-  virtual double doubleValue() { return 0; }
-  virtual bool boolValue() { return false; }
+  virtual BSER::Array arrayValue() {
+    return BSER::Array();
+  }
+  virtual BSER::Object objectValue() {
+    return BSER::Object();
+  }
+  virtual std::string stringValue() {
+    return std::string();
+  }
+  virtual int64_t intValue() {
+    return 0;
+  }
+  virtual double doubleValue() {
+    return 0;
+  }
+  virtual bool boolValue() {
+    return false;
+  }
   virtual void encode(std::ostream &oss) {}
   virtual ~BSERValue() {}
 };

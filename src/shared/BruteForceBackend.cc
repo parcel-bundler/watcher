@@ -1,10 +1,13 @@
-#include <string>
-#include <fstream>
-#include "../DirTree.hh"
-#include "../Event.hh"
 #include "./BruteForceBackend.hh"
 
-std::shared_ptr<DirTree> BruteForceBackend::getTree(Watcher &watcher, bool shouldRead) {
+#include <fstream>
+#include <string>
+
+#include "../DirTree.hh"
+#include "../Event.hh"
+
+std::shared_ptr<DirTree> BruteForceBackend::getTree(Watcher &watcher,
+                                                    bool shouldRead) {
   auto tree = DirTree::getCached(watcher.mDir);
 
   // If the tree is not complete, read it if needed.
@@ -16,14 +19,16 @@ std::shared_ptr<DirTree> BruteForceBackend::getTree(Watcher &watcher, bool shoul
   return tree;
 }
 
-void BruteForceBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+void BruteForceBackend::writeSnapshot(Watcher &watcher,
+                                      std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   auto tree = getTree(watcher);
   std::ofstream ofs(*snapshotPath);
   tree->write(ofs);
 }
 
-void BruteForceBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+void BruteForceBackend::getEventsSince(Watcher &watcher,
+                                       std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {

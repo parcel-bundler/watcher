@@ -1,11 +1,14 @@
-#include <string>
-#include <fstream>
+#include "./WatchmanBackend.hh"
+
 #include <stdlib.h>
+
 #include <algorithm>
+#include <fstream>
+#include <string>
+
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
-#include "./WatchmanBackend.hh"
 
 #ifdef _WIN32
 #include "../windows/win_utils.hh"
@@ -16,7 +19,7 @@
 #define normalizePath(dir) dir
 #endif
 
-template<typename T>
+template <typename T>
 BSER readBSER(T &&do_read) {
   std::stringstream oss;
   char buffer[256];
@@ -50,7 +53,7 @@ std::string getSockPath() {
     throw std::runtime_error("Failed to execute watchman");
   }
 
-  BSER b = readBSER([fp] (char *buf, size_t len) {
+  BSER b = readBSER([fp](char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
 
@@ -64,7 +67,7 @@ std::unique_ptr<IPC> watchmanConnect() {
 }
 
 BSER watchmanRead(IPC *ipc) {
-  return readBSER([ipc] (char *buf, size_t len) {
+  return readBSER([ipc](char *buf, size_t len) {
     return ipc->read(buf, len);
   });
 }
@@ -107,14 +110,14 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
   if (found == obj.end()) {
     throw WatcherError("Error reading changes from watchman", &watcher);
   }
-  
+
   auto files = found->second.arrayValue();
   for (auto it = files.begin(); it != files.end(); it++) {
     auto file = it->objectValue();
     auto name = file.find("name")->second.stringValue();
-    #ifdef _WIN32
-      std::replace(name.begin(), name.end(), '/', '\\');
-    #endif
+#ifdef _WIN32
+    std::replace(name.begin(), name.end(), '/', '\\');
+#endif
     auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
@@ -178,7 +181,8 @@ void WatchmanBackend::start() {
         mError = err.what();
         mResponseSignal.notify();
       } else {
-        // Throwing causes the backend to be destroyed, but we never reach the code below to notify the signal
+        // Throwing causes the backend to be destroyed, but we never reach the
+        // code below to notify the signal
         mEndedSignal.notify();
         throw;
       }
@@ -192,7 +196,8 @@ void WatchmanBackend::start() {
       continue;
     }
 
-    // If this message is for a subscription, handle it, otherwise notify the request.
+    // If this message is for a subscription, handle it, otherwise notify the
+    // request.
     auto subscription = obj.find("subscription");
     if (subscription != obj.end()) {
       handleSubscription(obj);
@@ -230,7 +235,8 @@ std::string WatchmanBackend::clock(Watcher &watcher) {
   return found->second.stringValue();
 }
 
-void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+void WatchmanBackend::writeSnapshot(Watcher &watcher,
+                                    std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   watchmanWatch(watcher.mDir);
 
@@ -238,7 +244,8 @@ void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
   ofs << clock(watcher);
 }
 
-void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+void WatchmanBackend::getEventsSince(Watcher &watcher,
+                                     std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
@@ -317,7 +324,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
   std::string id = getId(watcher);
   auto erased = mSubscriptions.erase(id);
-  
+
   if (erased) {
     BSER::Array cmd;
     cmd.push_back("unsubscribe");

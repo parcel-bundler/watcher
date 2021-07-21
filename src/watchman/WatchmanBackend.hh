@@ -2,21 +2,22 @@
 #define WATCHMAN_H
 
 #include "../Backend.hh"
-#include "./BSER.hh"
 #include "../Signal.hh"
+#include "./BSER.hh"
 #include "./IPC.hh"
 
 class WatchmanBackend : public Backend {
-public:
+ public:
   static bool checkAvailable();
   void start() override;
-  WatchmanBackend() : mStopped(false) {};
+  WatchmanBackend() : mStopped(false){};
   ~WatchmanBackend();
   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
   void subscribe(Watcher &watcher) override;
   void unsubscribe(Watcher &watcher) override;
-private:
+
+ private:
   std::unique_ptr<IPC> mIPC;
   Signal mRequestSignal;
   Signal mResponseSignal;

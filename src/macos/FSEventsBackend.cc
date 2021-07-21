@@ -1,11 +1,14 @@
+#include "./FSEventsBackend.hh"
+
 #include <CoreServices/CoreServices.h>
 #include <sys/stat.h>
-#include <string>
+
 #include <fstream>
+#include <string>
 #include <unordered_set>
-#include "../Event.hh"
+
 #include "../Backend.hh"
-#include "./FSEventsBackend.hh"
+#include "../Event.hh"
 #include "../Watcher.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
@@ -23,14 +26,10 @@ struct State {
   uint64_t since;
 };
 
-void FSEventsCallback(
-  ConstFSEventStreamRef streamRef,
-  void *clientCallBackInfo,
-  size_t numEvents,
-  void *eventPaths,
-  const FSEventStreamEventFlags eventFlags[],
-  const FSEventStreamEventId eventIds[]
-) {
+void FSEventsCallback(ConstFSEventStreamRef streamRef, void *clientCallBackInfo,
+                      size_t numEvents, void *eventPaths,
+                      const FSEventStreamEventFlags eventFlags[],
+                      const FSEventStreamEventId eventIds[]) {
   char **paths = (char **)eventPaths;
   Watcher *watcher = (Watcher *)clientCallBackInfo;
   EventList *list = &watcher->mEvents;
@@ -38,16 +37,27 @@ void FSEventsCallback(
   uint64_t since = state->since;
 
   for (size_t i = 0; i < numEvents; ++i) {
-    bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
-    bool isRemoved = (eventFlags[i] & kFSEventStreamEventFlagItemRemoved) == kFSEventStreamEventFlagItemRemoved;
-    bool isModified = (eventFlags[i] & kFSEventStreamEventFlagItemModified) == kFSEventStreamEventFlagItemModified ||
-                      (eventFlags[i] & kFSEventStreamEventFlagItemInodeMetaMod) == kFSEventStreamEventFlagItemInodeMetaMod ||
-                      (eventFlags[i] & kFSEventStreamEventFlagItemFinderInfoMod) == kFSEventStreamEventFlagItemFinderInfoMod ||
-                      (eventFlags[i] & kFSEventStreamEventFlagItemChangeOwner) == kFSEventStreamEventFlagItemChangeOwner ||
-                      (eventFlags[i] & kFSEventStreamEventFlagItemXattrMod) == kFSEventStreamEventFlagItemXattrMod;
-    bool isRenamed = (eventFlags[i] & kFSEventStreamEventFlagItemRenamed) == kFSEventStreamEventFlagItemRenamed;
-    bool isDone = (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) == kFSEventStreamEventFlagHistoryDone;
-    bool isDir = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) == kFSEventStreamEventFlagItemIsDir;
+    bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) ==
+                     kFSEventStreamEventFlagItemCreated;
+    bool isRemoved = (eventFlags[i] & kFSEventStreamEventFlagItemRemoved) ==
+                     kFSEventStreamEventFlagItemRemoved;
+    bool isModified =
+        (eventFlags[i] & kFSEventStreamEventFlagItemModified) ==
+            kFSEventStreamEventFlagItemModified ||
+        (eventFlags[i] & kFSEventStreamEventFlagItemInodeMetaMod) ==
+            kFSEventStreamEventFlagItemInodeMetaMod ||
+        (eventFlags[i] & kFSEventStreamEventFlagItemFinderInfoMod) ==
+            kFSEventStreamEventFlagItemFinderInfoMod ||
+        (eventFlags[i] & kFSEventStreamEventFlagItemChangeOwner) ==
+            kFSEventStreamEventFlagItemChangeOwner ||
+        (eventFlags[i] & kFSEventStreamEventFlagItemXattrMod) ==
+            kFSEventStreamEventFlagItemXattrMod;
+    bool isRenamed = (eventFlags[i] & kFSEventStreamEventFlagItemRenamed) ==
+                     kFSEventStreamEventFlagItemRenamed;
+    bool isDone = (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) ==
+                  kFSEventStreamEventFlagHistoryDone;
+    bool isDir = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) ==
+                 kFSEventStreamEventFlagItemIsDir;
 
     if (isDone) {
       watcher->notify();
@@ -70,21 +80,25 @@ void FSEventsCallback(
       state->tree->update(paths[i], 0);
       list->update(paths[i]);
     } else {
-      // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
-      // This helps disambiguate creates, updates, and deletes.
+      // If multiple flags were set, then we need to call `stat` to determine if
+      // the file really exists. This helps disambiguate creates, updates, and
+      // deletes.
       struct stat file;
       if (stat(paths[i], &file)) {
-        // File does not exist, so we have to assume it was removed. This is not exact since the
-        // flags set by fsevents get coalesced together (e.g. created & deleted), so there is no way to
-        // know whether the create and delete both happened since our snapshot (in which case
-        // we'd rather ignore this event completely). This will result in some extra delete events
-        // being emitted for files we don't know about, but that is the best we can do.
+        // File does not exist, so we have to assume it was removed. This is not
+        // exact since the flags set by fsevents get coalesced together (e.g.
+        // created & deleted), so there is no way to know whether the create and
+        // delete both happened since our snapshot (in which case we'd rather
+        // ignore this event completely). This will result in some extra delete
+        // events being emitted for files we don't know about, but that is the
+        // best we can do.
         state->tree->remove(paths[i]);
         list->remove(paths[i]);
         continue;
       }
 
-      // If the file was modified, and existed before, then this is an update, otherwise a create.
+      // If the file was modified, and existed before, then this is an update,
+      // otherwise a create.
       uint64_t ctime = CONVERT_TIME(file.st_birthtimespec);
       uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
       auto existed = !since && state->tree->find(paths[i]);
@@ -119,36 +133,22 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
 
   CFAbsoluteTime latency = 0.01;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
-    NULL,
-    watcher.mDir.c_str(),
-    kCFStringEncodingUTF8
-  );
+      NULL, watcher.mDir.c_str(), kCFStringEncodingUTF8);
 
-  CFArrayRef pathsToWatch = CFArrayCreate(
-    NULL,
-    (const void **)&fileWatchPath,
-    1,
-    NULL
-  );
+  CFArrayRef pathsToWatch =
+      CFArrayCreate(NULL, (const void **)&fileWatchPath, 1, NULL);
 
-  FSEventStreamContext callbackInfo {0, (void *)&watcher, nullptr, nullptr, nullptr};
-  FSEventStreamRef stream = FSEventStreamCreate(
-    NULL,
-    &FSEventsCallback,
-    &callbackInfo,
-    pathsToWatch,
-    id,
-    latency,
-    kFSEventStreamCreateFlagFileEvents
-  );
+  FSEventStreamContext callbackInfo{0, (void *)&watcher, nullptr, nullptr,
+                                    nullptr};
+  FSEventStreamRef stream =
+      FSEventStreamCreate(NULL, &FSEventsCallback, &callbackInfo, pathsToWatch,
+                          id, latency, kFSEventStreamCreateFlagFileEvents);
 
-  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnore.size(), NULL);
+  CFMutableArrayRef exclusions =
+      CFArrayCreateMutable(NULL, watcher.mIgnore.size(), NULL);
   for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
-    CFStringRef path = CFStringCreateWithCString(
-      NULL,
-      it->c_str(),
-      kCFStringEncodingUTF8
-    );
+    CFStringRef path =
+        CFStringCreateWithCString(NULL, it->c_str(), kCFStringEncodingUTF8);
 
     CFArrayAppendValue(exclusions, (const void *)path);
   }
@@ -176,7 +176,7 @@ void FSEventsBackend::start() {
   CFRetain(mRunLoop);
 
   // Unlock once run loop has started.
-  CFRunLoopPerformBlock(mRunLoop, kCFRunLoopDefaultMode, ^ {
+  CFRunLoopPerformBlock(mRunLoop, kCFRunLoopDefaultMode, ^{
     notifyStarted();
   });
 
@@ -190,7 +190,8 @@ FSEventsBackend::~FSEventsBackend() {
   CFRelease(mRunLoop);
 }
 
-void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+void FSEventsBackend::writeSnapshot(Watcher &watcher,
+                                    std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   checkWatcher(watcher);
 
@@ -204,7 +205,8 @@ void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
   ofs << CONVERT_TIME(now);
 }
 
-void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+void FSEventsBackend::getEventsSince(Watcher &watcher,
+                                     std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {

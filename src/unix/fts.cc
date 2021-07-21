@@ -7,6 +7,7 @@
 #define __THROW
 
 #include <fts.h>
+
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
 
@@ -15,8 +16,9 @@
 #define st_mtim st_mtimespec
 #endif
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
-  char *paths[2] {(char *)watcher.mDir.c_str(), NULL};
+void BruteForceBackend::readTree(Watcher &watcher,
+                                 std::shared_ptr<DirTree> tree) {
+  char *paths[2]{(char *)watcher.mDir.c_str(), NULL};
   FTS *fts = fts_open(paths, FTS_NOCHDIR | FTS_PHYSICAL, NULL);
   if (!fts) {
     throw WatcherError(strerror(errno), &watcher);
@@ -41,7 +43,8 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
       continue;
     }
 
-    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
+    tree->add(node->fts_path, CONVERT_TIME(node->fts_statp->st_mtim),
+              (node->fts_info & FTS_D) == FTS_D);
     isRoot = false;
   }
 

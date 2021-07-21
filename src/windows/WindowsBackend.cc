@@ -1,19 +1,23 @@
-#include <string>
+#include "./WindowsBackend.hh"
+
 #include <sstream>
 #include <stack>
+#include <string>
+
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
-#include "./WindowsBackend.hh"
 #include "./win_utils.hh"
 
 #define DEFAULT_BUF_SIZE 1024 * 1024
 #define NETWORK_BUF_SIZE 64 * 1024
-#define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
+#define CONVERT_TIME(ft) \
+  ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
+void BruteForceBackend::readTree(Watcher &watcher,
+                                 std::shared_ptr<DirTree> tree) {
   HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;
-  
+
   directories.push(watcher.mDir);
 
   while (!directories.empty()) {
@@ -24,12 +28,12 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     WIN32_FIND_DATA ffd;
     hFind = FindFirstFile(spec.c_str(), &ffd);
 
-    if (hFind == INVALID_HANDLE_VALUE)  {
+    if (hFind == INVALID_HANDLE_VALUE) {
       if (path == watcher.mDir) {
         FindClose(hFind);
         throw WatcherError("Error opening directory", &watcher);
       }
-      
+
       tree->remove(path);
       continue;
     }
@@ -41,7 +45,8 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
           continue;
         }
 
-        tree->add(fullPath, CONVERT_TIME(ffd.ftLastWriteTime), ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+        tree->add(fullPath, CONVERT_TIME(ffd.ftLastWriteTime),
+                  ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
         if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
           directories.push(fullPath);
         }
@@ -68,8 +73,9 @@ WindowsBackend::~WindowsBackend() {
 }
 
 class Subscription {
-public:
-  Subscription(WindowsBackend *backend, Watcher *watcher, std::shared_ptr<DirTree> tree) {
+ public:
+  Subscription(WindowsBackend *backend, Watcher *watcher,
+               std::shared_ptr<DirTree> tree) {
     mRunning = true;
     mBackend = backend;
     mWatcher = watcher;
@@ -80,14 +86,9 @@ public:
     mWriteBuffer.resize(DEFAULT_BUF_SIZE);
 
     mDirectoryHandle = CreateFileW(
-      utf8ToUtf16(watcher->mDir).data(),
-      FILE_LIST_DIRECTORY,
-      FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-      NULL,
-      OPEN_EXISTING,
-      FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,
-      NULL
-    );
+        utf8ToUtf16(watcher->mDir).data(), FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
+        OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, NULL);
 
     if (mDirectoryHandle == INVALID_HANDLE_VALUE) {
       throw WatcherError("Invalid handle", mWatcher);
@@ -95,10 +96,7 @@ public:
 
     // Ensure that the path is a directory
     BY_HANDLE_FILE_INFORMATION info;
-    bool success = GetFileInformationByHandle(
-      mDirectoryHandle,
-      &info
-    );
+    bool success = GetFileInformationByHandle(mDirectoryHandle, &info);
 
     if (!success) {
       throw WatcherError("Could not get file information", mWatcher);
@@ -130,23 +128,22 @@ public:
 
     // Asynchronously wait for changes.
     int success = ReadDirectoryChangesW(
-      mDirectoryHandle,
-      mWriteBuffer.data(),
-      static_cast<DWORD>(mWriteBuffer.size()),
-      TRUE, // recursive
-      FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_ATTRIBUTES
-        | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_LAST_WRITE,
-      NULL,
-      &mOverlapped,
-      [](DWORD errorCode, DWORD numBytes, LPOVERLAPPED overlapped) {
-        auto subscription = reinterpret_cast<Subscription *>(overlapped->hEvent);
-        try {
-          subscription->processEvents(errorCode);
-        } catch (WatcherError &err) {
-          subscription->mBackend->handleWatcherError(err);
-        }
-      }
-    );
+        mDirectoryHandle, mWriteBuffer.data(),
+        static_cast<DWORD>(mWriteBuffer.size()),
+        TRUE,  // recursive
+        FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
+            FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_SIZE |
+            FILE_NOTIFY_CHANGE_LAST_WRITE,
+        NULL, &mOverlapped,
+        [](DWORD errorCode, DWORD numBytes, LPOVERLAPPED overlapped) {
+          auto subscription =
+              reinterpret_cast<Subscription *>(overlapped->hEvent);
+          try {
+            subscription->processEvents(errorCode);
+          } catch (WatcherError &err) {
+            subscription->mBackend->handleWatcherError(err);
+          }
+        });
 
     if (!success) {
       throw WatcherError("Failed to read changes", mWatcher);
@@ -157,7 +154,7 @@ public:
     if (!mRunning) {
       return;
     }
-    
+
     switch (errorCode) {
       case ERROR_OPERATION_ABORTED:
         return;
@@ -168,7 +165,8 @@ public:
         poll();
         return;
       case ERROR_NOTIFY_ENUM_DIR:
-        throw WatcherError("Buffer overflow. Some events may have been lost.", mWatcher);
+        throw WatcherError("Buffer overflow. Some events may have been lost.",
+                           mWatcher);
       default:
         if (errorCode != ERROR_SUCCESS) {
           throw WatcherError("Unknown error", mWatcher);
@@ -196,7 +194,9 @@ public:
   }
 
   void processEvent(PFILE_NOTIFY_INFORMATION info) {
-    std::string path = mWatcher->mDir + "\\" + utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
+    std::string path =
+        mWatcher->mDir + "\\" +
+        utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
     if (mWatcher->isIgnored(path)) {
       return;
     }
@@ -205,15 +205,18 @@ public:
       case FILE_ACTION_ADDED:
       case FILE_ACTION_RENAMED_NEW_NAME: {
         WIN32_FILE_ATTRIBUTE_DATA data;
-        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+        if (GetFileAttributesExW(utf8ToUtf16(path).data(),
+                                 GetFileExInfoStandard, &data)) {
           mWatcher->mEvents.create(path);
-          mTree->add(path, CONVERT_TIME(data.ftLastWriteTime), data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+          mTree->add(path, CONVERT_TIME(data.ftLastWriteTime),
+                     data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
         }
         break;
       }
       case FILE_ACTION_MODIFIED: {
         WIN32_FILE_ATTRIBUTE_DATA data;
-        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+        if (GetFileAttributesExW(utf8ToUtf16(path).data(),
+                                 GetFileExInfoStandard, &data)) {
           mTree->update(path, CONVERT_TIME(data.ftLastWriteTime));
           if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
             mWatcher->mEvents.update(path);
@@ -229,7 +232,7 @@ public:
     }
   }
 
-private:
+ private:
   WindowsBackend *mBackend;
   Watcher *mWatcher;
   std::shared_ptr<DirTree> mTree;
@@ -246,10 +249,12 @@ void WindowsBackend::subscribe(Watcher &watcher) {
   watcher.state = (void *)sub;
 
   // Queue polling for this subscription in the correct thread.
-  bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
-    Subscription *sub = (Subscription *)ptr;
-    sub->run();
-  }, mThread.native_handle(), (ULONG_PTR)sub);
+  bool success = QueueUserAPC(
+      [](__in ULONG_PTR ptr) {
+        Subscription *sub = (Subscription *)ptr;
+        sub->run();
+      },
+      mThread.native_handle(), (ULONG_PTR)sub);
 
   if (!success) {
     throw std::runtime_error("Unable to queue APC");
