@@ -28,7 +28,7 @@
   ],
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0",
-    "format": "prettier --write \"./**/*.{js,json,md}\"",
+    "format": "prettier --write \"./**/*.{js,json,md}\" && clang-format -i -style=file src/**/*.{cc,hh}",
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild -j 8 --debug --verbose",
     "test": "mocha"
