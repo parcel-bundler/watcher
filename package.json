@@ -31,10 +31,11 @@
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build",
     "rebuild": "node-gyp rebuild -j 8 --debug --verbose",
-    "test": "mocha"
+    "test": "mocha",
+    "prepare": "husky install"
   },
   "engines": {
-    "node": ">= 10.0.0"
+    "node": ">= 12.0.0"
   },
   "husky": {
     "hooks": {
@@ -48,20 +49,20 @@
     ]
   },
   "dependencies": {
-    "node-addon-api": "^3.0.2",
+    "node-addon-api": "^4.1.0",
     "node-gyp-build": "^4.2.3"
   },
   "devDependencies": {
-    "fs-extra": "^9.0.1",
-    "husky": "^4.3.0",
-    "mocha": "^8.2.1",
-    "prebuildify": "^4.1.0",
-    "lint-staged": "^10.5.1",
-    "prettier": "^2.1.2"
+    "fs-extra": "^10.0.0",
+    "husky": "^7.0.2",
+    "mocha": "^9.1.1",
+    "prebuildify": "^4.2.0",
+    "lint-staged": "^11.1.2",
+    "prettier": "^2.3.2"
   },
   "binary": {
     "napi_versions": [
-      3
+      4
     ]
   }
 }
