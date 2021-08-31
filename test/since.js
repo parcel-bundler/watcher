@@ -6,9 +6,7 @@ const path = require('path');
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 const tmpDir = path.join(
   fs.realpathSync(require('os').tmpdir()),
-  Math.random()
-    .toString(31)
-    .slice(2),
+  Math.random().toString(31).slice(2),
 );
 fs.mkdirpSync(tmpDir);
 
@@ -23,13 +21,7 @@ if (process.platform === 'darwin') {
 
 let c = 0;
 const getFilename = (...dir) =>
-  path.join(
-    tmpDir,
-    ...dir,
-    `test${c++}${Math.random()
-      .toString(31)
-      .slice(2)}`,
-  );
+  path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
 
 function testPrecision() {
   let f = getFilename();
@@ -40,8 +32,8 @@ function testPrecision() {
 
 const isSecondPrecision = testPrecision();
 
-describe('since', () => {
-  const sleep = (ms = 20) => new Promise(resolve => setTimeout(resolve, ms));
+describe.only('since', () => {
+  const sleep = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
   before(async () => {
     // wait for tmp dir to be created.
@@ -54,7 +46,7 @@ describe('since', () => {
     } catch (err) {}
   });
 
-  backends.forEach(backend => {
+  backends.forEach((backend) => {
     describe(backend, () => {
       describe('files', () => {
         it('should emit when a file is created', async () => {
@@ -119,7 +111,7 @@ describe('since', () => {
         });
       });
 
-      describe('directories', () => {
+      describe.only('directories', () => {
         it('should emit when a directory is created', async () => {
           let f1 = getFilename();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
@@ -200,6 +192,31 @@ describe('since', () => {
             backend,
           });
           assert.deepEqual(res, [{type: 'update', path: f2}]);
+        });
+
+        it.only('should emit when a parent directory is renamed', async () => {
+          let dirName = getFilename();
+          let filePath = getFilename(path.basename(dirName));
+          await fs.mkdir(dirName);
+          await fs.writeFile(filePath, 'hello world');
+          await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
+          await sleep();
+
+          let newDirName = getFilename();
+          await fs.move(dirName, newDirName);
+          await sleep();
+
+          let newSubFileName = filePath.replace(dirName, newDirName);
+
+          let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
+            backend,
+          });
+          assert.deepEqual(res, [
+            {type: 'delete', path: dirName},
+            {type: 'delete', path: filePath},
+            {type: 'create', path: newDirName},
+            {type: 'create', path: newSubFileName},
+          ]);
         });
 
         it('should emit when a sub-file is renamed', async () => {
@@ -518,9 +535,7 @@ describe('since', () => {
         it('should error if the watched directory does not exist', async () => {
           let dir = path.join(
             fs.realpathSync(require('os').tmpdir()),
-            Math.random()
-              .toString(31)
-              .slice(2),
+            Math.random().toString(31).slice(2),
           );
 
           let threw = false;
@@ -541,9 +556,7 @@ describe('since', () => {
 
           let file = path.join(
             fs.realpathSync(require('os').tmpdir()),
-            Math.random()
-              .toString(31)
-              .slice(2),
+            Math.random().toString(31).slice(2),
           );
           fs.writeFileSync(file, 'test');
 
