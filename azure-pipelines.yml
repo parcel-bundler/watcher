@@ -44,7 +44,7 @@ jobs:
       condition: succeeded()
       dependsOn:
         - macOS
-				- appleSilicon
+        - appleSilicon
         - Alpine
         - CentOS7
         - Windows
