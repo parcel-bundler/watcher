@@ -49,7 +49,7 @@
     ]
   },
   "dependencies": {
-    "node-addon-api": "^4.1.0",
+    "node-addon-api": "^3.2.1",
     "node-gyp-build": "^4.2.3"
   },
   "devDependencies": {
@@ -62,7 +62,7 @@
   },
   "binary": {
     "napi_versions": [
-      4
+      3
     ]
   }
 }
