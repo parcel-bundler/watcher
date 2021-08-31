@@ -16,7 +16,7 @@ jobs:
     displayName: 'Install Node.js'
 
   # Install Watchman
-  - ${{ if containsValue(['macOS', 'appleSilicon'], parameters.name) }}:
+  - ${{ if eq('macOS-latest', parameters.vmImage) }}:
     - script: |
         brew update
         brew install watchman
