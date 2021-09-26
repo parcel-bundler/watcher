@@ -39,7 +39,7 @@ jobs:
     displayName: Install dependencies
   - script: npm test
     displayName: Run tests
-  - script: npm run prebuild --arch=${{ parameters.arch }}
+  - script: yarn prebuild --arch=${{ parameters.arch }}
     displayName: Test prebuild
 
   - task: PublishBuildArtifacts@1
