@@ -185,6 +185,25 @@ describe('watcher', () => {
 
           assert.deepEqual(res, [{type: 'delete', path: f}]);
         });
+
+        it('should handle when the directory to watch is deleted and re-created', async () => {
+          // Watchman doesn't handle this correctly...
+          if (backend === 'watchman') {
+            return;
+          }
+
+          fs.remove(tmpDir);
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'delete', path: tmpDir}
+          ]);
+
+          fs.mkdirp(tmpDir);
+          res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: tmpDir}
+          ]);
+        });
       });
 
       describe('sub-files', () => {
