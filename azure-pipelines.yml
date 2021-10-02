@@ -16,7 +16,7 @@ jobs:
   - template: azure-pipelines-template.yml
     parameters:
       name: appleSilicon
-      vmImage: macOS-latest
+      vmImage: macos-11
       arch: arm64
 
   - template: azure-pipelines-template.yml
