@@ -9,6 +9,7 @@
 #include "../Watcher.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
+#define IGNORED_FLAGS (kFSEventStreamEventFlagItemIsHardlink | kFSEventStreamEventFlagItemIsLastHardlink | kFSEventStreamEventFlagItemIsSymlink | kFSEventStreamEventFlagItemIsDir | kFSEventStreamEventFlagItemIsFile)
 
 void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
   FSEventStreamStop(stream);
@@ -52,6 +53,16 @@ void FSEventsCallback(
     if (isDone) {
       watcher->notify();
       break;
+    }
+
+    auto ignoredFlags = IGNORED_FLAGS;
+    if (__builtin_available(macOS 10.13, *)) {
+      ignoredFlags |= kFSEventStreamEventFlagItemCloned;
+    }
+
+    // If we don't care about any of the flags that are set, ignore this event.
+    if ((eventFlags[i] & ~ignoredFlags) == 0) {
+      continue;
     }
 
     // FSEvents exclusion paths only apply to files, not directories.
