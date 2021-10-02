@@ -22,7 +22,7 @@ void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
 // file renames that only affect case, we need to get the canonical path
 // and compare it with the input path to determine if a file was created or deleted.
 bool pathExists(char *path) {
-  int fd = open(path, O_RDONLY);
+  int fd = open(path, O_RDONLY | O_SYMLINK);
   if (fd == -1) {
     return false;
   }
