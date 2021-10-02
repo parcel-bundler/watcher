@@ -117,6 +117,20 @@ describe('watcher', () => {
           ]);
         });
 
+        it('should emit when a file is renamed only changing case', async () => {
+          let f1 = getFilename();
+          let f2 = path.join(path.dirname(f1), path.basename(f1).toUpperCase());
+          fs.writeFile(f1, 'hello world');
+          await nextEvent();
+
+          fs.rename(f1, f2);
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: f2},
+            {type: 'delete', path: f1},
+          ]);
+        });
+
         it('should emit when a file is deleted', async () => {
           let f = getFilename();
           fs.writeFile(f, 'hello world');

@@ -18,6 +18,26 @@ void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
   FSEventStreamRelease(stream);
 }
 
+// macOS has a case insensitive file system by default. In order to detect
+// file renames that only affect case, we need to get the canonical path
+// and compare it with the input path to determine if a file was created or deleted.
+bool pathExists(char *path) {
+  int fd = open(path, O_RDONLY);
+  if (fd == -1) {
+    return false;
+  }
+
+  char buf[PATH_MAX];
+  if (fcntl(fd, F_GETPATH, buf) == -1) {
+    close(fd);
+    return false;
+  }
+
+  bool res = strncmp(path, buf, PATH_MAX) == 0;
+  close(fd);
+  return res;
+}
+
 struct State {
   FSEventStreamRef stream;
   std::shared_ptr<DirTree> tree;
@@ -84,7 +104,7 @@ void FSEventsCallback(
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // This helps disambiguate creates, updates, and deletes.
       struct stat file;
-      if (stat(paths[i], &file)) {
+      if (!pathExists(paths[i]) || stat(paths[i], &file)) {
         // File does not exist, so we have to assume it was removed. This is not exact since the
         // flags set by fsevents get coalesced together (e.g. created & deleted), so there is no way to
         // know whether the create and delete both happened since our snapshot (in which case
