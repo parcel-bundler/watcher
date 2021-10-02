@@ -192,17 +192,36 @@ describe('watcher', () => {
             return;
           }
 
-          fs.remove(tmpDir);
-          let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: tmpDir}
-          ]);
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random()
+              .toString(31)
+              .slice(2),
+          );
+          fs.mkdirpSync(dir);
+          await new Promise(resolve => setTimeout(resolve, 100));
 
-          fs.mkdirp(tmpDir);
-          res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: tmpDir}
-          ]);
+          let sub = await watcher.subscribe(
+            dir,
+            fn,
+            {backend},
+          );
+
+          try {
+            fs.remove(dir);
+            let res = await nextEvent();
+            assert.deepEqual(res, [
+              {type: 'delete', path: dir}
+            ]);
+
+            fs.mkdirp(dir);
+            res = await nextEvent();
+            assert.deepEqual(res, [
+              {type: 'create', path: dir}
+            ]);
+          } finally {
+            await sub.unsubscribe();
+          }
         });
       });
 
