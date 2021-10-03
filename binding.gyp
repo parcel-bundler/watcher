@@ -29,6 +29,11 @@
             "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
           }
         }],
+        ['OS=="mac" and target_arch=="arm64"', {
+          "xcode_settings": {
+            "ARCHS": ["arm64"]
+          }
+        }],
         ['OS=="linux"', {
           "sources": [
             "src/watchman/BSER.cc",
