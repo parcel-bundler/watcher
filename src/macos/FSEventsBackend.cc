@@ -57,6 +57,7 @@ void FSEventsCallback(
   EventList *list = &watcher->mEvents;
   State *state = (State *)watcher->state;
   uint64_t since = state->since;
+  bool deletedRoot = false;
 
   for (size_t i = 0; i < numEvents; ++i) {
     bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
@@ -97,6 +98,9 @@ void FSEventsCallback(
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
       list->remove(paths[i]);
+      if (paths[i] == watcher->mDir) {
+        deletedRoot = true;
+      }
     } else if (isModified && !(isCreated || isRemoved || isRenamed)) {
       state->tree->update(paths[i], 0);
       list->update(paths[i]);
@@ -112,6 +116,9 @@ void FSEventsCallback(
         // being emitted for files we don't know about, but that is the best we can do.
         state->tree->remove(paths[i]);
         list->remove(paths[i]);
+        if (paths[i] == watcher->mDir) {
+          deletedRoot = true;
+        }
         continue;
       }
 
@@ -131,6 +138,13 @@ void FSEventsCallback(
 
   if (watcher->mWatched) {
     watcher->notify();
+  }
+
+  // Stop watching if the root directory was deleted.
+  if (deletedRoot) {
+    stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
+    delete state;
+    watcher->state = NULL;
   }
 }
 
@@ -268,8 +282,10 @@ void FSEventsBackend::subscribe(Watcher &watcher) {
 
 void FSEventsBackend::unsubscribe(Watcher &watcher) {
   State *s = (State *)watcher.state;
-  stopStream(s->stream, mRunLoop);
+  if (s != NULL) {
+    stopStream(s->stream, mRunLoop);
 
-  delete s;
-  watcher.state = NULL;
+    delete s;
+    watcher.state = NULL;
+  }
 }

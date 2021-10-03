@@ -178,7 +178,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
 
     // If the entry being deleted/moved is a directory, remove it from the list of subscriptions
     auto entry = sub->tree->find(path);
-    if (entry && entry->isDir && path != watcher->mDir) {
+    if (entry && entry->isDir) {
       for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
         if (it->second->entry == &*entry) {
           mSubscriptions.erase(it);

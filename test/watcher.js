@@ -183,6 +183,11 @@ describe('watcher', () => {
         });
 
         it('should handle when the directory to watch is deleted', async () => {
+          if (backend === 'watchman') {
+            // Watchman doesn't handle this correctly
+            return;
+          }
+
           let dir = path.join(
             fs.realpathSync(require('os').tmpdir()),
             Math.random().toString(31).slice(2),
@@ -197,13 +202,12 @@ describe('watcher', () => {
             let res = await nextEvent();
             assert.deepEqual(res, [{type: 'delete', path: dir}]);
 
-            // fs.mkdirp(dir);
-            // res = await nextEvent();
-            // assert.deepEqual(res, [
-            //   {type: 'create', path: dir}
-            // ]);
-          } catch (err) {
-            console.log(err);
+            fs.mkdirp(dir);
+            res = await Promise.race([
+              new Promise(resolve => setTimeout(resolve, 100)),
+              nextEvent()
+            ]);
+            assert.equal(res, undefined);
           } finally {
             await sub.unsubscribe();
           }
