@@ -110,9 +110,7 @@ public:
   }
 
   ~Subscription() {
-    mRunning = false;
-    CancelIo(mDirectoryHandle);
-    CloseHandle(mDirectoryHandle);
+    stop();
   }
 
   void run() {
@@ -120,6 +118,14 @@ public:
       poll();
     } catch (WatcherError &err) {
       mBackend->handleWatcherError(err);
+    }
+  }
+
+  void stop() {
+    if (mRunning) {
+      mRunning = false;
+      CancelIo(mDirectoryHandle);
+      CloseHandle(mDirectoryHandle);
     }
   }
 
@@ -169,6 +175,19 @@ public:
         return;
       case ERROR_NOTIFY_ENUM_DIR:
         throw WatcherError("Buffer overflow. Some events may have been lost.", mWatcher);
+      case ERROR_ACCESS_DENIED: {
+        // This can happen if the watched directory is deleted. Check if that is the case,
+        // and if so emit a delete event. Otherwise, fall through to default error case.
+        DWORD attrs = GetFileAttributesW(utf8ToUtf16(mWatcher->mDir).data());
+        bool isDir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
+        if (!isDir) {
+          mWatcher->mEvents.remove(mWatcher->mDir);
+          mTree->remove(mWatcher->mDir);
+          mWatcher->notify();
+          stop();
+          return;
+        }
+      }
       default:
         if (errorCode != ERROR_SUCCESS) {
           throw WatcherError("Unknown error", mWatcher);
