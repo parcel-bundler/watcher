@@ -10,6 +10,7 @@ RUN curl -sL https://rpm.nodesource.com/setup_12.x | bash -
 RUN yum install -y \
     nodejs \
     wget \
+    curl \
     libgcc \ 
     libstdc++ \ 
     ca-certificates  \ 
@@ -38,6 +39,11 @@ RUN cd /tmp/watchman-${WATCHMAN_VERSION} \
     && cd $HOME \
     && rm -rf /tmp/*
 
+# Install yarn
+RUN curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | tee /etc/yum.repos.d/yarn.repo \
+    && rpm --import https://dl.yarnpkg.com/rpm/pubkey.gpg \
+    && yum install -y yarn
+
 RUN mkdir -p /home/default
 
 RUN printenv
@@ -45,6 +51,8 @@ RUN printenv
 RUN watchman --version
 
 RUN which node
+
+RUN yarn --version
 
 # Set Node runtime
 LABEL "com.azure.dev.pipelines.agent.handler.node.path"="/usr/bin/node"
