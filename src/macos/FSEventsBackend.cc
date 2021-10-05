@@ -9,12 +9,33 @@
 #include "../Watcher.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
+#define IGNORED_FLAGS (kFSEventStreamEventFlagItemIsHardlink | kFSEventStreamEventFlagItemIsLastHardlink | kFSEventStreamEventFlagItemIsSymlink | kFSEventStreamEventFlagItemIsDir | kFSEventStreamEventFlagItemIsFile)
 
 void stopStream(FSEventStreamRef stream, CFRunLoopRef runLoop) {
   FSEventStreamStop(stream);
   FSEventStreamUnscheduleFromRunLoop(stream, runLoop, kCFRunLoopDefaultMode);
   FSEventStreamInvalidate(stream);
   FSEventStreamRelease(stream);
+}
+
+// macOS has a case insensitive file system by default. In order to detect
+// file renames that only affect case, we need to get the canonical path
+// and compare it with the input path to determine if a file was created or deleted.
+bool pathExists(char *path) {
+  int fd = open(path, O_RDONLY | O_SYMLINK);
+  if (fd == -1) {
+    return false;
+  }
+
+  char buf[PATH_MAX];
+  if (fcntl(fd, F_GETPATH, buf) == -1) {
+    close(fd);
+    return false;
+  }
+
+  bool res = strncmp(path, buf, PATH_MAX) == 0;
+  close(fd);
+  return res;
 }
 
 struct State {
@@ -36,6 +57,7 @@ void FSEventsCallback(
   EventList *list = &watcher->mEvents;
   State *state = (State *)watcher->state;
   uint64_t since = state->since;
+  bool deletedRoot = false;
 
   for (size_t i = 0; i < numEvents; ++i) {
     bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
@@ -54,6 +76,16 @@ void FSEventsCallback(
       break;
     }
 
+    auto ignoredFlags = IGNORED_FLAGS;
+    if (__builtin_available(macOS 10.13, *)) {
+      ignoredFlags |= kFSEventStreamEventFlagItemCloned;
+    }
+
+    // If we don't care about any of the flags that are set, ignore this event.
+    if ((eventFlags[i] & ~ignoredFlags) == 0) {
+      continue;
+    }
+
     // FSEvents exclusion paths only apply to files, not directories.
     if (watcher->isIgnored(paths[i])) {
       continue;
@@ -66,6 +98,9 @@ void FSEventsCallback(
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
       list->remove(paths[i]);
+      if (paths[i] == watcher->mDir) {
+        deletedRoot = true;
+      }
     } else if (isModified && !(isCreated || isRemoved || isRenamed)) {
       state->tree->update(paths[i], 0);
       list->update(paths[i]);
@@ -73,7 +108,7 @@ void FSEventsCallback(
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // This helps disambiguate creates, updates, and deletes.
       struct stat file;
-      if (stat(paths[i], &file)) {
+      if (!pathExists(paths[i]) || stat(paths[i], &file)) {
         // File does not exist, so we have to assume it was removed. This is not exact since the
         // flags set by fsevents get coalesced together (e.g. created & deleted), so there is no way to
         // know whether the create and delete both happened since our snapshot (in which case
@@ -81,6 +116,9 @@ void FSEventsCallback(
         // being emitted for files we don't know about, but that is the best we can do.
         state->tree->remove(paths[i]);
         list->remove(paths[i]);
+        if (paths[i] == watcher->mDir) {
+          deletedRoot = true;
+        }
         continue;
       }
 
@@ -100,6 +138,13 @@ void FSEventsCallback(
 
   if (watcher->mWatched) {
     watcher->notify();
+  }
+
+  // Stop watching if the root directory was deleted.
+  if (deletedRoot) {
+    stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
+    delete state;
+    watcher->state = NULL;
   }
 }
 
@@ -237,8 +282,10 @@ void FSEventsBackend::subscribe(Watcher &watcher) {
 
 void FSEventsBackend::unsubscribe(Watcher &watcher) {
   State *s = (State *)watcher.state;
-  stopStream(s->stream, mRunLoop);
+  if (s != NULL) {
+    stopStream(s->stream, mRunLoop);
 
-  delete s;
-  watcher.state = NULL;
+    delete s;
+    watcher.state = NULL;
+  }
 }
