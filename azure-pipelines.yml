@@ -23,7 +23,7 @@ jobs:
     parameters:
       name: Alpine
       vmImage: ubuntu-latest
-      container: jasperdm/alpine-watchman:latest
+      # container: jasperdm/alpine-watchman:latest
       arch: x64
   
   # - template: azure-pipelines-template.yml
