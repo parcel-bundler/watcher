@@ -3,6 +3,9 @@ const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 const {execSync} = require('child_process');
+const SegfaultHandler = require('segfault-handler');
+
+SegfaultHandler.registerHandler('crash.log');
 
 let backends = [];
 if (process.platform === 'darwin') {
@@ -204,8 +207,8 @@ describe('watcher', () => {
 
             fs.mkdirp(dir);
             res = await Promise.race([
-              new Promise(resolve => setTimeout(resolve, 100)),
-              nextEvent()
+              new Promise((resolve) => setTimeout(resolve, 100)),
+              nextEvent(),
             ]);
             assert.equal(res, undefined);
           } finally {
@@ -692,6 +695,55 @@ describe('watcher', () => {
 
           assert(threw, 'did not throw');
         });
+      });
+    });
+
+    describe('stress test', () => {
+      it('rapidly subscribe and unsubscribe', async () => {
+        const dirs = new Array(10).fill('').map(() => {
+          return path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random().toString(31).slice(2),
+          );
+        });
+
+        for (let dir of dirs) {
+          fs.mkdirpSync(dir);
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        let subscriptions = [];
+        for (let i = 0; i < 2500; i++) {
+          const randomInt = Math.floor(Math.random() * 300);
+          const dir = dirs[Math.floor(Math.random() * dirs.length)];
+
+          if (randomInt < 100 && subscriptions.length) {
+            subscriptions.pop().unsubscribe();
+          }
+
+          if (subscriptions.length < 25) {
+            const subscription = await watcher.subscribe(
+              dir,
+              (err, events) => {
+                // do nothing...
+              },
+              {backend},
+            );
+            subscriptions.push(subscription);
+          }
+
+          fs.writeFile(
+            path.join(dir, `file-${Math.round(Math.random() * 100000)}`),
+            'test1',
+          );
+        }
+
+        for (let s of subscriptions) {
+          await s.unsubscribe();
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
       });
     });
   });
