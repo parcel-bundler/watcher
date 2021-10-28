@@ -143,8 +143,6 @@ void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set
 }
 
 bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub) {
-  std::unique_lock<std::mutex> lock(mMutex);
-
   // Build full path and check if its in our ignore list.
   Watcher *watcher = sub->watcher;
   std::string path = std::string(sub->entry->path);
