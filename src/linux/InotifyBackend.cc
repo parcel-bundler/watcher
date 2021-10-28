@@ -73,7 +73,7 @@ void InotifyBackend::subscribe(Watcher &watcher) {
 }
 
 void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree) {
-  std::unique_lock<std::mutex> lock(mMutex);
+  // std::unique_lock<std::mutex> lock(mMutex);
 
   int wd = inotify_add_watch(mInotify, entry->path.c_str(), INOTIFY_MASK);
   if (wd == -1) {
@@ -197,7 +197,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
 }
 
 void InotifyBackend::unsubscribe(Watcher &watcher) {
-  std::unique_lock<std::mutex> lock(mMutex);
+  // std::unique_lock<std::mutex> lock(mMutex);
   
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {

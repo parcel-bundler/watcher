@@ -7,23 +7,17 @@ trigger:
       - '*'
 
 jobs:
-  - template: azure-pipelines-template.yml
-    parameters:
-      name: macOS
-      vmImage: macOS-latest
-      arch: x64
+  # - template: azure-pipelines-template.yml
+  #   parameters:
+  #     name: macOS
+  #     vmImage: macOS-latest
+  #     arch: x64
 
-  - template: azure-pipelines-template.yml
-    parameters:
-      name: appleSilicon
-      vmImage: macos-11
-      arch: arm64
-
-  - template: azure-pipelines-template.yml
-    parameters:
-      name: ubuntu
-      vmImage: ubuntu-latest
-      arch: x64
+  # - template: azure-pipelines-template.yml
+  #   parameters:
+  #     name: appleSilicon
+  #     vmImage: macos-11
+  #     arch: arm64
 
   - template: azure-pipelines-template.yml
     parameters:
@@ -32,38 +26,38 @@ jobs:
       container: jasperdm/alpine-watchman:latest
       arch: x64
   
-  - template: azure-pipelines-template.yml
-    parameters:
-      name: CentOS7
-      vmImage: ubuntu-latest
-      container: jasperdm/centos-watchman:latest
-      arch: x64
+  # - template: azure-pipelines-template.yml
+  #   parameters:
+  #     name: CentOS7
+  #     vmImage: ubuntu-latest
+  #     container: jasperdm/centos-watchman:latest
+  #     arch: x64
 
-  - template: azure-pipelines-template.yml
-    parameters:
-      name: Windows
-      vmImage: vs2017-win2016
-      arch: x64
+  # - template: azure-pipelines-template.yml
+  #   parameters:
+  #     name: Windows
+  #     vmImage: vs2017-win2016
+  #     arch: x64
 
-  - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
-    - job: Publish
-      condition: succeeded()
-      dependsOn:
-        - macOS
-        - appleSilicon
-        - Alpine
-        - CentOS7
-        - Windows
-      pool: 
-        vmImage: ubuntu-16.04
-      steps:
-        - task: DownloadBuildArtifacts@0
-          displayName: Download Artifacts
-          inputs:
-            artifactName: prebuilds
-            downloadPath: "$(System.DefaultWorkingDirectory)"
-        - task: Npm@1
-          displayName: NPM Release
-          inputs:
-            command: 'publish'
-            publishEndpoint: npm
+  # - ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/v') }}:
+  #   - job: Publish
+  #     condition: succeeded()
+  #     dependsOn:
+  #       - macOS
+  #       - appleSilicon
+  #       - Alpine
+  #       - CentOS7
+  #       - Windows
+  #     pool: 
+  #       vmImage: ubuntu-16.04
+  #     steps:
+  #       - task: DownloadBuildArtifacts@0
+  #         displayName: Download Artifacts
+  #         inputs:
+  #           artifactName: prebuilds
+  #           downloadPath: "$(System.DefaultWorkingDirectory)"
+  #       - task: Npm@1
+  #         displayName: NPM Release
+  #         inputs:
+  #           command: 'publish'
+  #           publishEndpoint: npm
