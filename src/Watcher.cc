@@ -121,6 +121,12 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto events = watcher->callbackEventsToJS(it->Env());
 
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
+    // Throw errors from the callback as fatal exceptions
+    // If we don't handle these node segfaults...
+    if (it->Env().IsExceptionPending()) {
+      Napi::Error err = it->Env().GetAndClearPendingException();
+      napi_fatal_exception(it->Env(), err.Value());
+    }
 
     // If the iterator was changed, then the callback trigged an unwatch.
     // The iterator will have been set to the next valid callback.
