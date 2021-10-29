@@ -14,7 +14,7 @@ fs.mkdirpSync(tmpDir);
 
 let backends = [];
 if (process.platform === 'darwin') {
-  backends = ['fs-events', 'watchman'];
+  backends = ['fs-events'];
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {

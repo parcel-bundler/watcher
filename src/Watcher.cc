@@ -1,4 +1,5 @@
 #include "Watcher.hh"
+#include <iostream>
 #include <unordered_set>
 
 using namespace Napi;
@@ -121,6 +122,10 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto events = watcher->callbackEventsToJS(it->Env());
 
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
+    // Catch any exception to prevent segfaults
+    if (it->Env().IsExceptionPending()) {
+      it->Env().GetAndClearPendingException();
+    }
 
     // If the iterator was changed, then the callback trigged an unwatch.
     // The iterator will have been set to the next valid callback.
