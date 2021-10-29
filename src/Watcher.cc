@@ -124,7 +124,8 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
     // Catch any exception to prevent segfaults
     if (it->Env().IsExceptionPending()) {
-      it->Env().GetAndClearPendingException();
+      Napi::Error err = it->Env().GetAndClearPendingException();
+      napi_fatal_exception(it->Env(), err.Value());
     }
 
     // If the iterator was changed, then the callback trigged an unwatch.
