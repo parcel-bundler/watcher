@@ -11,9 +11,9 @@ let backends = [];
 if (process.platform === 'darwin') {
   backends = ['fs-events'];
 } else if (process.platform === 'linux') {
-  backends = ['inotify', 'watchman'];
+  backends = ['inotify'];
 } else if (process.platform === 'win32') {
-  backends = ['windows', 'watchman'];
+  backends = ['windows'];
 }
 
 describe('watcher', () => {
