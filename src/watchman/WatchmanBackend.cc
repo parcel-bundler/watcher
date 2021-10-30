@@ -2,6 +2,8 @@
 #include <fstream>
 #include <stdlib.h>
 #include <algorithm>
+#include <exception>
+#include <stdexcept>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
@@ -55,7 +57,11 @@ std::string getSockPath() {
   });
 
   pclose(fp);
-  return b.objectValue().find("sockname")->second.stringValue();
+  auto sockName = b.objectValue().find("sockname");
+  if (sockName == b.objectValue().end()) {
+    throw std::runtime_error("sockname not found");
+  }
+  return sockName->second.stringValue();
 }
 
 std::unique_ptr<IPC> watchmanConnect() {
