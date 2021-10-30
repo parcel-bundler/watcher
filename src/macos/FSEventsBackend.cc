@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <string>
 #include <fstream>
+#include <iostream>
 #include <unordered_set>
 #include "../Event.hh"
 #include "../Backend.hh"
@@ -212,8 +213,10 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   }
 
   State *s = (State *)watcher.state;
+  std::cout << "create shared dirtree\n";
   s->tree = std::make_shared<DirTree>(watcher.mDir);
   s->stream = stream;
+  std::cout << "created shared dirtree\n";
 }
 
 void FSEventsBackend::start() {
@@ -279,6 +282,7 @@ void FSEventsBackend::subscribe(Watcher &watcher) {
   s->since = 0;
   watcher.state = (void *)s;
   startStream(watcher, kFSEventStreamEventIdSinceNow);
+  std::cout << "started stream\n";
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
