@@ -259,6 +259,7 @@ private:
   OVERLAPPED mOverlapped;
 };
 
+// This function is called by Backend::watch which takes a lock on mMutex
 void WindowsBackend::subscribe(Watcher &watcher) {
   // Create a subscription for this watcher
   Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false));
@@ -275,6 +276,7 @@ void WindowsBackend::subscribe(Watcher &watcher) {
   }
 }
 
+// This function is called by Backend::unwatch which takes a lock on mMutex
 void WindowsBackend::unsubscribe(Watcher &watcher) {
   Subscription *sub = (Subscription *)watcher.state;
   delete sub;

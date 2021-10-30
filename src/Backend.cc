@@ -146,6 +146,5 @@ void Backend::handleError(std::exception &err) {
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
     (*it)->notifyError(err);
   }
-
   removeShared(this);
 }
