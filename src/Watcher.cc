@@ -122,7 +122,8 @@ void Watcher::fireCallbacks(uv_async_t *handle) {
     auto events = watcher->callbackEventsToJS(it->Env());
 
     it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
-    // Catch any exception to prevent segfaults
+    // Throw errors from the callback as fatal exceptions
+    // If we don't handle these node segfaults...
     if (it->Env().IsExceptionPending()) {
       Napi::Error err = it->Env().GetAndClearPendingException();
       napi_fatal_exception(it->Env(), err.Value());
