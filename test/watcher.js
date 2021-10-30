@@ -699,35 +699,7 @@ describe('watcher', () => {
     });
 
     describe('stress test', () => {
-      it('should not crash on error in callback', async () => {
-        const dir = path.join(
-          fs.realpathSync(require('os').tmpdir()),
-          Math.random().toString(31).slice(2),
-        );
-        fs.mkdirpSync(dir);
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        const subscription = await watcher.subscribe(
-          dir,
-          (err, events) => {
-            console.log('called callback');
-            throw new Error('test');
-          },
-          {backend},
-        );
-
-        await fs.writeFile(
-          path.join(dir, `file-${Math.round(Math.random() * 100000)}`),
-          'test1',
-        );
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        await subscription.unsubscribe();
-      });
-
-      it.skip('rapidly subscribe and unsubscribe', async () => {
+      it('rapidly subscribe and unsubscribe', async () => {
         const dirs = new Array(10).fill('').map(() => {
           return path.join(
             fs.realpathSync(require('os').tmpdir()),
