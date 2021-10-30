@@ -266,6 +266,7 @@ std::string getId(Watcher &watcher) {
   return id.str();
 }
 
+// This function is called by Backend::watch which takes a lock on mMutex
 void WatchmanBackend::subscribe(Watcher &watcher) {
   watchmanWatch(watcher.mDir);
 
@@ -314,6 +315,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   mRequestSignal.notify();
 }
 
+// This function is called by Backend::unwatch which takes a lock on mMutex
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
   std::string id = getId(watcher);
   auto erased = mSubscriptions.erase(id);

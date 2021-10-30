@@ -30,7 +30,7 @@ void BruteForceBackend::getEventsSince(Watcher &watcher, std::string *snapshotPa
     return;
   }
 
-  auto snapshot = DirTree(watcher.mDir, ifs);
+  DirTree snapshot{watcher.mDir, ifs};
   auto now = getTree(watcher);
   now->getChanges(&snapshot, watcher.mEvents);
 }
