@@ -28,21 +28,25 @@ struct DirEntry {
   }
 };
 
-struct DirTree {
-  std::string root;
-  bool isComplete;
-  std::unordered_map<std::string, DirEntry> entries;
-
+class DirTree {
+public:
   static std::shared_ptr<DirTree> getCached(std::string root);
   DirTree(std::string root) : root(root), isComplete(false) {}
   DirTree(std::string root, std::istream &stream);
-
   DirEntry *add(std::string path, uint64_t mtime, bool isDir);
   DirEntry *find(std::string path);
   DirEntry *update(std::string path, uint64_t mtime);
   void remove(std::string path);
   void write(std::ostream &stream);
   void getChanges(DirTree *snapshot, EventList &events);
+
+  std::mutex mMutex;
+  std::string root;
+  bool isComplete;
+  std::unordered_map<std::string, DirEntry> entries;
+
+private:
+  DirEntry *_find(std::string path);
 };
 
 #endif
