@@ -2,7 +2,6 @@
 #include <fstream>
 #include <stdlib.h>
 #include <algorithm>
-#include <iostream>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
@@ -105,7 +104,6 @@ bool WatchmanBackend::checkAvailable() {
     watchmanConnect();
     return true;
   } catch (std::exception &err) {
-    std::cout << "watchman not available\n";
     return false;
   }
 }
