@@ -57,11 +57,12 @@ std::string getSockPath() {
   
   pclose(fp);
 
-  auto sockName = b.objectValue().find("sockname");
-  if (sockName == b.objectValue().end()) {
+  auto objValue = b.objectValue();
+  auto foundSockname = objValue.find("sockname");
+  if (foundSockname == objValue.end()) {
     throw std::runtime_error("sockname not found");
   }
-  return sockName->second.stringValue();
+  return foundSockname->second.stringValue();
 }
 
 std::unique_ptr<IPC> watchmanConnect() {
