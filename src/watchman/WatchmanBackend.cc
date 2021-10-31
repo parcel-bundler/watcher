@@ -2,8 +2,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <algorithm>
-#include <exception>
-#include <stdexcept>
+#include <iostream>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BSER.hh"
@@ -55,8 +54,9 @@ std::string getSockPath() {
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
-
+  
   pclose(fp);
+
   auto sockName = b.objectValue().find("sockname");
   if (sockName == b.objectValue().end()) {
     throw std::runtime_error("sockname not found");
@@ -104,6 +104,7 @@ bool WatchmanBackend::checkAvailable() {
     watchmanConnect();
     return true;
   } catch (std::exception &err) {
+    std::cout << "watchman not available\n";
     return false;
   }
 }
