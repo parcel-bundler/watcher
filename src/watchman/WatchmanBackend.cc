@@ -53,9 +53,15 @@ std::string getSockPath() {
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
-
+  
   pclose(fp);
-  return b.objectValue().find("sockname")->second.stringValue();
+
+  auto objValue = b.objectValue();
+  auto foundSockname = objValue.find("sockname");
+  if (foundSockname == objValue.end()) {
+    throw std::runtime_error("sockname not found");
+  }
+  return foundSockname->second.stringValue();
 }
 
 std::unique_ptr<IPC> watchmanConnect() {
@@ -266,6 +272,7 @@ std::string getId(Watcher &watcher) {
   return id.str();
 }
 
+// This function is called by Backend::watch which takes a lock on mMutex
 void WatchmanBackend::subscribe(Watcher &watcher) {
   watchmanWatch(watcher.mDir);
 
@@ -314,6 +321,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   mRequestSignal.notify();
 }
 
+// This function is called by Backend::unwatch which takes a lock on mMutex
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
   std::string id = getId(watcher);
   auto erased = mSubscriptions.erase(id);

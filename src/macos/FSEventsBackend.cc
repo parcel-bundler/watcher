@@ -273,6 +273,7 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   watcher.state = NULL;
 }
 
+// This function is called by Backend::watch which takes a lock on mMutex
 void FSEventsBackend::subscribe(Watcher &watcher) {
   State *s = new State;
   s->since = 0;
@@ -280,6 +281,7 @@ void FSEventsBackend::subscribe(Watcher &watcher) {
   startStream(watcher, kFSEventStreamEventIdSinceNow);
 }
 
+// This function is called by Backend::unwatch which takes a lock on mMutex
 void FSEventsBackend::unsubscribe(Watcher &watcher) {
   State *s = (State *)watcher.state;
   if (s != NULL) {

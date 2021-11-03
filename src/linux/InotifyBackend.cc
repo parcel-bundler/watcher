@@ -61,6 +61,7 @@ InotifyBackend::~InotifyBackend() {
   mEndedSignal.wait();
 }
 
+// This function is called by Backend::watch which takes a lock on mMutex
 void InotifyBackend::subscribe(Watcher &watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
@@ -194,6 +195,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
   return true;
 }
 
+// This function is called by Backend::unwatch which takes a lock on mMutex
 void InotifyBackend::unsubscribe(Watcher &watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
