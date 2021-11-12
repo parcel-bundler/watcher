@@ -383,6 +383,21 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
+
+        it('should not crash when a folder symlink is created', async () => {
+          let f1 = getFilename();
+          let f2 = getFilename();
+          fs.mkdir(f1);
+          await nextEvent();
+
+          fs.symlink(f1, f2);
+          await nextEvent();
+
+          fs.unlink(f2);
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{ type: 'delete', path: f2 }]);
+        });
       });
 
       describe('rapid changes', () => {
