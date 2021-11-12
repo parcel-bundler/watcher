@@ -159,7 +159,9 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     watcher->mEvents.create(path);
 
     struct stat st;
-    stat(path.c_str(), &st);
+    // Use lstat to avoid resolving symbolic links that we cannot watch anyway
+    // https://github.com/parcel-bundler/watcher/issues/76
+    lstat(path.c_str(), &st);
     DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
