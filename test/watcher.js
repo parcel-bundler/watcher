@@ -384,7 +384,7 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
 
-        it.only('should not crash when a folder symlink is created', async () => {
+        it('should not crash when a folder symlink is created', async () => {
           let f1 = getFilename();
           let f2 = getFilename();
           fs.mkdir(f1);
