@@ -105,6 +105,13 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 - `ignore` - an array of paths to ignore. They can be either files or directories. No events will be emitted about these files or directories or their children.
 - `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
 
+## Who is using this?
+
+* [Parcel 2](https://parceljs.org/)
+* [VSCode](https://code.visualstudio.com/updates/v1_62#_file-watching-changes)
+* [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
+* [Nx](https://nx.dev)
+
 ## License
 
 MIT
