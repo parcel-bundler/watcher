@@ -109,6 +109,7 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 
 * [Parcel 2](https://parceljs.org/)
 * [VSCode](https://code.visualstudio.com/updates/v1_62#_file-watching-changes)
+* [Tailwind CSS Intellisense](https://github.com/tailwindlabs/tailwindcss-intellisense)
 * [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
 * [Nx](https://nx.dev)
 
