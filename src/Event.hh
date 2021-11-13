@@ -29,7 +29,13 @@ public:
   void create(std::string path) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
-    event->isCreated = true;
+    if (event->isDeleted) {
+      // Assume update event when rapidly removed and created
+      // https://github.com/parcel-bundler/watcher/issues/72
+      event->isDeleted = false;
+    } else {
+      event->isCreated = true;
+    }
   }
 
   Event *update(std::string path) {
@@ -41,6 +47,7 @@ public:
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
     if (event->isCreated) {
+      // Ignore event when rapidly created and removed
       mEvents.erase(path);
     } else {
       event->isDeleted = true;
