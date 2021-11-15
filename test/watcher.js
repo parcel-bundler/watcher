@@ -477,7 +477,7 @@ describe('watcher', () => {
             let f1 = getFilename();
             let f2 = getFilename();
 
-            for (let i = 0; i < 1000; i++) {
+            for (let i = 0; i < 100; i++) {
               await fs.mkdir(f1);
               await fs.rmdir(f1);
             }
