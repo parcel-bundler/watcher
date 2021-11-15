@@ -474,13 +474,14 @@ describe('watcher', () => {
 
         it('should not crash with rapid folder creates and deletes', async () => {
           let f1 = getFilename();
+          let f2 = getFilename();
 
           for (let i = 0; i < 1000; i++) {
             await fs.mkdir(f1);
             await fs.rmdir(f1);
           }
 
-          let f2 = getFilename();
+          await nextEvent();
 
           fs.writeFile(f2, 'hello world');
 
