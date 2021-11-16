@@ -173,6 +173,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
       bool success = watchDir(*watcher, entry, sub->tree);
       if (!success) {
         sub->tree->remove(path);
+        return false;
       }
     }
   } else if (event->mask & (IN_MODIFY | IN_ATTRIB)) {
