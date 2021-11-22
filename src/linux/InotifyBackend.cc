@@ -68,15 +68,18 @@ void InotifyBackend::subscribe(Watcher &watcher) {
   
   for (auto it = tree->entries.begin(); it != tree->entries.end(); it++) {
     if (it->second.isDir) {
-      watchDir(watcher, (DirEntry *)&it->second, tree);
+      bool success = watchDir(watcher, (DirEntry *)&it->second, tree);
+      if (!success) {
+        throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + strerror(errno), &watcher);
+      }
     }
   }
 }
 
-void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree) {
+bool InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr<DirTree> tree) {
   int wd = inotify_add_watch(mInotify, entry->path.c_str(), INOTIFY_MASK);
   if (wd == -1) {
-    throw WatcherError(std::string("inotify_add_watch on '") + entry->path + std::string("' failed: ") + strerror(errno), &watcher);
+    return false;
   }
 
   std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>();
@@ -84,6 +87,8 @@ void InotifyBackend::watchDir(Watcher &watcher, DirEntry *entry, std::shared_ptr
   sub->entry = entry;
   sub->watcher = &watcher;
   mSubscriptions.emplace(wd, sub);
+
+  return true;
 }
 
 void InotifyBackend::handleEvents() {
@@ -165,7 +170,11 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
-      watchDir(*watcher, entry, sub->tree);
+      bool success = watchDir(*watcher, entry, sub->tree);
+      if (!success) {
+        sub->tree->remove(path);
+        return false;
+      }
     }
   } else if (event->mask & (IN_MODIFY | IN_ATTRIB)) {
     watcher->mEvents.update(path);
