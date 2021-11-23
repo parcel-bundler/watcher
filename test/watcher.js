@@ -411,7 +411,7 @@ describe('watcher', () => {
         });
 
         if (backend !== 'watchman') {
-          it('should coalese delete and create events into update event', async () => {
+          it('should coalese delete and create events into single update event', async () => {
             let f1 = getFilename();
             await fs.writeFile(f1, 'hello world');
 
