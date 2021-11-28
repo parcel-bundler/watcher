@@ -410,7 +410,7 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
-        it('should coalese delete and create events into single update event', async () => {
+        it('should coalese delete and create events into a single update event', async () => {
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
 
