@@ -410,19 +410,19 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
-        it('should coalese delete and create events into a single update event', async () => {
-          let f1 = getFilename();
-          await fs.writeFile(f1, 'hello world');
+        if (backend !== 'watchman') { // watchman does not seem to support event coalescing on this level
+          it('should coalese delete and create events into a single update event', async () => {
+            let f1 = getFilename();
+            fs.writeFile(f1, 'hello world');
+            await nextEvent();
 
-          let res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'create', path: f1 }]);
+            await fs.unlink(f1);
+            fs.writeFile(f1, 'hello world');
 
-          await fs.unlink(f1);
-          fs.writeFile(f1, 'hello world');
-
-          res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'update', path: f1 }]);
-        });
+            res = await nextEvent();
+            assert.deepEqual(res, [{ type: 'update', path: f1 }]);
+          });
+        }
 
         if (backend !== 'fs-events') {
           it('should ignore files that are created and deleted rapidly', async () => {
