@@ -416,6 +416,7 @@ describe('watcher', () => {
             // when rapidly deleting and creating a file so our event
             // coalescing is not working in that case
             // https://github.com/parcel-bundler/watcher/pull/84#issuecomment-981117725
+            // https://github.com/facebook/watchman/issues/980
             return;
           }
 
