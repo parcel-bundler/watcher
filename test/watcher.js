@@ -410,6 +410,27 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
+        it('should coalese delete and create events into a single update event', async () => {
+          if (backend === 'watchman' && process.platform === 'linux') {
+            // It seems that watchman on Linux emits a single event
+            // when rapidly deleting and creating a file so our event
+            // coalescing is not working in that case
+            // https://github.com/parcel-bundler/watcher/pull/84#issuecomment-981117725
+            // https://github.com/facebook/watchman/issues/980
+            return;
+          }
+
+          let f1 = getFilename();
+          fs.writeFile(f1, 'hello world');
+          await nextEvent();
+
+          await fs.unlink(f1);
+          fs.writeFile(f1, 'hello world again');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{ type: 'update', path: f1 }]);
+        });
+
         if (backend !== 'fs-events') {
           it('should ignore files that are created and deleted rapidly', async () => {
             let f1 = getFilename();
@@ -511,8 +532,11 @@ describe('watcher', () => {
               let sub = await watcher.subscribe(
                 dir,
                 async (err, events) => {
-                  setImmediate(() => resolve(events));
-                  await sub.unsubscribe();
+                  setImmediate(async () => {
+                    await sub.unsubscribe();
+
+                    resolve(events)
+                  });
                 },
                 {backend},
               );
@@ -545,8 +569,11 @@ describe('watcher', () => {
               let sub = await watcher.subscribe(
                 dir,
                 async (err, events) => {
-                  setImmediate(() => resolve(events));
-                  await sub.unsubscribe();
+                  setImmediate(async () => {
+                    await sub.unsubscribe();
+
+                    resolve(events)
+                  });
                 },
                 {backend, ignore},
               );
@@ -585,8 +612,11 @@ describe('watcher', () => {
               let sub = await watcher.subscribe(
                 dir,
                 async (err, events) => {
-                  setImmediate(() => resolve(events));
-                  await sub.unsubscribe();
+                  setImmediate(async () => {
+                    await sub.unsubscribe();
+
+                    resolve(events)
+                  });
                 },
                 {backend},
               );
