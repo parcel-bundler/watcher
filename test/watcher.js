@@ -425,9 +425,9 @@ describe('watcher', () => {
           await nextEvent();
 
           await fs.unlink(f1);
-          fs.writeFile(f1, 'hello world');
+          fs.writeFile(f1, 'hello world again');
 
-          res = await nextEvent();
+          let res = await nextEvent();
           assert.deepEqual(res, [{ type: 'update', path: f1 }]);
         });
 
