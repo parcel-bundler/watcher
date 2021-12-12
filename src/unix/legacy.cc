@@ -26,8 +26,12 @@
 void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, const std::string &dirname) {
     int open_flags = (O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOCTTY | O_NONBLOCK | O_NOFOLLOW);
     int new_fd = openat(parent_fd, relative, open_flags);
-    if (new_fd == -1 && errno == EACCES) {
-        return; // insufficient permissions
+    if (new_fd == -1) {
+        if (errno == EACCES) {
+            return; // ignore insufficient permissions
+        }
+
+        throw WatcherError(strerror(errno), &watcher);
     }
 
     struct stat rootAttributes;
