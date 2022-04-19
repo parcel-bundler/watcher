@@ -1,11 +1,29 @@
 const binding = require('node-gyp-build')(__dirname);
 const path = require('path');
+const micromatch = require('micromatch');
+const isGlob = require('is-glob');
 
 function normalizeOptions(dir, opts = {}) {
-  if (Array.isArray(opts.ignore)) {
-    opts = Object.assign({}, opts, {
-      ignore: opts.ignore.map(ignore => path.resolve(dir, ignore)),
-    });
+  const { ignore, ...rest } = opts;
+
+  if (Array.isArray(ignore)) {
+    opts = { ...rest };
+
+    for (const value of ignore) {
+      if (isGlob(value)) {
+        if (!opts.ignoreGlobs) {
+          opts.ignoreGlobs = [];
+        }
+
+        opts.ignoreGlobs.push(micromatch.makeRe(value).toString());
+      } else {
+        if (!opts.ignorePaths) {
+          opts.ignorePaths = [];
+        }
+
+        opts.ignorePaths.push(path.resolve(dir, value));
+      }
+    }
   }
 
   return opts;

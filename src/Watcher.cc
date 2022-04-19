@@ -17,8 +17,8 @@ struct WatcherCompare {
 
 static std::unordered_set<std::shared_ptr<Watcher>, WatcherHash, WatcherCompare> sharedWatchers;
 
-std::shared_ptr<Watcher> Watcher::getShared(std::string dir, std::unordered_set<std::string> ignore) {
-  std::shared_ptr<Watcher> watcher = std::make_shared<Watcher>(dir, ignore);
+std::shared_ptr<Watcher> Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs) {
+  std::shared_ptr<Watcher> watcher = std::make_shared<Watcher>(dir, ignorePaths, ignoreGlobs);
   auto found = sharedWatchers.find(watcher);
   if (found != sharedWatchers.end()) {
     return *found;
@@ -37,9 +37,10 @@ void removeShared(Watcher *watcher) {
   }
 }
 
-Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignore)
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs)
   : mDir(dir),
-    mIgnore(ignore),
+    mIgnorePaths(ignorePaths),
+    mIgnoreGlobs(ignoreGlobs),
     mWatched(false),
     mAsync(NULL),
     mCallingCallbacks(false) {
@@ -199,9 +200,15 @@ void Watcher::onClose(uv_handle_t *handle) {
 }
 
 bool Watcher::isIgnored(std::string path) {
-  for (auto it = mIgnore.begin(); it != mIgnore.end(); it++) {
+  for (auto it = mIgnorePaths.begin(); it != mIgnorePaths.end(); it++) {
     auto dir = *it + DIR_SEP;
     if (*it == path || path.compare(0, dir.size(), dir) == 0) {
+      return true;
+    }
+  }
+
+  for (auto it = mIgnoreGlobs.begin(); it != mIgnoreGlobs.end(); it++) {
+    if (it->isIgnored(path)) {
       return true;
     }
   }

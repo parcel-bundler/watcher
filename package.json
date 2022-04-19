@@ -48,15 +48,17 @@
     ]
   },
   "dependencies": {
+    "is-glob": "^4.0.3",
+    "micromatch": "^4.0.5",
     "node-addon-api": "^3.2.1",
     "node-gyp-build": "^4.3.0"
   },
   "devDependencies": {
     "fs-extra": "^10.0.0",
     "husky": "^7.0.2",
+    "lint-staged": "^11.1.2",
     "mocha": "^9.1.1",
     "prebuildify": "^4.2.1",
-    "lint-staged": "^11.1.2",
     "prettier": "^2.3.2"
   },
   "binary": {
