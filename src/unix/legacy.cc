@@ -44,7 +44,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
 
             std::string fullPath = dirname + "/" + ent->d_name;
 
-            if (watcher.mIgnore.count(fullPath) == 0) {
+            if (watcher.mIgnorePaths.count(fullPath) == 0) {
                 struct stat attrib;
                 fstatat(new_fd, ent->d_name, &attrib, AT_SYMLINK_NOFOLLOW);
                 bool isDir = ent->d_type == DT_DIR;

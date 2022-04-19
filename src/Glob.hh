@@ -5,17 +5,17 @@
 #include <regex>
 
 struct Glob {
-  std::string mRaw;
+  std::size_t mHash;
   std::regex mRegex;
 
   Glob(std::string raw);
   Glob(std::string raw, std::regex regex);
 
   bool operator==(const Glob &other) const {
-    return mRaw == other.mRaw;
+    return mHash == other.mHash;
   }
 
-  bool isIgnored(std::string path) const;
+  bool isIgnored(std::string relative_path) const;
 };
 
 namespace std
@@ -24,15 +24,7 @@ namespace std
   struct hash<Glob>
   {
     size_t operator()(const Glob& g) const {
-      return std::hash<std::string>()(g.mRaw);
-    }
-  };
-
-  template <>
-  struct equal_to<Glob>
-  {
-    size_t operator()(const Glob& a, const Glob& b) const {
-      return a.mRaw == b.mRaw;
+      return g.mHash;
     }
   };
 }

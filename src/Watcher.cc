@@ -207,8 +207,16 @@ bool Watcher::isIgnored(std::string path) {
     }
   }
 
+  auto basePath = mDir + DIR_SEP;
+  
+  if (path.rfind(basePath, 0) != 0) {
+    return false;
+  }
+
+  auto relativePath = path.substr(basePath.size());
+
   for (auto it = mIgnoreGlobs.begin(); it != mIgnoreGlobs.end(); it++) {
-    if (it->isIgnored(path)) {
+    if (it->isIgnored(relativePath)) {
       return true;
     }
   }
