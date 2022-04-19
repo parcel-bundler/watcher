@@ -46,7 +46,7 @@ describe('watcher', () => {
           ...dir,
           `test${c++}${Math.random().toString(31).slice(2)}`,
         );
-      let ignoreDir, ignoreFile, fileToRename, dirToRename, sub;
+      let ignoreDir, ignoreFile, ignoreGlobDir, fileToRename, dirToRename, sub;
 
       before(async () => {
         tmpDir = path.join(
@@ -56,6 +56,7 @@ describe('watcher', () => {
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
+        ignoreGlobDir = getFilename();
         fileToRename = getFilename();
         dirToRename = getFilename();
         fs.writeFileSync(fileToRename, 'hi');
@@ -63,7 +64,7 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile],
+          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDir}/*.ignore`, `${ignoreGlobDir}/ignore/**`],
         });
       });
 
@@ -515,6 +516,18 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore globs', async () => {
+          await fs.mkdir(path.join(ignoreGlobDir, 'ignore'));
+
+          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: path.join(ignoreGlobDir, 'test.txt')}]);
         });
       });
 
