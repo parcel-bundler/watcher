@@ -1,5 +1,4 @@
 #include <string>
-#include <sstream>
 #include <stack>
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
@@ -11,12 +10,13 @@
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
 void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
-  HANDLE hFind = INVALID_HANDLE_VALUE;
   std::stack<std::string> directories;
-  
+
   directories.push(watcher.mDir);
 
   while (!directories.empty()) {
+    HANDLE hFind = INVALID_HANDLE_VALUE;
+
     std::string path = directories.top();
     std::string spec = path + "\\*";
     directories.pop();
@@ -29,7 +29,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
         FindClose(hFind);
         throw WatcherError("Error opening directory", &watcher);
       }
-      
+
       tree->remove(path);
       continue;
     }
@@ -47,9 +47,9 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
         }
       }
     } while (FindNextFile(hFind, &ffd) != 0);
-  }
 
-  FindClose(hFind);
+    FindClose(hFind);
+  }
 }
 
 void WindowsBackend::start() {
@@ -163,7 +163,7 @@ public:
     if (!mRunning) {
       return;
     }
-    
+
     switch (errorCode) {
       case ERROR_OPERATION_ABORTED:
         return;
