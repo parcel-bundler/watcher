@@ -93,11 +93,11 @@ void FSEventsCallback(
 
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
-      state->tree->add(paths[i], 0, isDir);
-      list->create(paths[i]);
+      state->tree->add(paths[i], FAKE_INO, 0, isDir);
+      list->create(paths[i], FAKE_INO);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
-      list->remove(paths[i]);
+      list->remove(paths[i], FAKE_INO);
       if (paths[i] == watcher->mDir) {
         deletedRoot = true;
       }
@@ -106,7 +106,7 @@ void FSEventsCallback(
       if (stat(paths[i], &file)) {
         continue;
       }
-      
+
       // Ignore if mtime is the same as the last event.
       // This prevents duplicate events from being emitted.
       // If tv_nsec is zero, the file system probably only has second-level
@@ -122,10 +122,10 @@ void FSEventsCallback(
         entry->mtime = mtime;
       } else {
         // Add to tree if this path has not been discovered yet.
-        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
+        state->tree->add(paths[i], FAKE_INO, mtime, S_ISDIR(file.st_mode));
       }
 
-      list->update(paths[i]);
+      list->update(paths[i], FAKE_INO);
     } else {
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // This helps disambiguate creates, updates, and deletes.
@@ -137,7 +137,7 @@ void FSEventsCallback(
         // we'd rather ignore this event completely). This will result in some extra delete events
         // being emitted for files we don't know about, but that is the best we can do.
         state->tree->remove(paths[i]);
-        list->remove(paths[i]);
+        list->remove(paths[i], FAKE_INO);
         if (paths[i] == watcher->mDir) {
           deletedRoot = true;
         }
@@ -151,14 +151,14 @@ void FSEventsCallback(
       if (entry && entry->mtime == mtime && file.st_mtimespec.tv_nsec != 0) {
         continue;
       }
-      
+
       // Some mounted file systems report a creation time of 0/unix epoch which we special case.
       if (isModified && (entry || (ctime <= since && ctime != 0))) {
-        state->tree->update(paths[i], mtime);
-        list->update(paths[i]);
+        state->tree->update(paths[i], FAKE_INO, mtime);
+        list->update(paths[i], FAKE_INO);
       } else {
-        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
-        list->create(paths[i]);
+        state->tree->add(paths[i], FAKE_INO, mtime, S_ISDIR(file.st_mode));
+        list->create(paths[i], FAKE_INO);
       }
     }
   }

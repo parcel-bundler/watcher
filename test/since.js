@@ -3,6 +3,11 @@ const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 
+let winfs
+if (process.platform === 'win32') {
+  winfs = require('@gyselroth/windows-fsstat');
+}
+
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 const tmpDir = path.join(
   fs.realpathSync(require('os').tmpdir()),
@@ -32,6 +37,38 @@ function testPrecision() {
 
 const isSecondPrecision = testPrecision();
 
+const getMetadata = async (p) => {
+  // XXX: Use lstat to get stats of symlinks rather than their targets
+  if (process.platform === 'win32') {
+    const stats = winfs.lstatSync(p);
+    return {
+      fileId: stats.fileid,
+    };
+  } else {
+    const stats = await fs.lstat(p);
+    return {
+      ino: stats.ino,
+    };
+  }
+};
+
+const event = (e, {backend}) => {
+  if (process.platform === 'win32') {
+    // XXX: ino is not returned with emitted events on Windows
+    delete e.ino;
+  } else {
+    // XXX: fileId is only returned with emitted events on Windows
+    delete e.fileId;
+  }
+
+  if (backend === 'watchman') {
+    // XXX: fileId is not returned with emitted events by WatchmanBackend
+    delete e.fileId;
+  }
+
+  return e;
+};
+
 describe('since', () => {
   const sleep = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -43,6 +80,7 @@ describe('since', () => {
   after(async () => {
     try {
       await fs.unlink(snapshotPath);
+      await fs.rmdir(tmpDir, { recursive: true });
     } catch (err) {}
   });
 
@@ -57,12 +95,15 @@ describe('since', () => {
             await sleep(1000);
           }
           await fs.writeFile(f, 'hello world');
+          let {ino, fileId} = await getMetadata(f);
           await sleep();
 
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a file is updated', async () => {
@@ -72,11 +113,15 @@ describe('since', () => {
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
           await fs.writeFile(f, 'hi');
+          let {ino, fileId} = await getMetadata(f);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'update', path: f}]);
+          assert.deepEqual(res, [
+            event({type: 'update', path: f, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a file is renamed', async () => {
@@ -86,14 +131,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f1);
           await fs.rename(f1, f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
           assert.deepEqual(res, [
-            {type: 'delete', path: f1},
-            {type: 'create', path: f2},
+            event({type: 'delete', path: f1, ino, fileId}, {backend}),
+            event({type: 'create', path: f2, ino, fileId}, {backend}),
           ]);
         });
 
@@ -103,12 +150,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f);
           await fs.unlink(f);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'delete', path: f}]);
+          assert.deepEqual(res, [
+            event({type: 'delete', path: f, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -117,12 +168,15 @@ describe('since', () => {
           let f1 = getFilename();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
           await fs.mkdir(f1);
+          let {ino, fileId} = await getMetadata(f1);
           await sleep();
 
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f1, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a directory is renamed', async () => {
@@ -132,15 +186,17 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f1);
           await fs.rename(f1, f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
 
           assert.deepEqual(res, [
-            {type: 'delete', path: f1},
-            {type: 'create', path: f2},
+            event({type: 'delete', path: f1, ino, fileId}, {backend}),
+            event({type: 'create', path: f2, ino, fileId}, {backend}),
           ]);
         });
 
@@ -150,13 +206,17 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f1);
           await fs.remove(f1);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
 
-          assert.deepEqual(res, [{type: 'delete', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'delete', path: f1, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -172,11 +232,15 @@ describe('since', () => {
           }
 
           await fs.writeFile(f2, 'hello world');
+          let {ino, fileId} = await getMetadata(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f2, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a sub-file is updated', async () => {
@@ -188,11 +252,15 @@ describe('since', () => {
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
           await fs.writeFile(f2, 'hi');
+          let {ino, fileId} = await getMetadata(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'update', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'update', path: f2, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a sub-file is renamed', async () => {
@@ -204,14 +272,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f2);
           await fs.rename(f2, f3);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
           assert.deepEqual(res, [
-            {type: 'delete', path: f2},
-            {type: 'create', path: f3},
+            event({type: 'delete', path: f2, ino, fileId}, {backend}),
+            event({type: 'create', path: f3, ino, fileId}, {backend}),
           ]);
         });
 
@@ -223,12 +293,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f2);
           await fs.unlink(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'delete', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'delete', path: f2, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -241,11 +315,15 @@ describe('since', () => {
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
           await fs.mkdir(f2);
+          let {ino, fileId} = await getMetadata(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f2, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a sub-directory is renamed', async () => {
@@ -257,15 +335,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f2);
           await fs.rename(f2, f3);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-
           assert.deepEqual(res, [
-            {type: 'delete', path: f2},
-            {type: 'create', path: f3},
+            event({type: 'delete', path: f2, ino, fileId}, {backend}),
+            event({type: 'create', path: f3, ino, fileId}, {backend}),
           ]);
         });
 
@@ -277,22 +356,37 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino: f1Ino, fileId: f1FileId} = await getMetadata(f1);
+          let {ino: f2Ino, fileId: f2FileId} = await getMetadata(f2);
           await fs.remove(f1);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
           try {
             assert.deepEqual(res, [
-              {type: 'delete', path: f2},
-              {type: 'delete', path: f1},
+              event(
+                {type: 'delete', path: f2, ino: f2Ino, fileId: f2FileId},
+                {backend},
+              ),
+              event(
+                {type: 'delete', path: f1, ino: f1Ino, fileId: f1FileId},
+                {backend},
+              ),
             ]);
           } catch (err) {
             // XXX: when deleting a directory and its content, events can be
             // notified in either order.
             assert.deepEqual(res, [
-              {type: 'delete', path: f1},
-              {type: 'delete', path: f2},
+              event(
+                {type: 'delete', path: f1, ino: f1Ino, fileId: f1FileId},
+                {backend},
+              ),
+              event(
+                {type: 'delete', path: f2, ino: f2Ino, fileId: f2FileId},
+                {backend},
+              ),
             ]);
           }
         });
@@ -307,11 +401,15 @@ describe('since', () => {
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
           await fs.symlink(f1, f2);
+          let {ino, fileId} = await getMetadata(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f2, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a symlink is updated', async () => {
@@ -322,12 +420,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f1);
           await fs.writeFile(f2, 'hi');
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'update', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'update', path: f1, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should emit when a symlink is renamed', async () => {
@@ -339,14 +441,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f2);
           await fs.rename(f2, f3);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
           assert.deepEqual(res, [
-            {type: 'delete', path: f2},
-            {type: 'create', path: f3},
+            event({type: 'delete', path: f2, ino, fileId}, {backend}),
+            event({type: 'create', path: f3, ino, fileId}, {backend}),
           ]);
         });
 
@@ -358,12 +462,16 @@ describe('since', () => {
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
+          let {ino, fileId} = await getMetadata(f2);
           await fs.unlink(f2);
           await sleep();
+
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'delete', path: f2}]);
+          assert.deepEqual(res, [
+            event({type: 'delete', path: f2, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -376,6 +484,7 @@ describe('since', () => {
             await sleep();
             await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
             await fs.writeFile(f1, 'hello world');
+            let {ino, fileId} = await getMetadata(f1);
             await fs.writeFile(f2, 'hello world');
             await fs.unlink(f2);
             await sleep();
@@ -383,7 +492,9 @@ describe('since', () => {
             let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
               backend,
             });
-            assert.deepEqual(res, [{type: 'create', path: f1}]);
+            assert.deepEqual(res, [
+              event({type: 'create', path: f1, ino, fileId}, {backend}),
+            ]);
           });
         }
 
@@ -395,12 +506,15 @@ describe('since', () => {
           }
           await fs.writeFile(f1, 'hello world');
           await fs.writeFile(f1, 'updated');
+          let {ino, fileId} = await getMetadata(f1);
           await sleep();
 
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f1, ino, fileId}, {backend}),
+          ]);
         });
 
         if (backend !== 'fs-events') {
@@ -409,13 +523,16 @@ describe('since', () => {
             let f2 = getFilename();
             await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
             await fs.writeFile(f1, 'hello world');
+            let {ino, fileId} = await getMetadata(f1);
             await fs.rename(f1, f2);
             await sleep();
 
             let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
               backend,
             });
-            assert.deepEqual(res, [{type: 'create', path: f2}]);
+            assert.deepEqual(res, [
+              event({type: 'create', path: f2, ino, fileId}, {backend}),
+            ]);
           });
 
           it('should coalese multiple rename events', async () => {
@@ -425,6 +542,7 @@ describe('since', () => {
             let f4 = getFilename();
             await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
             await fs.writeFile(f1, 'hello world');
+            let {ino, fileId} = await getMetadata(f1);
             await fs.rename(f1, f2);
             await fs.rename(f2, f3);
             await fs.rename(f3, f4);
@@ -433,13 +551,16 @@ describe('since', () => {
             let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
               backend,
             });
-            assert.deepEqual(res, [{type: 'create', path: f4}]);
+            assert.deepEqual(res, [
+              event({type: 'create', path: f4, ino, fileId}, {backend}),
+            ]);
           });
         }
 
         it('should coalese multiple update events', async () => {
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
+          let {ino, fileId} = await getMetadata(f1);
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
@@ -451,12 +572,15 @@ describe('since', () => {
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'update', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'update', path: f1, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should coalese update and delete events', async () => {
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
+          let {ino, fileId} = await getMetadata(f1);
           await sleep();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
 
@@ -467,7 +591,9 @@ describe('since', () => {
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [{type: 'delete', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'delete', path: f1, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -485,6 +611,7 @@ describe('since', () => {
           }
 
           await fs.writeFile(f1, 'hello');
+          let {ino, fileId} = await getMetadata(f1);
           await fs.writeFile(f2, 'sup');
           await sleep();
 
@@ -492,7 +619,9 @@ describe('since', () => {
             backend,
             ignore,
           });
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f1, ino, fileId}, {backend}),
+          ]);
         });
 
         it('should ignore a file', async () => {
@@ -505,6 +634,7 @@ describe('since', () => {
           }
 
           await fs.writeFile(f1, 'hello');
+          let {ino, fileId} = await getMetadata(f1);
           await fs.writeFile(f2, 'sup');
           await sleep();
 
@@ -512,7 +642,9 @@ describe('since', () => {
             backend,
             ignore,
           });
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
+          assert.deepEqual(res, [
+            event({type: 'create', path: f1, ino, fileId}, {backend}),
+          ]);
         });
       });
 
@@ -553,6 +685,58 @@ describe('since', () => {
           }
 
           assert(threw, 'did not throw');
+        });
+      });
+
+      describe('readTree', () => {
+        it('should store UTF-8 paths properly in the tree', async () => {
+          let dir = getFilename();
+          await fs.mkdir(dir);
+          let f = path.join(dir, 'spécial');
+          await fs.writeFile(f, 'hello');
+          let {ino, fileId} = await getMetadata(f);
+
+          async function listen() {
+            let cbs = [];
+            let nextEvent = () => {
+              return new Promise((resolve) => {
+                cbs.push(resolve);
+              });
+            };
+
+            let fn = (err, events) => {
+              if (err) {
+                throw err;
+              }
+
+              setImmediate(() => {
+                for (let cb of cbs) {
+                  cb(events);
+                }
+
+                cbs = [];
+              });
+            };
+            let sub = await watcher.subscribe(dir, fn, {backend});
+
+            return [nextEvent, sub];
+          }
+
+          let [nextEvent, sub] = await listen(dir);
+          try {
+            await watcher.writeSnapshot(dir, snapshotPath, {backend});
+
+            await fs.remove(f);
+
+            // XXX: no events emitted if non-ascii characters are not handled
+            // properly in BruteForceBackend::readTree on Windows.
+            let res = await nextEvent();
+            assert.deepEqual(res, [
+              event({type: 'delete', path: f, ino, fileId}, {backend}),
+            ]);
+          } finally {
+            await sub.unsubscribe();
+          }
         });
       });
     });

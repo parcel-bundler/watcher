@@ -5,14 +5,17 @@
 #include <napi.h>
 #include <mutex>
 #include <map>
+#include "const.hh"
 
 using namespace Napi;
 
 struct Event {
   std::string path;
+  ino_t ino;
+  std::string fileId;
   bool isCreated;
   bool isDeleted;
-  Event(std::string path) : path(path), isCreated(false), isDeleted(false) {}
+  Event(std::string path, ino_t ino = FAKE_INO, std::string fileId = FAKE_FILEID) : path(path), ino(ino), fileId(fileId), isCreated(false), isDeleted(false) {}
 
   Value toJS(const Env& env) {
     EscapableHandleScope scope(env);
@@ -20,15 +23,23 @@ struct Event {
     std::string type = isCreated ? "create" : isDeleted ? "delete" : "update";
     res.Set(String::New(env, "path"), String::New(env, path.c_str()));
     res.Set(String::New(env, "type"), String::New(env, type.c_str()));
+
+    if (ino != FAKE_INO) {
+      res.Set(String::New(env, "ino"), String::New(env, std::to_string(ino).c_str()));
+    }
+    if (fileId != FAKE_FILEID) {
+      res.Set(String::New(env, "fileId"), String::New(env, fileId.c_str()));
+    }
+
     return scope.Escape(res);
   }
 };
 
 class EventList {
 public:
-  void create(std::string path) {
+  void create(std::string path, ino_t ino, std::string fileId = FAKE_FILEID) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event *event = internalUpdate(path);
+    Event *event = internalUpdate(path, ino, fileId);
     if (event->isDeleted) {
       // Assume update event when rapidly removed and created
       // https://github.com/parcel-bundler/watcher/issues/72
@@ -38,14 +49,14 @@ public:
     }
   }
 
-  Event *update(std::string path) {
+  Event *update(std::string path, ino_t ino, std::string fileId = FAKE_FILEID) {
     std::lock_guard<std::mutex> l(mMutex);
-    return internalUpdate(path);
+    return internalUpdate(path, ino, fileId);
   }
 
-  void remove(std::string path) {
+  void remove(std::string path, ino_t ino, std::string fileId = FAKE_FILEID) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event *event = internalUpdate(path);
+    Event *event = internalUpdate(path, ino, fileId);
     if (event->isCreated) {
       // Ignore event when rapidly created and removed
       erase(path);
@@ -76,13 +87,20 @@ public:
 private:
   mutable std::mutex mMutex;
   std::vector<Event> mEvents;
-  Event *internalUpdate(std::string path) {
+  Event *internalUpdate(std::string path, ino_t ino = FAKE_INO, std::string fileId = FAKE_FILEID) {
     Event *event;
 
     event = find(path);
     if (!event) {
-      mEvents.push_back(Event(path));
+      mEvents.push_back(Event(path, ino, fileId));
       event = &(mEvents.back());
+    } else {
+      if (ino != FAKE_INO) {
+        event->ino = ino;
+      }
+      if (fileId != FAKE_FILEID) {
+        event->fileId = fileId;
+      }
     }
 
     return event;

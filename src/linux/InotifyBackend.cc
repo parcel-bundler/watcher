@@ -163,13 +163,13 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
   // If this is a create, check if it's a directory and start watching if it is.
   // In any case, keep the directory tree up to date.
   if (event->mask & (IN_CREATE | IN_MOVED_TO)) {
-    watcher->mEvents.create(path);
-
     struct stat st;
     // Use lstat to avoid resolving symbolic links that we cannot watch anyway
     // https://github.com/parcel-bundler/watcher/issues/76
-    lstat(path.c_str(), &st);
-    DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
+    int result = lstat(path.c_str(), &st);
+    ino_t ino = result != -1 ? st.st_ino : FAKE_INO;
+    DirEntry *entry = sub->tree->add(path, ino, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
+    watcher->mEvents.create(path, ino);
 
     if (entry->isDir) {
       bool success = watchDir(*watcher, path, sub->tree);
@@ -179,11 +179,11 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
       }
     }
   } else if (event->mask & (IN_MODIFY | IN_ATTRIB)) {
-    watcher->mEvents.update(path);
-
     struct stat st;
-    stat(path.c_str(), &st);
-    sub->tree->update(path, CONVERT_TIME(st.st_mtim));
+    int result = stat(path.c_str(), &st);
+    ino_t ino = result != -1 ? st.st_ino : FAKE_INO;
+    watcher->mEvents.update(path, ino);
+    sub->tree->update(path, ino, CONVERT_TIME(st.st_mtim));
   } else if (event->mask & (IN_DELETE | IN_DELETE_SELF | IN_MOVED_FROM | IN_MOVE_SELF)) {
     bool isSelfEvent = (event->mask & (IN_DELETE_SELF | IN_MOVE_SELF));
     // Ignore delete/move self events unless this is the recursive watch root
@@ -203,7 +203,10 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
       }
     }
 
-    watcher->mEvents.remove(path);
+    DirEntry *entry = sub->tree->find(path);
+    ino_t ino = entry ? entry->ino : FAKE_INO;
+
+    watcher->mEvents.remove(path, ino);
     sub->tree->remove(path);
   }
 

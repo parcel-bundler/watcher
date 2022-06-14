@@ -1,7 +1,7 @@
 // @flow
 declare type FilePath = string;
 
-export type BackendType = 
+export type BackendType =
   | 'fs-events'
   | 'watchman'
   | 'inotify'
@@ -21,7 +21,9 @@ export interface AsyncSubscription {
 }
 export interface Event {
   path: FilePath,
-  type: EventType
+  type: EventType,
+  ino: string,
+  fileId?: string,
 }
 declare module.exports: {
   getEventsSince(

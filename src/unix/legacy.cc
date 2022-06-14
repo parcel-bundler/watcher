@@ -36,7 +36,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
 
     struct stat rootAttributes;
     fstatat(new_fd, ".", &rootAttributes, AT_SYMLINK_NOFOLLOW);
-    tree->add(dirname, CONVERT_TIME(rootAttributes.st_mtim), true);
+    tree->add(dirname, rootAttributes.st_ino, CONVERT_TIME(rootAttributes.st_mtim), true);
 
     if (DIR *dir = fdopendir(new_fd)) {
         while (struct dirent *ent = (errno = 0, readdir(dir))) {
@@ -52,7 +52,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
                 if (isDir) {
                     iterateDir(watcher, tree, ent->d_name, new_fd, fullPath);
                 } else {
-                    tree->add(fullPath, CONVERT_TIME(attrib.st_mtim), isDir);
+                    tree->add(fullPath, attrib.st_ino, CONVERT_TIME(attrib.st_mtim), isDir);
                 }
             }
         }
