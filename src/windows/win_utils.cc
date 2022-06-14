@@ -19,9 +19,13 @@ std::string utf16ToUtf8(const WCHAR *input, size_t length) {
   return res;
 }
 
-std::string normalizePath(std::string path) {
+std::wstring extendedWidePath(std::string path) {
   // Prevent truncation to MAX_PATH characters by adding the \\?\ prefix
-  std::wstring p = utf8ToUtf16("\\\\?\\" + path);
+  return utf8ToUtf16("\\\\?\\" + path);
+}
+
+std::string normalizePath(std::string path) {
+  std::wstring p = extendedWidePath(path);
 
   // Get the required length for the output
   unsigned int len = GetLongPathNameW(p.data(), NULL, 0);
