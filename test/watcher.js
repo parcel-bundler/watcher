@@ -204,8 +204,8 @@ describe('watcher', () => {
 
             fs.mkdirp(dir);
             res = await Promise.race([
-              new Promise(resolve => setTimeout(resolve, 100)),
-              nextEvent()
+              new Promise((resolve) => setTimeout(resolve, 100)),
+              nextEvent(),
             ]);
             assert.equal(res, undefined);
           } finally {
@@ -396,7 +396,7 @@ describe('watcher', () => {
           fs.unlink(f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'delete', path: f2 }]);
+          assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
       });
 
@@ -428,7 +428,7 @@ describe('watcher', () => {
           fs.writeFile(f1, 'hello world again');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'update', path: f1 }]);
+          assert.deepEqual(res, [{type: 'update', path: f1}]);
         });
 
         if (backend !== 'fs-events') {
@@ -535,7 +535,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend},
@@ -572,7 +572,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend, ignore},
@@ -615,7 +615,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend},
