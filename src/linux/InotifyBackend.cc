@@ -112,6 +112,7 @@ void InotifyBackend::handleEvents() {
       break;
     }
 
+    auto now = std::chrono::system_clock::now();
     for (char *ptr = buf; ptr < buf + n; ptr += sizeof(*event) + event->len) {
       event = (struct inotify_event *)ptr;
 
@@ -120,7 +121,18 @@ void InotifyBackend::handleEvents() {
         continue;
       }
 
-      handleEvent(event, watchers);
+      handleEvent(event, now, watchers);
+    }
+  }
+
+  // Flush pending moves
+  // See https://github.com/facebook/watchman/blob/c7e0772cfb327ca1978488829c76829835c950ce/watchman/watcher/inotify.cpp#L436-L460
+  auto now = std::chrono::system_clock::now();
+  for (auto it = pendingMoves.begin(); it != pendingMoves.end();) {
+    if (now - it->second.created > std::chrono::seconds(5)) {
+      it = pendingMoves.erase(it);
+    } else {
+      ++it;
     }
   }
 
@@ -129,7 +141,11 @@ void InotifyBackend::handleEvents() {
   }
 }
 
-void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers) {
+void InotifyBackend::handleEvent(
+  struct inotify_event *event,
+  std::chrono::system_clock::time_point now,
+  std::unordered_set<Watcher *> &watchers
+) {
   std::unique_lock<std::mutex> lock(mMutex);
 
   // Find the subscriptions for this watch descriptor
@@ -140,13 +156,17 @@ void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set
   }
 
   for (auto it = set.begin(); it != set.end(); it++) {
-    if (handleSubscription(event, *it)) {
+    if (handleSubscription(event, now, *it)) {
       watchers.insert((*it)->watcher);
     }
   }
 }
 
-bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub) {
+bool InotifyBackend::handleSubscription(
+  struct inotify_event *event,
+  std::chrono::system_clock::time_point now,
+  std::shared_ptr<InotifySubscription> sub
+) {
   // Build full path and check if its in our ignore list.
   Watcher *watcher = sub->watcher;
   std::string path = std::string(sub->path);
@@ -169,7 +189,26 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     int result = lstat(path.c_str(), &st);
     ino_t ino = result != -1 ? st.st_ino : FAKE_INO;
     DirEntry *entry = sub->tree->add(path, ino, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode) ? IS_DIR : kind);
-    watcher->mEvents.create(path, kind, ino);
+
+    auto found = pendingMoves.find(event->cookie);
+    if (found != pendingMoves.end()) {
+      PendingMove pending = found->second;
+      std::string dirPath = pending.path + DIR_SEP;
+
+      if (entry->kind == IS_DIR) {
+        // Replace parent dir path in sub-dir subscriptions
+        for (auto it = mSubscriptions.begin(); it != mSubscriptions.end(); it++) {
+          if (it->second->path.rfind(dirPath.c_str(), 0) == 0) {
+            it->second->path.replace(0, pending.path.length(), path);
+          }
+        }
+      }
+
+      watcher->mEvents.create(path, kind, ino);
+      pendingMoves.erase(found);
+    } else {
+      watcher->mEvents.create(path, kind, ino);
+    }
 
     if (entry->kind == IS_DIR) {
       bool success = watchDir(*watcher, path, sub->tree);
@@ -189,6 +228,10 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     // Ignore delete/move self events unless this is the recursive watch root
     if (isSelfEvent && path != watcher->mDir) {
       return false;
+    }
+
+    if (event->mask & IN_MOVED_FROM) {
+      pendingMoves.emplace(event->cookie, PendingMove(now, path));
     }
 
     // If the entry being deleted/moved is a directory, remove it from the list of subscriptions

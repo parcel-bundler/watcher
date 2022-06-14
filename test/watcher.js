@@ -633,11 +633,14 @@ describe('watcher', () => {
                 },
                 {backend},
               ),
-              // The other backends don't have access to the removed dir
-              // information and thus cannot tell us the delete event is for a
-              // directory or give us its inode or fileId.
               event(
-                {type: 'delete', path: getPath('dir2/subdir'), kind: 'unknown'},
+                {
+                  type: 'delete',
+                  path: getPath('dir2/subdir'),
+                  ino: subdirIno,
+                  fileId: subdirFileId,
+                  kind: subdirKind,
+                },
                 {backend},
               ),
               event(
@@ -652,6 +655,77 @@ describe('watcher', () => {
               ),
             ]);
           }
+        });
+
+        it('should emit when a directory is deleted after its ancestor was renamed', async () => {
+          if (backend === 'watchman' || backend === 'fsevents') {
+            // Not implemented yet
+            return;
+          }
+
+          let base = getFilename();
+          await fs.mkdir(base);
+          await nextEvent();
+
+          let getPath = (p) => path.join(base, p);
+
+          await fs.mkdir(getPath('dir'));
+          let {
+            ino: dirIno,
+            fileId: dirFileId,
+            kind: dirKind,
+          } = await getMetadata(getPath('dir'));
+          await nextEvent();
+          await fs.mkdir(getPath('dir/subdir'));
+          let {
+            ino: subdirIno,
+            fileId: subdirFileId,
+            kind: subdirKind,
+          } = await getMetadata(getPath('dir/subdir'));
+          await nextEvent();
+          await fs.mkdir(getPath('dir/subdir/subsubdir'));
+          let {
+            ino: subsubdirIno,
+            fileId: subsubdirFileId,
+            kind: subsubdirKind,
+          } = await getMetadata(getPath('dir/subdir/subsubdir'));
+          await nextEvent();
+
+          await fs.rename(getPath('dir'), getPath('dir2'));
+          await fs.remove(getPath('dir2/subdir/subsubdir'));
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            event(
+              {
+                type: 'delete',
+                path: getPath('dir'),
+                ino: dirIno,
+                fileId: dirFileId,
+                kind: dirKind,
+              },
+              {backend},
+            ),
+            event(
+              {
+                type: 'create',
+                path: getPath('dir2'),
+                ino: dirIno,
+                fileId: dirFileId,
+                kind: dirKind,
+              },
+              {backend},
+            ),
+            event(
+              {
+                type: 'delete',
+                path: getPath('dir2/subdir/subsubdir'),
+                fileId: subsubdirFileId,
+                kind: subsubdirKind,
+              },
+              {backend},
+            ),
+          ]);
         });
       });
 

@@ -166,6 +166,15 @@ public:
     if (!success) {
       throw WatcherError("Failed to read changes", mWatcher);
     }
+
+    auto now = std::chrono::system_clock::now();
+    for (auto it = pendingMoves.begin(); it != pendingMoves.end();) {
+      if (now - it->second.created > std::chrono::seconds(5)) {
+        it = pendingMoves.erase(it);
+      } else {
+        ++it;
+      }
+    }
   }
 
   void processEvents(DWORD errorCode) {
@@ -224,6 +233,8 @@ public:
   }
 
   void processEvent(PFILE_NOTIFY_INFORMATION info) {
+    auto now = std::chrono::system_clock::now();
+
     std::string path = mWatcher->mDir + "\\" + utf16ToUtf8(info->FileName, info->FileNameLength / sizeof(WCHAR));
     if (mWatcher->isIgnored(path)) {
       return;
@@ -236,7 +247,31 @@ public:
         if (GetFileAttributesExW(extendedWidePath(path).data(), GetFileExInfoStandard, &data)) {
           Kind kind = isDir(data.dwFileAttributes) ? IS_DIR : IS_FILE;
           std::string fileId = getFileId(path);
-          mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);
+
+          auto found = pendingMoves.find(fileId);
+          if (found != pendingMoves.end()) {
+            PendingMove pending = found->second;
+
+            if (kind == IS_DIR) {
+              std::string dirPath = pending.path + DIR_SEP;
+              // Replace parent dir path in tree
+              for (auto it = mTree->entries.begin(); it != mTree->entries.end();) {
+                DirEntry entry = it->second;
+                if (entry.path.rfind(dirPath.c_str(), 0) == 0) {
+                  entry.path.replace(0, pending.path.length(), path);
+                  mTree->entries.emplace(entry.path, entry);
+                  it = mTree->entries.erase(it);
+                } else {
+                 it++;
+                }
+              }
+            }
+
+            mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);
+            pendingMoves.erase(found);
+          } else {
+            mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);
+          }
           mTree->add(path, FAKE_INO, CONVERT_TIME(data.ftLastWriteTime), kind, fileId);
         }
         break;
@@ -257,6 +292,7 @@ public:
       case FILE_ACTION_RENAMED_OLD_NAME:
         auto entry = mTree->find(path);
         if (entry) {
+          pendingMoves.emplace(entry->fileId, PendingMove(now, path));
           mWatcher->mEvents.remove(path, entry->kind, entry->ino, entry->fileId);
         } else {
           mWatcher->mEvents.remove(path, IS_UNKNOWN, FAKE_INO);
@@ -270,6 +306,7 @@ private:
   WindowsBackend *mBackend;
   Watcher *mWatcher;
   std::shared_ptr<DirTree> mTree;
+  std::unordered_multimap<std::string, PendingMove> pendingMoves;
   bool mRunning;
   HANDLE mDirectoryHandle;
   std::vector<BYTE> mReadBuffer;
@@ -280,7 +317,7 @@ private:
 // This function is called by Backend::watch which takes a lock on mMutex
 void WindowsBackend::subscribe(Watcher &watcher) {
   // Create a subscription for this watcher
-  Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false));
+  Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false, false));
   watcher.state = (void *)sub;
 
   // Queue polling for this subscription in the correct thread.

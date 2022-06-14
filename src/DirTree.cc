@@ -16,7 +16,7 @@ bool hasMore(std::istream &stream) {
   return stream.peek() != '\n';
 }
 
-std::shared_ptr<DirTree> DirTree::getCached(std::string root) {
+std::shared_ptr<DirTree> DirTree::getCached(std::string root, bool recursiveRemove) {
   std::lock_guard<std::mutex> lock(mDirCacheMutex);
 
   auto found = dirTreeCache.find(root);
@@ -26,14 +26,14 @@ std::shared_ptr<DirTree> DirTree::getCached(std::string root) {
   if (found != dirTreeCache.end()) {
     tree = found->second.lock();
   } else {
-    tree = std::shared_ptr<DirTree>(new DirTree(root), DirTreeDeleter());
+    tree = std::shared_ptr<DirTree>(new DirTree(root, recursiveRemove), DirTreeDeleter());
     dirTreeCache.emplace(root, tree);
   }
 
   return tree;
 }
 
-DirTree::DirTree(std::string root, std::istream &stream) : root(root), isComplete(true) {
+DirTree::DirTree(std::string root, std::istream &stream, bool recursiveRemove) : root(root), isComplete(true), recursiveRemove(recursiveRemove) {
   size_t size;
   if (stream >> size) {
     for (size_t i = 0; i < size; i++) {
@@ -90,7 +90,7 @@ void DirTree::remove(std::string path) {
   DirEntry *found = _find(path);
 
   // Remove all sub-entries if this is a directory
-  if (found && found->kind == IS_DIR) {
+  if (recursiveRemove && found && found->kind == IS_DIR) {
     std::string pathStart = path + DIR_SEP;
     for (auto it = entries.begin(); it != entries.end();) {
       if (it->first.rfind(pathStart, 0) == 0) {
