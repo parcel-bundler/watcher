@@ -142,6 +142,57 @@ describe('watcher', () => {
           let res = await nextEvent();
           assert.deepEqual(res, [{type: 'delete', path: f}]);
         });
+
+        it('should store UTF-8 paths properly in the tree', async () => {
+          if (backend === 'watchman') {
+            // No events seem to be emitted when watchman is used. It might mean
+            // that WatchmanBackend does not properly handle UTF-8 characters on
+            // Windows as well.
+            return;
+          }
+
+          let f = path.join(tmpDir, 'spécial');
+          fs.writeFile(f, 'hello');
+
+          async function listen(dir) {
+            let cbs = [];
+            let nextEvent = () => {
+              return new Promise((resolve) => {
+                cbs.push(resolve);
+              });
+            };
+
+            let fn = (err, events) => {
+              if (err) {
+                throw err;
+              }
+
+              setImmediate(() => {
+                for (let cb of cbs) {
+                  cb(events);
+                }
+
+                cbs = [];
+              });
+            };
+            let sub = await watcher.subscribe(dir, fn, {backend});
+
+            return [nextEvent, sub];
+          }
+
+          let [nextEvent, sub] = await listen(tmpDir);
+
+          await fs.remove(f);
+
+          try {
+            // XXX: no events emitted if non-ascii characters are not handled
+            // properly in BruteForceBackend::readTree on Windows.
+            let res = await nextEvent();
+            assert.deepEqual(res, [{type: 'delete', path: f}]);
+          } finally {
+            await sub.unsubscribe();
+          }
+        });
       });
 
       describe('directories', () => {
@@ -339,7 +390,7 @@ describe('watcher', () => {
           await fs.mkdir(base);
           await nextEvent();
 
-          let getPath = p => path.join(base, p);
+          let getPath = (p) => path.join(base, p);
 
           await fs.mkdir(getPath('dir'));
           await nextEvent();
