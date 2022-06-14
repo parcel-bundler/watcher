@@ -44,6 +44,10 @@ declare module.exports: {
     fn: SubscribeCallback,
     opts?: Options
   ): Promise<void>,
+  scan(
+    dir: FilePath,
+    opts?: Options
+  ): Promise<Array<Event>>,
   writeSnapshot(
     dir: FilePath,
     snapshot: FilePath,

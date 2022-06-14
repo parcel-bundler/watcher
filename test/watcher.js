@@ -580,48 +580,93 @@ describe('watcher', () => {
           if (backend === 'watchman') {
             // It seems that watchman emits these events in a very different
             // order from the other backends.
-            assert.deepEqual(res, [
-              event(
-                {
-                  type: 'create',
-                  path: getPath('dir2/subdir2'),
-                  ino: subdirIno,
-                  fileId: subdirFileId,
-                  kind: subdirKind,
-                },
-                {backend},
-              ),
-              event(
-                {
-                  type: 'delete',
-                  path: getPath('dir'),
-                  ino: dirIno,
-                  fileId: dirFileId,
-                  kind: dirKind,
-                },
-                {backend},
-              ),
-              event(
-                {
-                  type: 'delete',
-                  path: getPath('dir/subdir'),
-                  ino: subdirIno,
-                  fileId: subdirFileId,
-                  kind: subdirKind,
-                },
-                {backend},
-              ),
-              event(
-                {
-                  type: 'create',
-                  path: getPath('dir2'),
-                  ino: dirIno,
-                  fileId: dirFileId,
-                  kind: dirKind,
-                },
-                {backend},
-              ),
-            ]);
+            try {
+              assert.deepEqual(res, [
+                event(
+                  {
+                    type: 'create',
+                    path: getPath('dir2/subdir2'),
+                    ino: subdirIno,
+                    fileId: subdirFileId,
+                    kind: subdirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'delete',
+                    path: getPath('dir'),
+                    ino: dirIno,
+                    fileId: dirFileId,
+                    kind: dirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'delete',
+                    path: getPath('dir/subdir'),
+                    ino: subdirIno,
+                    fileId: subdirFileId,
+                    kind: subdirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'create',
+                    path: getPath('dir2'),
+                    ino: dirIno,
+                    fileId: dirFileId,
+                    kind: dirKind,
+                  },
+                  {backend},
+                ),
+              ]);
+            } catch (err) {
+              assert.deepEqual(res, [
+                event(
+                  {
+                    type: 'create',
+                    path: getPath('dir2/subdir2'),
+                    ino: subdirIno,
+                    fileId: subdirFileId,
+                    kind: subdirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'delete',
+                    path: getPath('dir'),
+                    ino: dirIno,
+                    fileId: dirFileId,
+                    kind: dirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'create',
+                    path: getPath('dir2'),
+                    ino: dirIno,
+                    fileId: dirFileId,
+                    kind: dirKind,
+                  },
+                  {backend},
+                ),
+                event(
+                  {
+                    type: 'delete',
+                    path: getPath('dir/subdir'),
+                    ino: subdirIno,
+                    fileId: subdirFileId,
+                    kind: subdirKind,
+                  },
+                  {backend},
+                ),
+              ]);
+            }
           } else if (backend === 'inotify') {
             assert.deepEqual(res, [
               event(

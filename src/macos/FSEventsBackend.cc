@@ -186,6 +186,10 @@ void checkWatcher(Watcher &watcher) {
   }
 }
 
+void FSEventsBackend::scan(Watcher &watcher) {
+  return;
+}
+
 void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   checkWatcher(watcher);
 

@@ -13,6 +13,7 @@ public:
   void notifyStarted();
 
   virtual void start();
+  virtual void scan(Watcher &watcher) = 0;
   virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
   virtual void getEventsSince(Watcher &watcher, std::string *snapshotPath) = 0;
   virtual void subscribe(Watcher &watcher) = 0;

@@ -92,6 +92,10 @@ BSER::Object WatchmanBackend::watchmanRequest(BSER b) {
   return mResponse;
 }
 
+void WatchmanBackend::scan(Watcher &watcher) {
+  return;
+}
+
 void WatchmanBackend::watchmanWatch(std::string dir) {
   std::vector<BSER> cmd;
   cmd.push_back("watch");

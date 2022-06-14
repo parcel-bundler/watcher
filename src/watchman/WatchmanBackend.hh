@@ -12,6 +12,7 @@ public:
   void start() override;
   WatchmanBackend() : mStopped(false) {};
   ~WatchmanBackend();
+  void scan(Watcher &watcher) override;
   void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
   void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
   void subscribe(Watcher &watcher) override;

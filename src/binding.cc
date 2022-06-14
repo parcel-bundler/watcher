@@ -132,6 +132,51 @@ Value getEventsSince(const CallbackInfo& info) {
   return queueSnapshotWork<GetEventsSinceRunner>(info);
 }
 
+class ScanRunner : public PromiseRunner {
+public:
+  ScanRunner(Env env, Value dir, Value opts) : PromiseRunner(env) {
+    watcher = std::make_shared<Watcher>(
+      std::string(dir.As<String>().Utf8Value().c_str()),
+      getIgnore(env, opts)
+    );
+
+    backend = getBackend(env, opts);
+  }
+
+  ~ScanRunner() {
+    watcher->unref();
+    backend->unref();
+  }
+
+private:
+  std::shared_ptr<Watcher> watcher;
+  std::shared_ptr<Backend> backend;
+  std::string scannedDir;
+
+  void execute() override {
+    backend->scan(*watcher);
+  }
+
+  Value getResult() override {
+    std::vector<Event> events = watcher->mEvents.getEvents();
+
+    // Remove a potential event for the scanned directory itself
+    for (auto it = events.begin(); it != events.end(); it++) {
+      if (it->path == watcher->mDir) {
+        events.erase(it);
+        break;
+      }
+    }
+
+    Array eventsArray = Array::New(env, events.size());
+    size_t i = 0;
+    for (auto it = events.begin(); it != events.end(); it++) {
+      eventsArray.Set(i++, it->toJS(env));
+    }
+    return eventsArray;
+  }
+};
+
 class SubscribeRunner : public PromiseRunner {
 public:
   SubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
@@ -209,7 +254,27 @@ Value unsubscribe(const CallbackInfo& info) {
   return queueSubscriptionWork<UnsubscribeRunner>(info);
 }
 
+Value scan(const CallbackInfo& info) {
+  Env env = info.Env();
+  if (info.Length() < 1 || !info[0].IsString()) {
+    TypeError::New(env, "Expected a string").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  if (info.Length() >= 2 && !info[1].IsObject()) {
+    TypeError::New(env, "Expected an object").ThrowAsJavaScriptException();
+    return env.Null();
+  }
+
+  ScanRunner *runner = new ScanRunner(info.Env(), info[0], info[1]);
+  return runner->queue();
+}
+
 Object Init(Env env, Object exports) {
+  exports.Set(
+    String::New(env, "scan"),
+    Function::New(env, scan)
+  );
   exports.Set(
     String::New(env, "writeSnapshot"),
     Function::New(env, writeSnapshot)

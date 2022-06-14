@@ -11,6 +11,10 @@ function normalizeOptions(dir, opts = {}) {
   return opts;
 }
 
+exports.scan = (dir, opts) => {
+  return binding.scan(path.resolve(dir), normalizeOptions(dir, opts));
+};
+
 exports.writeSnapshot = (dir, snapshot, opts) => {
   return binding.writeSnapshot(
     path.resolve(dir),
