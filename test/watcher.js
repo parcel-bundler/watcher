@@ -122,8 +122,8 @@ describe('watcher', () => {
           fs.rename(f1, f2);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: f2},
             {type: 'delete', path: f1},
+            {type: 'create', path: f2},
           ]);
         });
 
@@ -217,8 +217,8 @@ describe('watcher', () => {
           fs.rename(dirToRename, f2);
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: f2},
             {type: 'delete', path: dirToRename},
+            {type: 'create', path: f2},
           ]);
         });
 
@@ -366,10 +366,20 @@ describe('watcher', () => {
 
           fs.remove(f1);
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: f1},
-            {type: 'delete', path: f2},
-          ]);
+          if (backend === 'watchman') {
+            // Watchman does not notify of individual actions but that changes
+            // occured on some watched elements. The WatchmanBackend then
+            // generates events for every changed document in path order.
+            assert.deepEqual(res, [
+              {type: 'delete', path: f1},
+              {type: 'delete', path: f2},
+            ]);
+          } else {
+            assert.deepEqual(res, [
+              {type: 'delete', path: f2},
+              {type: 'delete', path: f1},
+            ]);
+          }
         });
 
         it('should emit when a sub-directory is deleted with directories inside', async () => {

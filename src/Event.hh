@@ -48,7 +48,7 @@ public:
     Event *event = internalUpdate(path);
     if (event->isCreated) {
       // Ignore event when rapidly created and removed
-      mEvents.erase(path);
+      erase(path);
     } else {
       event->isDeleted = true;
     }
@@ -62,8 +62,8 @@ public:
   std::vector<Event> getEvents() {
     std::lock_guard<std::mutex> l(mMutex);
     std::vector<Event> eventsCloneVector;
-    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
-      eventsCloneVector.push_back(it->second);
+    for(auto event : mEvents) {
+      eventsCloneVector.push_back(event);
     }
     return eventsCloneVector;
   }
@@ -75,15 +75,33 @@ public:
 
 private:
   mutable std::mutex mMutex;
-  std::map<std::string, Event> mEvents;
+  std::vector<Event> mEvents;
   Event *internalUpdate(std::string path) {
-    auto found = mEvents.find(path);
-    if (found == mEvents.end()) {
-      auto it = mEvents.emplace(path, Event(path));
-      return &it.first->second;
+    Event *event;
+
+    event = find(path);
+    if (!event) {
+      mEvents.push_back(Event(path));
+      event = &(mEvents.back());
     }
 
-    return &found->second;
+    return event;
+  }
+  Event *find(std::string path) {
+    for(unsigned i=0; i<mEvents.size(); i++) {
+      if (mEvents.at(i).path == path) {
+        return &(mEvents.at(i));
+      }
+    }
+    return nullptr;
+  }
+  void erase(std::string path) {
+    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
+      if (it->path == path) {
+        mEvents.erase(it);
+        return;
+      }
+    }
   }
 };
 

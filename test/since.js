@@ -282,10 +282,19 @@ describe('since', () => {
           let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
             backend,
           });
-          assert.deepEqual(res, [
-            {type: 'delete', path: f1},
-            {type: 'delete', path: f2},
-          ]);
+          try {
+            assert.deepEqual(res, [
+              {type: 'delete', path: f2},
+              {type: 'delete', path: f1},
+            ]);
+          } catch (err) {
+            // XXX: when deleting a directory and its content, events can be
+            // notified in either order.
+            assert.deepEqual(res, [
+              {type: 'delete', path: f1},
+              {type: 'delete', path: f2},
+            ]);
+          }
         });
       });
 
