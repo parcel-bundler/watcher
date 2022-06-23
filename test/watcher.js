@@ -320,6 +320,37 @@ describe('watcher', () => {
             {type: 'delete', path: f2},
           ]);
         });
+
+        it('should emit when a sub-directory is deleted with directories inside', async () => {
+          if (backend === 'watchman') {
+            // It seems that watchman emits the second delete event before the
+            // first create event when rapidly renaming a directory and one of
+            // its child so our test is failing in that case.
+            return;
+          }
+
+          let base = getFilename();
+          await fs.mkdir(base);
+          await nextEvent();
+
+          let getPath = p => path.join(base, p);
+
+          await fs.mkdir(getPath('dir'));
+          await nextEvent();
+          await fs.mkdir(getPath('dir/subdir'));
+          await nextEvent();
+
+          await fs.rename(getPath('dir'), getPath('dir2'));
+          await fs.rename(getPath('dir2/subdir'), getPath('dir2/subdir2'));
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'delete', path: getPath('dir')},
+            {type: 'create', path: getPath('dir2')},
+            {type: 'delete', path: getPath('dir2/subdir')},
+            {type: 'create', path: getPath('dir2/subdir2')},
+          ]);
+        });
       });
 
       describe('symlinks', () => {
