@@ -124,6 +124,7 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
     auto ino = file.find("ino")->second.intValue();
     auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
+    Kind kind = S_ISDIR(mode) ? IS_DIR : IS_FILE;
     auto exists = file.find("exists")->second.boolValue();
     auto path = watcher.mDir + DIR_SEP + name;
     if (watcher.isIgnored(path)) {
@@ -131,11 +132,11 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
     }
 
     if (isNew && exists) {
-      watcher.mEvents.create(path, ino);
-    } else if (exists && !S_ISDIR(mode)) {
+      watcher.mEvents.create(path, kind, ino);
+    } else if (exists && kind != IS_DIR) {
       watcher.mEvents.update(path, ino);
     } else if (!isNew && !exists) {
-      watcher.mEvents.remove(path, ino);
+      watcher.mEvents.remove(path, kind, ino);
     }
   }
 }

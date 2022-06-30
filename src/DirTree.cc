@@ -53,10 +53,10 @@ DirEntry *DirTree::_find(std::string path) {
   return &found->second;
 }
 
-DirEntry *DirTree::add(std::string path, ino_t ino, uint64_t mtime, bool isDir, std::string fileId) {
+DirEntry *DirTree::add(std::string path, ino_t ino, uint64_t mtime, Kind kind, std::string fileId) {
   std::lock_guard<std::mutex> lock(mMutex);
 
-  DirEntry entry(path, ino, mtime, isDir, fileId);
+  DirEntry entry(path, ino, mtime, kind, fileId);
   auto it = entries.emplace(entry.path, entry);
   return &it.first->second;
 }
@@ -90,7 +90,7 @@ void DirTree::remove(std::string path) {
   DirEntry *found = _find(path);
 
   // Remove all sub-entries if this is a directory
-  if (found && found->isDir) {
+  if (found && found->kind == IS_DIR) {
     std::string pathStart = path + DIR_SEP;
     for (auto it = entries.begin(); it != entries.end();) {
       if (it->first.rfind(pathStart, 0) == 0) {
@@ -120,25 +120,25 @@ void DirTree::getChanges(DirTree *snapshot, EventList &events) {
   for (auto it = snapshot->entries.begin(); it != snapshot->entries.end(); it++) {
     size_t count = entries.count(it->first);
     if (count == 0) {
-      events.remove(it->second.path, it->second.ino, it->second.fileId);
+      events.remove(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
     }
   }
 
   for (auto it = entries.begin(); it != entries.end(); it++) {
     auto found = snapshot->entries.find(it->first);
     if (found == snapshot->entries.end()) {
-      events.create(it->second.path, it->second.ino, it->second.fileId);
-    } else if (found->second.mtime != it->second.mtime && !found->second.isDir && !it->second.isDir) {
+      events.create(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
+    } else if (found->second.mtime != it->second.mtime && found->second.kind != IS_DIR && it->second.kind != IS_DIR) {
       events.update(it->second.path, it->second.ino, it->second.fileId);
     }
   }
 }
 
-DirEntry::DirEntry(std::string p, ino_t i, uint64_t t, bool d, std::string f) {
+DirEntry::DirEntry(std::string p, ino_t i, uint64_t t, Kind k, std::string f) {
   path = p;
   ino = i;
   mtime = t;
-  isDir = d;
+  kind = k;
   state = NULL;
   fileId = f;
 }
@@ -150,7 +150,7 @@ DirEntry::DirEntry(std::istream &stream) {
     path.resize(size);
     if (stream.read(&path[0], size)) {
       stream >> mtime;
-      stream >> isDir;
+      stream >> kind;
 
       // XXX: works because the default ino is '0' and thus will never be an
       // empty char.
@@ -161,5 +161,5 @@ DirEntry::DirEntry(std::istream &stream) {
 }
 
 void DirEntry::write(std::ostream &stream) const {
-  stream << path.size() << path << mtime << " " << isDir << " " << ino << " " << fileId << " " << "\n";
+  stream << path.size() << path << mtime << " " << kind << " " << ino << " " << fileId << " " << "\n";
 }

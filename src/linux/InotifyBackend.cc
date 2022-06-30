@@ -67,7 +67,7 @@ void InotifyBackend::subscribe(Watcher &watcher) {
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
   for (auto it = tree->entries.begin(); it != tree->entries.end(); it++) {
-    if (it->second.isDir) {
+    if (it->second.kind == IS_DIR) {
       bool success = watchDir(watcher, it->second.path, tree);
       if (!success) {
         throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + strerror(errno), &watcher);
@@ -150,7 +150,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
   // Build full path and check if its in our ignore list.
   Watcher *watcher = sub->watcher;
   std::string path = std::string(sub->path);
-  bool isDir = event->mask & IN_ISDIR;
+  Kind kind = event->mask & IN_ISDIR ? IS_DIR : IS_FILE;
 
   if (event->len > 0) {
     path += "/" + std::string(event->name);
@@ -168,10 +168,10 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     // https://github.com/parcel-bundler/watcher/issues/76
     int result = lstat(path.c_str(), &st);
     ino_t ino = result != -1 ? st.st_ino : FAKE_INO;
-    DirEntry *entry = sub->tree->add(path, ino, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
-    watcher->mEvents.create(path, ino);
+    DirEntry *entry = sub->tree->add(path, ino, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode) ? IS_DIR : kind);
+    watcher->mEvents.create(path, kind, ino);
 
-    if (entry->isDir) {
+    if (entry->kind == IS_DIR) {
       bool success = watchDir(*watcher, path, sub->tree);
       if (!success) {
         sub->tree->remove(path);
@@ -193,7 +193,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
 
     // If the entry being deleted/moved is a directory, remove it from the list of subscriptions
     // XXX: self events don't have the IN_ISDIR mask
-    if (isSelfEvent || isDir) {
+    if (isSelfEvent || kind == IS_DIR) {
       for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
         if (it->second->path == path) {
           it = mSubscriptions.erase(it);
@@ -206,7 +206,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     DirEntry *entry = sub->tree->find(path);
     ino_t ino = entry ? entry->ino : FAKE_INO;
 
-    watcher->mEvents.remove(path, ino);
+    watcher->mEvents.remove(path, isSelfEvent ? IS_DIR : kind, ino);
     sub->tree->remove(path);
   }
 

@@ -44,7 +44,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     // XXX: Not sure this is correct
     ino_t ino = node->fts_number;
 
-    tree->add(node->fts_path, ino, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D);
+    tree->add(node->fts_path, ino, CONVERT_TIME(node->fts_statp->st_mtim), (node->fts_info & FTS_D) == FTS_D ? IS_DIR : IS_FILE);
     isRoot = false;
   }
 

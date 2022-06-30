@@ -8,6 +8,7 @@ export type BackendType =
   | 'windows'
   | 'brute-force';
 export type EventType = 'create' | 'update' | 'delete';
+export type DocumentKind = 'directory' | 'file' | 'unknown';
 export interface Options {
   ignore?: Array<FilePath>,
   backend?: BackendType
@@ -22,6 +23,7 @@ export interface AsyncSubscription {
 export interface Event {
   path: FilePath,
   type: EventType,
+  kind: DocumentKind,
   ino: string,
   fileId?: string,
 }

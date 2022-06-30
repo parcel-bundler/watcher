@@ -20,10 +20,10 @@ struct DirEntry {
   ino_t ino;
   std::string fileId;
   uint64_t mtime;
-  bool isDir;
+  Kind kind;
   mutable void *state;
 
-  DirEntry(std::string p, ino_t i, uint64_t t, bool d, std::string fileId = FAKE_FILEID);
+  DirEntry(std::string p, ino_t i, uint64_t t, Kind k, std::string fileId = FAKE_FILEID);
   DirEntry(std::istream &stream);
   void write(std::ostream &stream) const;
   bool operator==(const DirEntry &other) const {
@@ -36,7 +36,7 @@ public:
   static std::shared_ptr<DirTree> getCached(std::string root);
   DirTree(std::string root) : root(root), isComplete(false) {}
   DirTree(std::string root, std::istream &stream);
-  DirEntry *add(std::string path, ino_t ino, uint64_t mtime, bool isDir, std::string fileId = FAKE_FILEID);
+  DirEntry *add(std::string path, ino_t ino, uint64_t mtime, Kind kind, std::string fileId = FAKE_FILEID);
   DirEntry *find(std::string path);
   DirEntry *update(std::string path, ino_t ino, uint64_t mtime, std::string fileId = FAKE_FILEID);
   void remove(std::string path);

@@ -9,6 +9,13 @@
 #define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
+bool isDir(DWORD fileAttributes) {
+  // Returns true if file attributes contain the directory attribute but not the
+  // symlink attribute.
+  return (fileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+      && !(fileAttributes & FILE_ATTRIBUTE_REPARSE_POINT);
+}
+
 void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
   std::stack<std::string> directories;
 
@@ -41,10 +48,10 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
           continue;
         }
 
-        bool isDir = ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+        Kind kind = isDir(ffd.dwFileAttributes) ? IS_DIR : IS_FILE;
         std::string fileId = getFileId(fullPath);
-        tree->add(fullPath, FAKE_INO, CONVERT_TIME(ffd.ftLastWriteTime), isDir, fileId);
-        if (isDir) {
+        tree->add(fullPath, FAKE_INO, CONVERT_TIME(ffd.ftLastWriteTime), kind, fileId);
+        if (kind == IS_DIR) {
           directories.push(fullPath);
         }
       }
@@ -106,7 +113,7 @@ public:
       throw WatcherError("Could not get file information", mWatcher);
     }
 
-    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+    if (!isDir(info.dwFileAttributes)) {
       throw WatcherError("Not a directory", mWatcher);
     }
   }
@@ -181,9 +188,9 @@ public:
         // This can happen if the watched directory is deleted. Check if that is the case,
         // and if so emit a delete event. Otherwise, fall through to default error case.
         DWORD attrs = GetFileAttributesW(extendedWidePath(mWatcher->mDir).data());
-        bool isDir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
-        if (!isDir) {
-          mWatcher->mEvents.remove(mWatcher->mDir, FAKE_INO);
+        Kind kind = attrs == INVALID_FILE_ATTRIBUTES ? IS_UNKNOWN : isDir(attrs) ? IS_DIR : IS_FILE;
+        if (kind == IS_UNKNOWN) {
+          mWatcher->mEvents.remove(mWatcher->mDir, IS_DIR, FAKE_INO);
           mTree->remove(mWatcher->mDir);
           mWatcher->notify();
           stop();
@@ -227,19 +234,20 @@ public:
       case FILE_ACTION_RENAMED_NEW_NAME: {
         WIN32_FILE_ATTRIBUTE_DATA data;
         if (GetFileAttributesExW(extendedWidePath(path).data(), GetFileExInfoStandard, &data)) {
-          bool isDir = data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+          Kind kind = isDir(data.dwFileAttributes) ? IS_DIR : IS_FILE;
           std::string fileId = getFileId(path);
-          mWatcher->mEvents.create(path, FAKE_INO, fileId);
-          mTree->add(path, FAKE_INO, CONVERT_TIME(data.ftLastWriteTime), isDir, fileId);
+          mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);
+          mTree->add(path, FAKE_INO, CONVERT_TIME(data.ftLastWriteTime), kind, fileId);
         }
         break;
       }
       case FILE_ACTION_MODIFIED: {
         WIN32_FILE_ATTRIBUTE_DATA data;
         if (GetFileAttributesExW(extendedWidePath(path).data(), GetFileExInfoStandard, &data)) {
+          Kind kind = isDir(data.dwFileAttributes) ? IS_DIR : IS_FILE;
           std::string fileId = getFileId(path);
           mTree->update(path, FAKE_INO, CONVERT_TIME(data.ftLastWriteTime), fileId);
-          if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+          if (kind != IS_DIR) {
             mWatcher->mEvents.update(path, FAKE_INO, fileId);
           }
         }
@@ -249,9 +257,9 @@ public:
       case FILE_ACTION_RENAMED_OLD_NAME:
         auto entry = mTree->find(path);
         if (entry) {
-          mWatcher->mEvents.remove(path, entry->ino, entry->fileId);
+          mWatcher->mEvents.remove(path, entry->kind, entry->ino, entry->fileId);
         } else {
-          mWatcher->mEvents.remove(path, FAKE_INO);
+          mWatcher->mEvents.remove(path, IS_UNKNOWN, FAKE_INO);
         }
         mTree->remove(path);
         break;

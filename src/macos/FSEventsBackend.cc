@@ -69,7 +69,7 @@ void FSEventsCallback(
                       (eventFlags[i] & kFSEventStreamEventFlagItemXattrMod) == kFSEventStreamEventFlagItemXattrMod;
     bool isRenamed = (eventFlags[i] & kFSEventStreamEventFlagItemRenamed) == kFSEventStreamEventFlagItemRenamed;
     bool isDone = (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) == kFSEventStreamEventFlagHistoryDone;
-    bool isDir = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) == kFSEventStreamEventFlagItemIsDir;
+    Kind kind = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) == kFSEventStreamEventFlagItemIsDir ? IS_DIR : IS_FILE;
 
     if (isDone) {
       watcher->notify();
@@ -93,11 +93,11 @@ void FSEventsCallback(
 
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
-      state->tree->add(paths[i], FAKE_INO, 0, isDir);
-      list->create(paths[i], FAKE_INO);
+      state->tree->add(paths[i], FAKE_INO, 0, kind);
+      list->create(paths[i], kind, FAKE_INO);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
-      list->remove(paths[i], FAKE_INO);
+      list->remove(paths[i], kind, FAKE_INO);
       if (paths[i] == watcher->mDir) {
         deletedRoot = true;
       }
@@ -137,7 +137,7 @@ void FSEventsCallback(
         // we'd rather ignore this event completely). This will result in some extra delete events
         // being emitted for files we don't know about, but that is the best we can do.
         state->tree->remove(paths[i]);
-        list->remove(paths[i], FAKE_INO);
+        list->remove(paths[i], kind, FAKE_INO);
         if (paths[i] == watcher->mDir) {
           deletedRoot = true;
         }
@@ -157,8 +157,8 @@ void FSEventsCallback(
         state->tree->update(paths[i], FAKE_INO, mtime);
         list->update(paths[i], FAKE_INO);
       } else {
-        state->tree->add(paths[i], FAKE_INO, mtime, S_ISDIR(file.st_mode));
-        list->create(paths[i], FAKE_INO);
+        state->tree->add(paths[i], FAKE_INO, mtime, S_ISDIR(file.st_mode) ? IS_DIR : kind);
+        list->create(paths[i], kind, FAKE_INO);
       }
     }
   }
