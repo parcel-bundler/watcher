@@ -7,7 +7,7 @@ export type BackendType =
   | 'inotify'
   | 'windows'
   | 'brute-force';
-export type EventType = 'create' | 'update' | 'delete';
+export type EventType = 'create' | 'update' | 'delete' | 'rename';
 export type DocumentKind = 'directory' | 'file' | 'unknown';
 export interface Options {
   ignore?: Array<FilePath>,
@@ -25,6 +25,7 @@ export interface Event {
   type: EventType,
   kind: DocumentKind,
   ino: string,
+  oldPath?: string,
   fileId?: string,
 }
 declare module.exports: {

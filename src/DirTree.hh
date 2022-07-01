@@ -46,11 +46,13 @@ public:
   std::mutex mMutex;
   std::string root;
   bool isComplete;
-  std::unordered_map<std::string, DirEntry> entries;
+  std::map<std::string, DirEntry> entries;
 
 private:
   bool recursiveRemove;
   DirEntry *_find(std::string path);
+  DirEntry *findByIno(ino_t ino);
+  DirEntry *findByFileId(std::string fileId);
 };
 
 #endif

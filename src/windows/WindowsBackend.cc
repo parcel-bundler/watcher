@@ -267,7 +267,7 @@ public:
               }
             }
 
-            mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);
+            mWatcher->mEvents.rename(pending.path, path, kind, FAKE_INO, fileId);
             pendingMoves.erase(found);
           } else {
             mWatcher->mEvents.create(path, kind, FAKE_INO, fileId);

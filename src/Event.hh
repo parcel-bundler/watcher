@@ -11,12 +11,21 @@ using namespace Napi;
 
 struct Event {
   std::string path;
+  std::string oldPath;
   ino_t ino;
   std::string fileId;
   bool isCreated;
   bool isDeleted;
   Kind kind;
-  Event(std::string path, Kind kind = IS_UNKNOWN, ino_t ino = FAKE_INO, std::string fileId = FAKE_FILEID) : path(path), ino(ino), fileId(fileId), isCreated(false), isDeleted(false), kind(kind) {}
+  Event(std::string path, Kind kind = IS_UNKNOWN, ino_t ino = FAKE_INO, std::string fileId = FAKE_FILEID) : path(path), oldPath(""), ino(ino), fileId(fileId), isCreated(false), isDeleted(false), kind(kind) {}
+
+  bool isRenamed() {
+    return !isCreated && !isDeleted && oldPath != "";
+  }
+
+  std::string type() {
+    return isRenamed() ? "rename" : isCreated ? "create" : isDeleted ? "delete" : "update";
+  }
 
   std::string kind_str() {
     return kind == IS_UNKNOWN ? "unknown" : kind == IS_DIR ? "directory" : "file";
@@ -25,9 +34,8 @@ struct Event {
   Value toJS(const Env& env) {
     EscapableHandleScope scope(env);
     Object res = Object::New(env);
-    std::string type = isCreated ? "create" : isDeleted ? "delete" : "update";
     res.Set(String::New(env, "path"), String::New(env, path.c_str()));
-    res.Set(String::New(env, "type"), String::New(env, type.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, type().c_str()));
     res.Set(String::New(env, "kind"), String::New(env, kind_str().c_str()));
 
     if (ino != FAKE_INO) {
@@ -35,6 +43,10 @@ struct Event {
     }
     if (fileId != FAKE_FILEID) {
       res.Set(String::New(env, "fileId"), String::New(env, fileId.c_str()));
+    }
+
+    if (isRenamed()) {
+      res.Set(String::New(env, "oldPath"), String::New(env, oldPath.c_str()));
     }
 
     return scope.Escape(res);
@@ -68,6 +80,48 @@ public:
       erase(path);
     } else {
       event->isDeleted = true;
+    }
+  }
+
+  void rename(std::string oldPath, std::string path, Kind kind, ino_t ino, std::string fileId = FAKE_FILEID) {
+    std::lock_guard<std::mutex> l(mMutex);
+
+    Event *overwritten = find(path);
+    if (overwritten) {
+      overwritten = internalUpdate(overwritten->path, overwritten->kind, overwritten->ino, overwritten->fileId);
+      if (overwritten->isCreated) {
+        // Ignore event when rapidly created and removed
+        erase(overwritten->path);
+      } else {
+        overwritten->isDeleted = true;
+      }
+    }
+
+    Event *oldEvent = find(oldPath);
+    if (oldEvent) {
+      ino_t oldIno = oldEvent->ino;
+      std::string oldFileId = oldEvent->fileId;
+      std::string oldOldPath = oldEvent->oldPath;
+      erase(oldPath);
+
+      Event event = Event(
+          path,
+          kind,
+          ino == FAKE_INO ? oldIno : ino,
+          fileId == FAKE_FILEID ? oldFileId : fileId
+        );
+      event.oldPath = oldOldPath != "" ? oldOldPath : oldPath;
+      mEvents.push_back(event);
+    } else {
+      // Replace moved temporary doc (i.e. rapidly created and removed) with
+      // creation non temporary one.
+      Event *event = internalUpdate(path, kind, ino, fileId);
+      if (event->isDeleted) {
+        // Assume update of overwritten doc
+        event->isDeleted = false;
+      } else {
+        event->isCreated = true;
+      }
     }
   }
 

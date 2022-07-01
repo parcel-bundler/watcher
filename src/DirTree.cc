@@ -113,23 +113,72 @@ void DirTree::write(std::ostream &stream) {
   }
 }
 
+DirEntry *DirTree::findByIno(ino_t ino) {
+  for (auto it = entries.begin(); it != entries.end(); it++) {
+    if (it->second.ino == ino) {
+      return &(it->second);
+    }
+  }
+  return nullptr;
+}
+
+DirEntry *DirTree::findByFileId(std::string fileId) {
+  for (auto it = entries.begin(); it != entries.end(); it++) {
+    if (it->second.fileId == fileId) {
+      return &(it->second);
+    }
+  }
+  return nullptr;
+}
+
 void DirTree::getChanges(DirTree *snapshot, EventList &events) {
   std::lock_guard<std::mutex> lock(mMutex);
   std::lock_guard<std::mutex> snapshotLock(snapshot->mMutex);
 
   for (auto it = snapshot->entries.begin(); it != snapshot->entries.end(); it++) {
-    size_t count = entries.count(it->first);
-    if (count == 0) {
+    auto found = it->second.fileId != FAKE_FILEID ? findByFileId(it->second.fileId) : findByIno(it->second.ino);
+    if (!found) {
       events.remove(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
     }
   }
 
   for (auto it = entries.begin(); it != entries.end(); it++) {
-    auto found = snapshot->entries.find(it->first);
-    if (found == snapshot->entries.end()) {
-      events.create(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
-    } else if (found->second.mtime != it->second.mtime && found->second.kind != IS_DIR && it->second.kind != IS_DIR) {
-      events.update(it->second.path, it->second.ino, it->second.fileId);
+    auto found = it->second.fileId != FAKE_FILEID ? snapshot->findByFileId(it->second.fileId) : snapshot->findByIno(it->second.ino);
+    if (found) {
+      bool sameType = found->kind == it->second.kind;
+      bool samePath = found->path == it->second.path;
+      bool sameMtime = found->mtime == it->second.mtime;
+      bool isFile = found->kind == IS_FILE;
+      if (!sameType) {
+        events.remove(found->path, found->kind, found->ino, found->fileId);
+        events.create(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
+      } else if (!samePath) {
+        // FIXME: find more elegant way to handle offline renames than building
+        // a fake "create" event for the rename source.
+        events.create(found->path, found->kind, found->ino, found->fileId);
+        events.rename(found->path, it->second.path, it->second.kind, it->second.ino, it->second.fileId);
+
+        if (found->kind == IS_DIR) {
+          std::string pathStart = found->path + DIR_SEP;
+          for (auto snap = snapshot->entries.begin(); snap != snapshot->entries.end(); snap++) {
+            if (snap->first.rfind(pathStart.c_str(), 0) == 0) {
+              std::string newPath = snap->second.path.replace(0, found->path.length(), it->second.path);
+              DirEntry entry(newPath, snap->second.ino, snap->second.mtime, snap->second.kind, snap->second.fileId);
+              snapshot->entries.emplace(entry.path, entry);
+              it = snapshot->entries.erase(snap);
+            }
+          }
+        }
+      } else if (isFile && !sameMtime) {
+        events.update(it->second.path, it->second.ino, it->second.fileId);
+      }
+    } else {
+      auto found = snapshot->entries.find(it->first);
+      if (found == snapshot->entries.end()) {
+        events.create(it->second.path, it->second.kind, it->second.ino, it->second.fileId);
+      } else if (found->second.mtime != it->second.mtime && found->second.kind != IS_DIR && it->second.kind != IS_DIR) {
+        events.update(it->second.path, it->second.ino, it->second.fileId);
+      }
     }
   }
 }
