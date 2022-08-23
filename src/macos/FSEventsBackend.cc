@@ -126,7 +126,8 @@ void FSEventsCallback(
       uint64_t ctime = CONVERT_TIME(file.st_birthtimespec);
       uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
       auto existed = !since && state->tree->find(paths[i]);
-      if (isModified && (existed || ctime <= since)) {
+      // Some mounted file systems report a creation time of 0/unix epoch which we special case.
+      if (isModified && (existed || (ctime <= since && ctime != 0))) {
         state->tree->update(paths[i], mtime);
         list->update(paths[i]);
       } else {
