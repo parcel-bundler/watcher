@@ -50,7 +50,7 @@ let subscription = await watcher.subscribe(process.cwd(), (err, events) => {
 Events have two properties:
 
 - `type` - the event type: `create`, `update`, or `delete`.
-- `path` - the absolute realpath to the file.
+- `path` - the absolute path to the file or directory.
 
 To unsubscribe from change notifications, call the `unsubscribe` method on the returned subscription object.
 
