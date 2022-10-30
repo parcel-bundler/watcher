@@ -162,7 +162,7 @@ void checkWatcher(Watcher &watcher) {
 void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
   checkWatcher(watcher);
 
-  CFAbsoluteTime latency = 0.01;
+  CFAbsoluteTime latency = 0.001;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
     watcher.mDir.c_str(),
