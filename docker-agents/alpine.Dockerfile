@@ -1,4 +1,4 @@
-FROM node:14-alpine
+FROM node:14-alpine3.10
 
 RUN apk update
 RUN apk upgrade
@@ -21,12 +21,14 @@ RUN apk add --no-cache \
   libtool \
   linux-headers \
   openssl-dev \
+  python \
   python-dev \
+  python3 \
+  python3-dev \
   g++ \ 
   gcc \
   git \
-  fts-dev \
-  python
+  fts-dev
   
 ENV WATCHMAN_VERSION=4.9.0 \
   WATCHMAN_SHA256=1f6402dc70b1d056fffc3748f2fdcecff730d8843bb6936de395b3443ce05322
