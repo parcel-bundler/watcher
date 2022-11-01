@@ -5,7 +5,7 @@ USER 0
 ENV WATCHMAN_VERSION=4.9.0 \
     WATCHMAN_SHA256=1f6402dc70b1d056fffc3748f2fdcecff730d8843bb6936de395b3443ce05322
 
-RUN curl -sL https://rpm.nodesource.com/setup_12.x | bash -
+RUN curl -sL https://rpm.nodesource.com/setup_14.x | bash -
 
 RUN yum install -y \
     nodejs \
