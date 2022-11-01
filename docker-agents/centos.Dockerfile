@@ -21,6 +21,7 @@ RUN yum install -y \
     libtool \
     openssl-devel \
     python-devel \
+    python3 \
     gcc \
     git \
     which
