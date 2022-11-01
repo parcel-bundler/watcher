@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include "Signal.hh"
 
+#define MIN_WAIT_TIME 50
+#define MAX_WAIT_TIME 500
+
 class Debounce {
 public:
   static std::shared_ptr<Debounce> getShared() {
@@ -52,6 +55,7 @@ private:
   Signal mWaitSignal;
   std::thread mThread;
   std::unordered_map<void *, std::function<void()>> mCallbacks;
+  std::chrono::time_point<std::chrono::steady_clock> mLastTime;
 
   void loop() {
     while (mRunning) {
@@ -60,9 +64,21 @@ private:
         break;
       }
 
-      auto status = mWaitSignal.waitFor(std::chrono::milliseconds(50));
-      if (status == std::cv_status::timeout && mRunning) {
+      // If we haven't seen an event in more than the maximum wait time, notify callbacks immediately
+      // to ensure that we don't wait forever. Otherwise, wait for the minimum wait time and batch 
+      // subsequent fast changes. This also means the first file change in a batch is notified immediately, 
+      // separately from the rest of the batch. This seems like an acceptable tradeoff if the common case
+      // is that only a single file was updated at a time.
+      auto time = std::chrono::steady_clock::now();
+      if ((time - mLastTime) > std::chrono::milliseconds(MAX_WAIT_TIME)) {
+        mLastTime = time;
         notify();
+      } else {
+        auto status = mWaitSignal.waitFor(std::chrono::milliseconds(MIN_WAIT_TIME));
+        if (mRunning && (status == std::cv_status::timeout)) {
+          mLastTime = std::chrono::steady_clock::now();
+          notify();
+        }
       }
     }
   }
