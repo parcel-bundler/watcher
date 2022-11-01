@@ -23,6 +23,8 @@ RUN apk add --no-cache \
   openssl-dev \
   python \
   python-dev \
+  python3 \
+  python3-dev \
   g++ \ 
   gcc \
   git \
