@@ -49,7 +49,8 @@ describe('since', () => {
   backends.forEach((backend) => {
     describe(backend, () => {
       describe('files', () => {
-        it('should emit when a file is created', async () => {
+        it('should emit when a file is created', async function () {
+          this.timeout(5000);
           let f = getFilename();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
           if (isSecondPrecision) {
