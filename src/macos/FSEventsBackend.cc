@@ -109,9 +109,11 @@ void FSEventsCallback(
       
       // Ignore if mtime is the same as the last event.
       // This prevents duplicate events from being emitted.
+      // If tv_nsec is zero, the file system probably only has second-level
+      // granularity so allow the even through in that case.
       uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
       DirEntry *entry = state->tree->find(paths[i]);
-      if (entry && mtime == entry->mtime) {
+      if (entry && mtime == entry->mtime && file.st_mtimespec.tv_nsec != 0) {
         continue;
       }
 
@@ -146,7 +148,7 @@ void FSEventsCallback(
       uint64_t ctime = CONVERT_TIME(file.st_birthtimespec);
       uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
       DirEntry *entry = !since ? state->tree->find(paths[i]) : NULL;
-      if (entry && entry->mtime == mtime) {
+      if (entry && entry->mtime == mtime && file.st_mtimespec.tv_nsec != 0) {
         continue;
       }
       
