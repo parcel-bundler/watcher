@@ -102,7 +102,29 @@ void FSEventsCallback(
         deletedRoot = true;
       }
     } else if (isModified && !(isCreated || isRemoved || isRenamed)) {
-      state->tree->update(paths[i], 0);
+      struct stat file;
+      if (stat(paths[i], &file)) {
+        continue;
+      }
+      
+      // Ignore if mtime is the same as the last event.
+      // This prevents duplicate events from being emitted.
+      // If tv_nsec is zero, the file system probably only has second-level
+      // granularity so allow the even through in that case.
+      uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
+      DirEntry *entry = state->tree->find(paths[i]);
+      if (entry && mtime == entry->mtime && file.st_mtimespec.tv_nsec != 0) {
+        continue;
+      }
+
+      if (entry) {
+        // Update mtime.
+        entry->mtime = mtime;
+      } else {
+        // Add to tree if this path has not been discovered yet.
+        state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
+      }
+
       list->update(paths[i]);
     } else {
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
@@ -125,9 +147,13 @@ void FSEventsCallback(
       // If the file was modified, and existed before, then this is an update, otherwise a create.
       uint64_t ctime = CONVERT_TIME(file.st_birthtimespec);
       uint64_t mtime = CONVERT_TIME(file.st_mtimespec);
-      auto existed = !since && state->tree->find(paths[i]);
+      DirEntry *entry = !since ? state->tree->find(paths[i]) : NULL;
+      if (entry && entry->mtime == mtime && file.st_mtimespec.tv_nsec != 0) {
+        continue;
+      }
+      
       // Some mounted file systems report a creation time of 0/unix epoch which we special case.
-      if (isModified && (existed || (ctime <= since && ctime != 0))) {
+      if (isModified && (entry || (ctime <= since && ctime != 0))) {
         state->tree->update(paths[i], mtime);
         list->update(paths[i]);
       } else {
