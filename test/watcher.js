@@ -57,6 +57,8 @@ describe('watcher', () => {
         ignoreDir = getFilename();
         ignoreFile = getFilename();
         ignoreGlobDir = getFilename();
+        await fs.mkdir(ignoreGlobDir);
+        await fs.mkdir(path.join(ignoreGlobDir, 'ignore'));
         fileToRename = getFilename();
         dirToRename = getFilename();
         fs.writeFileSync(fileToRename, 'hi');
@@ -518,9 +520,7 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
-        it('should ignore globs', async () => {
-          await fs.mkdir(path.join(ignoreGlobDir, 'ignore'));
-
+        it.only('should ignore globs', async () => {
           fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');

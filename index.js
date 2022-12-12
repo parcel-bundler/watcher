@@ -15,7 +15,8 @@ function normalizeOptions(dir, opts = {}) {
           opts.ignoreGlobs = [];
         }
 
-        opts.ignoreGlobs.push(micromatch.makeRe(value).toString());
+        const regex = micromatch.makeRe(value).toString();
+        opts.ignoreGlobs.push(regex.substring(1, regex.length - 1));
       } else {
         if (!opts.ignorePaths) {
           opts.ignorePaths = [];
