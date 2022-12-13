@@ -31,6 +31,8 @@ std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
 
 std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
   std::unordered_set<Glob> result;
+  
+  std::cout << "getIgnoreGlobs" << std::endl;
 
   if (opts.IsObject()) {
     Value v = opts.As<Object>().Get(String::New(env, "ignoreGlobs"));
@@ -40,6 +42,7 @@ std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
         Value item = items.Get(Number::New(env, i));
         if (item.IsString()) {
           auto key = item.As<String>().Utf8Value();
+          std::cout << "glob " << key << std::endl;
           result.emplace(key, std::regex(key.c_str()));
         }
       }

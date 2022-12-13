@@ -7,6 +7,7 @@
 struct Glob {
   std::size_t mHash;
   std::regex mRegex;
+  std::string mRaw;
 
   Glob(std::string raw);
   Glob(std::string raw, std::regex regex);
