@@ -15,8 +15,13 @@ function normalizeOptions(dir, opts = {}) {
           opts.ignoreGlobs = [];
         }
 
-        const regex = micromatch.makeRe(value).toString();
-        opts.ignoreGlobs.push(regex.substring(1, regex.length - 1));
+        // Ask micromatch to return a regular expression for
+        // the given glob pattern. We set `dot: true` to workaround
+        // an issue with the regular expression on Linux where
+        // the resulting negative lookahead `(?!(\\/|^)` was never
+        // matching in some cases. See also https://bit.ly/3UZlQDm
+        const regex = micromatch.makeRe(value, { dot: true });
+        opts.ignoreGlobs.push(regex.source);
       } else {
         if (!opts.ignorePaths) {
           opts.ignorePaths = [];

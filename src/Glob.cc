@@ -11,9 +11,5 @@ Glob::Glob(std::string raw, std::regex regex)
   { }
 
 bool Glob::isIgnored(std::string relative_path) const {
-  auto result = std::regex_match(relative_path, mRegex);
-
-  std::cout << "isIgnored " << mRaw << ", " << relative_path << ": " << result << std::endl;
-
-  return result;
+  return std::regex_match(relative_path, mRegex);
 }

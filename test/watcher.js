@@ -67,8 +67,7 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile, /* `${ignoreGlobDirName}/*.ignore`, */ `${ignoreGlobDirName}/ignore/**`
-        ],
+          ignore: [ignoreDir, ignoreFile, /*`${ignoreGlobDirName}/*.ignore`,*/ `${ignoreGlobDirName}/ignore/**`]
         });
       });
 
@@ -522,7 +521,7 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
-        it.only('should ignore globs', async () => {
+        it('should ignore globs', async () => {
           fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
