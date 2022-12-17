@@ -67,7 +67,7 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile, /*`${ignoreGlobDirName}/*.ignore`,*/ `${ignoreGlobDirName}/ignore/**`]
+          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDirName}/*.ignore`, `${ignoreGlobDirName}/ignore/**`]
         });
       });
 
@@ -560,7 +560,6 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           assert.deepEqual(res, [
-            {type: 'create', path: path.join(ignoreGlobDir, 'test.ignore')},
             {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
           ]);
         });
