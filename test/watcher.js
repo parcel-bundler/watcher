@@ -208,8 +208,8 @@ describe('watcher', () => {
 
             fs.mkdirp(dir);
             res = await Promise.race([
-              new Promise(resolve => setTimeout(resolve, 100)),
-              nextEvent()
+              new Promise((resolve) => setTimeout(resolve, 100)),
+              nextEvent(),
             ]);
             assert.equal(res, undefined);
           } finally {
@@ -324,6 +324,37 @@ describe('watcher', () => {
             {type: 'delete', path: f2},
           ]);
         });
+
+        it('should emit when a sub-directory is deleted with directories inside', async () => {
+          if (backend === 'watchman') {
+            // It seems that watchman emits the second delete event before the
+            // first create event when rapidly renaming a directory and one of
+            // its child so our test is failing in that case.
+            return;
+          }
+
+          let base = getFilename();
+          await fs.mkdir(base);
+          await nextEvent();
+
+          let getPath = p => path.join(base, p);
+
+          await fs.mkdir(getPath('dir'));
+          await nextEvent();
+          await fs.mkdir(getPath('dir/subdir'));
+          await nextEvent();
+
+          await fs.rename(getPath('dir'), getPath('dir2'));
+          await fs.rename(getPath('dir2/subdir'), getPath('dir2/subdir2'));
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'delete', path: getPath('dir')},
+            {type: 'create', path: getPath('dir2')},
+            {type: 'delete', path: getPath('dir2/subdir')},
+            {type: 'create', path: getPath('dir2/subdir2')},
+          ]);
+        });
       });
 
       describe('symlinks', () => {
@@ -400,7 +431,7 @@ describe('watcher', () => {
           fs.unlink(f2);
 
           let res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'delete', path: f2 }]);
+          assert.deepEqual(res, [{type: 'delete', path: f2}]);
         });
       });
 
@@ -432,7 +463,7 @@ describe('watcher', () => {
           fs.writeFile(f1, 'hello world again');
 
           let res = await nextEvent();
-          assert.deepEqual(res, [{ type: 'update', path: f1 }]);
+          assert.deepEqual(res, [{type: 'update', path: f1}]);
         });
 
         if (backend !== 'fs-events') {
@@ -552,7 +583,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend},
@@ -589,7 +620,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend, ignore},
@@ -632,7 +663,7 @@ describe('watcher', () => {
                   setImmediate(async () => {
                     await sub.unsubscribe();
 
-                    resolve(events)
+                    resolve(events);
                   });
                 },
                 {backend},

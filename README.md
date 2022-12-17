@@ -50,7 +50,7 @@ let subscription = await watcher.subscribe(process.cwd(), (err, events) => {
 Events have two properties:
 
 - `type` - the event type: `create`, `update`, or `delete`.
-- `path` - the absolute realpath to the file.
+- `path` - the absolute path to the file or directory.
 
 To unsubscribe from change notifications, call the `unsubscribe` method on the returned subscription object.
 
@@ -107,11 +107,11 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 
 ## Who is using this?
 
-* [Parcel 2](https://parceljs.org/)
-* [VSCode](https://code.visualstudio.com/updates/v1_62#_file-watching-changes)
-* [Tailwind CSS Intellisense](https://github.com/tailwindlabs/tailwindcss-intellisense)
-* [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
-* [Nx](https://nx.dev)
+- [Parcel 2](https://parceljs.org/)
+- [VSCode](https://code.visualstudio.com/updates/v1_62#_file-watching-changes)
+- [Tailwind CSS Intellisense](https://github.com/tailwindlabs/tailwindcss-intellisense)
+- [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
+- [Nx](https://nx.dev)
 
 ## License
 

@@ -6,11 +6,11 @@ jobs:
     container: ${{ parameters.container }}
   strategy:
     matrix:
-      node_10_x:
-        node_version: 10.x
+      node_14_x:
+        node_version: 14.x
         publish_artifacts: false
-      node_12_x:
-        node_version: 12.x
+      node_16_x:
+        node_version: 16.x
         publish_artifacts: true
   steps:
   - task: NodeTool@0

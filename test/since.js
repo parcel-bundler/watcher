@@ -6,9 +6,7 @@ const path = require('path');
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 const tmpDir = path.join(
   fs.realpathSync(require('os').tmpdir()),
-  Math.random()
-    .toString(31)
-    .slice(2),
+  Math.random().toString(31).slice(2),
 );
 fs.mkdirpSync(tmpDir);
 
@@ -23,13 +21,7 @@ if (process.platform === 'darwin') {
 
 let c = 0;
 const getFilename = (...dir) =>
-  path.join(
-    tmpDir,
-    ...dir,
-    `test${c++}${Math.random()
-      .toString(31)
-      .slice(2)}`,
-  );
+  path.join(tmpDir, ...dir, `test${c++}${Math.random().toString(31).slice(2)}`);
 
 function testPrecision() {
   let f = getFilename();
@@ -41,7 +33,7 @@ function testPrecision() {
 const isSecondPrecision = testPrecision();
 
 describe('since', () => {
-  const sleep = (ms = 20) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms = 20) => new Promise((resolve) => setTimeout(resolve, ms));
 
   before(async () => {
     // wait for tmp dir to be created.
@@ -54,10 +46,11 @@ describe('since', () => {
     } catch (err) {}
   });
 
-  backends.forEach(backend => {
+  backends.forEach((backend) => {
     describe(backend, () => {
       describe('files', () => {
-        it('should emit when a file is created', async () => {
+        it('should emit when a file is created', async function () {
+          this.timeout(5000);
           let f = getFilename();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
           if (isSecondPrecision) {
@@ -518,9 +511,7 @@ describe('since', () => {
         it('should error if the watched directory does not exist', async () => {
           let dir = path.join(
             fs.realpathSync(require('os').tmpdir()),
-            Math.random()
-              .toString(31)
-              .slice(2),
+            Math.random().toString(31).slice(2),
           );
 
           let threw = false;
@@ -541,9 +532,7 @@ describe('since', () => {
 
           let file = path.join(
             fs.realpathSync(require('os').tmpdir()),
-            Math.random()
-              .toString(31)
-              .slice(2),
+            Math.random().toString(31).slice(2),
           );
           fs.writeFileSync(file, 'test');
 
