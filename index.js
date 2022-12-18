@@ -21,7 +21,9 @@ function normalizeOptions(dir, opts = {}) {
           // negative lookahead `(?!(\\/|^)` was never matching
           // in some cases. See also https://bit.ly/3UZlQDm
           dot: true,
-          // C++ does not support lookbehind regex patterns
+          // C++ does not support lookbehind regex patterns, they
+          // were only added later to JavaScript engines
+          // (https://bit.ly/3V7S6UL)
           lookbehinds: false
         });
         opts.ignoreGlobs.push(regex.source);
