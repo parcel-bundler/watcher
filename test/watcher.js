@@ -60,6 +60,8 @@ describe('watcher', () => {
         const ignoreGlobDirName = path.basename(ignoreGlobDir);
         await fs.mkdir(ignoreGlobDir);
         await fs.mkdir(path.join(ignoreGlobDir, 'ignore'));
+        await fs.mkdir(path.join(ignoreGlobDir, 'erongi'));
+        await fs.mkdir(path.join(ignoreGlobDir, 'erongi', 'deep'));
         fileToRename = getFilename();
         dirToRename = getFilename();
         fs.writeFileSync(fileToRename, 'hi');
@@ -67,7 +69,7 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDirName}/*.ignore`, `${ignoreGlobDirName}/ignore/**`]
+          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDirName}/*.ignore`, `${ignoreGlobDirName}/ignore/**`, `${ignoreGlobDirName}/[a-e]?on(g|l)i/**`]
         });
       });
 
@@ -557,6 +559,8 @@ describe('watcher', () => {
           fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
 
           let res = await nextEvent();
           assert.deepEqual(res, [
