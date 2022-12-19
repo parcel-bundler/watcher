@@ -1,4 +1,5 @@
 declare type FilePath = string;
+declare type GlobPattern = string;
 
 declare namespace ParcelWatcher {
   export type BackendType = 
@@ -9,7 +10,7 @@ declare namespace ParcelWatcher {
     | 'brute-force';
   export type EventType = 'create' | 'update' | 'delete';
   export interface Options {
-    ignore?: FilePath[];
+    ignore?: (FilePath|GlobPattern)[];
     backend?: BackendType;
   }
   export type SubscribeCallback = (
