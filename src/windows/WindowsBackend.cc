@@ -37,7 +37,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     do {
       if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
         std::string fullPath = path + "\\" + ffd.cFileName;
-        if (watcher.mIgnorePaths.count(fullPath) > 0) {
+        if (watcher.isIgnored(fullPath)) {
           continue;
         }
 
