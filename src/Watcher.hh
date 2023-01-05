@@ -6,6 +6,7 @@
 #include <set>
 #include <uv.h>
 #include <node_api.h>
+#include "Glob.hh"
 #include "Event.hh"
 #include "Debounce.hh"
 #include "DirTree.hh"
@@ -15,16 +16,17 @@ using namespace Napi;
 
 struct Watcher {
   std::string mDir;
-  std::unordered_set<std::string> mIgnore;
+  std::unordered_set<std::string> mIgnorePaths;
+  std::unordered_set<Glob> mIgnoreGlobs;
   EventList mEvents;
   void *state;
   bool mWatched;
 
-  Watcher(std::string dir, std::unordered_set<std::string> ignore);
+  Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
   ~Watcher();
 
   bool operator==(const Watcher &other) const {
-    return mDir == other.mDir && mIgnore == other.mIgnore;
+    return mDir == other.mDir && mIgnorePaths == other.mIgnorePaths && mIgnoreGlobs == other.mIgnoreGlobs;
   }
 
   void wait();
@@ -35,7 +37,7 @@ struct Watcher {
   void unref();
   bool isIgnored(std::string path);
 
-  static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignore);
+  static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
 
 private:
   std::mutex mMutex;

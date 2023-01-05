@@ -102,7 +102,9 @@ You can specify the exact backend you wish to use by passing the `backend` optio
 
 All of the APIs in `@parcel/watcher` support the following options, which are passed as an object as the last function argument.
 
-- `ignore` - an array of paths to ignore. They can be either files or directories. No events will be emitted about these files or directories or their children.
+- `ignore` - an array of paths or glob patterns to ignore. uses [`is-glob`](https://github.com/micromatch/is-glob) to distinguish paths from globs. glob patterns are parsed with [`micromatch`](https://github.com/micromatch/micromatch) (see [features](https://github.com/micromatch/micromatch#matching-features)).
+  - paths can be relative or absolute and can either be files or directories. No events will be emitted about these files or directories or their children. 
+  - glob patterns match on relative paths from the root that is watched. No events will be emitted for matching paths.
 - `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
 
 ## Who is using this?

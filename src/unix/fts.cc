@@ -36,7 +36,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
       throw WatcherError(strerror(ENOTDIR), &watcher);
     }
 
-    if (watcher.mIgnore.count(std::string(node->fts_path)) > 0) {
+    if (watcher.isIgnored(std::string(node->fts_path))) {
       fts_set(fts, node, FTS_SKIP);
       continue;
     }

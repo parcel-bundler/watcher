@@ -46,7 +46,7 @@ describe('watcher', () => {
           ...dir,
           `test${c++}${Math.random().toString(31).slice(2)}`,
         );
-      let ignoreDir, ignoreFile, fileToRename, dirToRename, sub;
+      let ignoreDir, ignoreFile, ignoreGlobDir, fileToRename, dirToRename, sub;
 
       before(async () => {
         tmpDir = path.join(
@@ -56,6 +56,12 @@ describe('watcher', () => {
         fs.mkdirpSync(tmpDir);
         ignoreDir = getFilename();
         ignoreFile = getFilename();
+        ignoreGlobDir = getFilename();
+        const ignoreGlobDirName = path.basename(ignoreGlobDir);
+        await fs.mkdir(ignoreGlobDir);
+        await fs.mkdir(path.join(ignoreGlobDir, 'ignore'));
+        await fs.mkdir(path.join(ignoreGlobDir, 'erongi'));
+        await fs.mkdir(path.join(ignoreGlobDir, 'erongi', 'deep'));
         fileToRename = getFilename();
         dirToRename = getFilename();
         fs.writeFileSync(fileToRename, 'hi');
@@ -63,7 +69,7 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile],
+          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDirName}/*.ignore`, `${ignoreGlobDirName}/ignore/**`, `${ignoreGlobDirName}/[a-e]?on(g|l)i/**`]
         });
       });
 
@@ -546,6 +552,20 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore globs', async () => {
+          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
+          ]);
         });
       });
 

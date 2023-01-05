@@ -2,6 +2,7 @@
 #include <iostream>
 #include <napi.h>
 #include <node_api.h>
+#include "Glob.hh"
 #include "Event.hh"
 #include "Backend.hh"
 #include "Watcher.hh"
@@ -9,23 +10,43 @@
 
 using namespace Napi;
 
-std::unordered_set<std::string> getIgnore(Env env, Value opts) {
-  std::unordered_set<std::string> ignore;
+std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
+  std::unordered_set<std::string> result;
 
   if (opts.IsObject()) {
-    Value v = opts.As<Object>().Get(String::New(env, "ignore"));
+    Value v = opts.As<Object>().Get(String::New(env, "ignorePaths"));
     if (v.IsArray()) {
       Array items = v.As<Array>();
       for (size_t i = 0; i < items.Length(); i++) {
         Value item = items.Get(Number::New(env, i));
         if (item.IsString()) {
-          ignore.insert(std::string(item.As<String>().Utf8Value().c_str()));
+          result.insert(std::string(item.As<String>().Utf8Value().c_str()));
         }
       }
     }
   }
 
-  return ignore;
+  return result;
+}
+
+std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
+  std::unordered_set<Glob> result;
+  
+  if (opts.IsObject()) {
+    Value v = opts.As<Object>().Get(String::New(env, "ignoreGlobs"));
+    if (v.IsArray()) {
+      Array items = v.As<Array>();
+      for (size_t i = 0; i < items.Length(); i++) {
+        Value item = items.Get(Number::New(env, i));
+        if (item.IsString()) {
+          auto key = item.As<String>().Utf8Value();
+          result.emplace(key, std::regex(key.c_str()));
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 std::shared_ptr<Backend> getBackend(Env env, Value opts) {
@@ -45,7 +66,8 @@ public:
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnore(env, opts)
+      getIgnorePaths(env, opts),
+      getIgnoreGlobs(env, opts)
     );
 
     backend = getBackend(env, opts);
@@ -72,7 +94,8 @@ public:
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
     watcher = std::make_shared<Watcher>(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnore(env, opts)
+      getIgnorePaths(env, opts),
+      getIgnoreGlobs(env, opts)
     );
 
     backend = getBackend(env, opts);
@@ -137,7 +160,8 @@ public:
   SubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnore(env, opts)
+      getIgnorePaths(env, opts),
+      getIgnoreGlobs(env, opts)
     );
 
     backend = getBackend(env, opts);
@@ -160,7 +184,8 @@ public:
   UnsubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnore(env, opts)
+      getIgnorePaths(env, opts),
+      getIgnoreGlobs(env, opts)
     );
 
     backend = getBackend(env, opts);

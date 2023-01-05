@@ -214,8 +214,8 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
     kFSEventStreamCreateFlagFileEvents
   );
 
-  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnore.size(), NULL);
-  for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
+  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnorePaths.size(), NULL);
+  for (auto it = watcher.mIgnorePaths.begin(); it != watcher.mIgnorePaths.end(); it++) {
     CFStringRef path = CFStringCreateWithCString(
       NULL,
       it->c_str(),

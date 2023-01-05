@@ -1,11 +1,40 @@
 const binding = require('node-gyp-build')(__dirname);
 const path = require('path');
+const micromatch = require('micromatch');
+const isGlob = require('is-glob');
 
 function normalizeOptions(dir, opts = {}) {
-  if (Array.isArray(opts.ignore)) {
-    opts = Object.assign({}, opts, {
-      ignore: opts.ignore.map((ignore) => path.resolve(dir, ignore)),
-    });
+  const { ignore, ...rest } = opts;
+
+  if (Array.isArray(ignore)) {
+    opts = { ...rest };
+
+    for (const value of ignore) {
+      if (isGlob(value)) {
+        if (!opts.ignoreGlobs) {
+          opts.ignoreGlobs = [];
+        }
+
+        const regex = micromatch.makeRe(value, { 
+          // We set `dot: true` to workaround an issue with the 
+          // regular expression on Linux where the resulting 
+          // negative lookahead `(?!(\\/|^)` was never matching
+          // in some cases. See also https://bit.ly/3UZlQDm
+          dot: true,
+          // C++ does not support lookbehind regex patterns, they
+          // were only added later to JavaScript engines
+          // (https://bit.ly/3V7S6UL)
+          lookbehinds: false
+        });
+        opts.ignoreGlobs.push(regex.source);
+      } else {
+        if (!opts.ignorePaths) {
+          opts.ignorePaths = [];
+        }
+
+        opts.ignorePaths.push(path.resolve(dir, value));
+      }
+    }
   }
 
   return opts;

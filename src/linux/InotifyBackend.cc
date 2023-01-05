@@ -156,7 +156,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     path += "/" + std::string(event->name);
   }
 
-  if (watcher->mIgnore.count(path) > 0) {
+  if (watcher->isIgnored(path)) {
     return false;
   }
 

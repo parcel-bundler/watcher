@@ -1,5 +1,6 @@
 // @flow
 declare type FilePath = string;
+declare type GlobPattern = string;
 
 export type BackendType = 
   | 'fs-events'
@@ -9,7 +10,7 @@ export type BackendType =
   | 'brute-force';
 export type EventType = 'create' | 'update' | 'delete';
 export interface Options {
-  ignore?: Array<FilePath>,
+  ignore?: Array<FilePath | GlobPattern>,
   backend?: BackendType
 }
 export type SubscribeCallback = (

@@ -292,12 +292,12 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   opts.emplace("fields", fields);
   opts.emplace("since", clock(watcher));
 
-  if (watcher.mIgnore.size() > 0) {
+  if (watcher.mIgnorePaths.size() > 0) {
     BSER::Array ignore;
     BSER::Array anyOf;
     anyOf.push_back("anyof");
 
-    for (auto it = watcher.mIgnore.begin(); it != watcher.mIgnore.end(); it++) {
+    for (auto it = watcher.mIgnorePaths.begin(); it != watcher.mIgnorePaths.end(); it++) {
       std::string pathStart = watcher.mDir + DIR_SEP;
       if (it->rfind(pathStart, 0) == 0) {
         auto relative = it->substr(pathStart.size());
