@@ -21,6 +21,12 @@ jobs:
   # Install Watchman
   - ${{ if or(eq('macOS-latest', parameters.vmImage), eq('macos-11', parameters.vmImage)) }}:
     - script: |
+        # https://github.com/actions/setup-python/issues/577
+        rm /usr/local/bin/2to3 || true
+        rm /usr/local/bin/idle3 || true
+        rm /usr/local/bin/pydoc3 || true
+        rm /usr/local/bin/python3 || true
+        rm /usr/local/bin/python3-config || true
         brew update
         brew install watchman
       displayName: Install Watchman
