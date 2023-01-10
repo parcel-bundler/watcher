@@ -48,6 +48,19 @@
             "BRUTE_FORCE"
           ]
         }],
+        # Depending on version of Python, IBM i can identify as AIX or OS400
+        ['OS=="aix" or OS=="os400"', {
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/WatchmanBackend.cc",
+            "src/shared/BruteForceBackend.cc",
+            "src/unix/legacy.cc"
+          ],
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE"
+          ]
+        }],
         ['OS=="win"', {
           "sources": [
             "src/watchman/BSER.cc",
