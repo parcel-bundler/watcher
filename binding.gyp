@@ -66,6 +66,17 @@
               "ExceptionHandling": 1,  # /EHsc
             }
           }
+        }],
+        ['OS=="freebsd"', {
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/WatchmanBackend.cc",
+            "src/shared/BruteForceBackend.cc",
+          ],
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE"
+          ]
         }]
       ]
     }
