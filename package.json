@@ -27,7 +27,9 @@
     "README.md"
   ],
   "scripts": {
-    "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0",
+    "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0 2> /dev/null || true",
+    "build": "tsc",
+    "prepack": "yarn build",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build 2> /dev/null || true",
     "rebuild": "node-gyp rebuild -j 8 --debug --verbose 2> /dev/null || true",
@@ -54,12 +56,16 @@
     "node-gyp-build": "^4.3.0"
   },
   "devDependencies": {
+    "@types/is-glob": "^4.0.2",
+    "@types/micromatch": "^4.0.2",
+    "@types/node": "^18.11.18",
     "fs-extra": "^10.0.0",
     "husky": "^7.0.2",
     "lint-staged": "^11.1.2",
     "mocha": "^9.1.1",
     "prebuildify": "^4.2.1",
-    "prettier": "^2.3.2"
+    "prettier": "^2.3.2",
+    "typescript": "^4.9.5"
   },
   "binary": {
     "napi_versions": [

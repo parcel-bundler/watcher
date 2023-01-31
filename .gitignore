@@ -3,6 +3,8 @@ build/
 prebuilds/
 node_modules/
 token.txt
+index.js
+index.d.ts
 .DS_Store
 .idea
 stress-test
