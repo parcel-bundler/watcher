@@ -5,6 +5,21 @@ import isGlob from 'is-glob';
 declare type FilePath = string;
 declare type GlobPattern = string;
 
+export declare namespace ParcelWatcher {
+  export {
+    BackendType,
+    EventType,
+    Options,
+    SubscribeCallback,
+    AsyncSubscription,
+    Event,
+    getEventsSince,
+    subscribe,
+    unsubscribe,
+    writeSnapshot,
+  };
+}
+
 export type BackendType =
   | 'fs-events'
   | 'watchman'
