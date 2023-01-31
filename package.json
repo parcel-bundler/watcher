@@ -29,8 +29,8 @@
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
-    "install": "node-gyp-build",
-    "rebuild": "node-gyp rebuild -j 8 --debug --verbose",
+    "install": "node-gyp-build 2> /dev/null || true",
+    "rebuild": "node-gyp rebuild -j 8 --debug --verbose 2> /dev/null || true",
     "test": "mocha"
   },
   "engines": {
