@@ -95,7 +95,7 @@ int getcwdpath(const char * buf1, unsigned int buf1Size,
                char ** buf2, unsigned int * cwdPathLoc)
 {
   if((buf1 == (const char *)NULL) ||       /* safety/sanity check      */
-     (cwdPathLoc == (int *)NULL))
+     (cwdPathLoc == (unsigned int *)NULL))
   {
     errno = EINVAL;
     return -1;
