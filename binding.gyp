@@ -59,7 +59,14 @@
           "defines": [
             "WATCHMAN",
             "BRUTE_FORCE"
-          ]
+          ],
+          # Required for threaded parts of stdc++
+          'ldflags': [
+            '-pthread',
+          ],
+          'cflags': [
+            '-pthread',
+          ],
         }],
         ['OS=="win"', {
           "sources": [
