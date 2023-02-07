@@ -92,7 +92,7 @@
 /*                                                                                                */
 /* Notes...........: None                                                                         */
 int getcwdpath(const char * buf1, unsigned int buf1Size,
-               char ** buf2, int * cwdPathLoc)
+               char ** buf2, unsigned int * cwdPathLoc)
 {
   if((buf1 == (const char *)NULL) ||       /* safety/sanity check      */
      (cwdPathLoc == (int *)NULL))
