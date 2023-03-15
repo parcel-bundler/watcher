@@ -112,7 +112,7 @@ export class ChokidarBackend {
         continue;
       }
 
-      const mtimeAndIsDir = path.slice(pathLength).split(' ');
+      const mtimeAndIsDir = rest.slice(pathLength - 1).split(' ');
       const mtime = parseInt(mtimeAndIsDir[0]);
       const isDir = Boolean(+mtimeAndIsDir[1]);
 
@@ -126,7 +126,7 @@ export class ChokidarBackend {
       } else {
         if (now.isDir !== isDir) {
           events.push({path, type: 'delete'}, {path, type: 'create'});
-        } else if (now.mtime !== mtime) {
+        } else if (now.mtime > mtime && !now.isDir) {
           events.push({path, type: 'update'});
         }
       }
