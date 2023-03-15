@@ -29,7 +29,7 @@
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0 2> /dev/null || true",
     "build": "yarn clean && tsc",
-    "clean": "rm index.js index.d.ts src/chokidar/ChokidarBackend.d.ts src/chokidar/ChokidarBackend.js",
+    "clean": "rm index.js index.d.ts src/chokidar/ChokidarBackend.d.ts src/chokidar/ChokidarBackend.js 2> /dev/null || true",
     "prepack": "yarn build",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build 2> /dev/null || true",
