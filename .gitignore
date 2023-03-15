@@ -5,7 +5,8 @@ node_modules/
 token.txt
 index.js
 index.d.ts
-src/**/*.{d.ts,js}
+src/**/*.d.ts
+src/**/*.js
 .DS_Store
 .idea
 stress-test
