@@ -1,9 +1,10 @@
 import path from 'path';
 import micromatch from 'micromatch';
 import isGlob from 'is-glob';
+import {ChokidarBackend} from './src/chokidar/ChokidarBackend';
 
-declare type FilePath = string;
-declare type GlobPattern = string;
+export declare type FilePath = string;
+export declare type GlobPattern = string;
 
 export type BackendType =
   | 'fs-events'
@@ -32,8 +33,16 @@ export interface Event {
 }
 
 let binding: any;
-function getBinding() {
-  return (binding ||= require('node-gyp-build')(__dirname));
+function getBinding(opts?: Options) {
+  if (opts?.backend === 'chokidar') {
+    return new ChokidarBackend();
+  }
+
+  try {
+    return (binding ||= require('node-gyp-build')(__dirname));
+  } catch {
+    return new ChokidarBackend();
+  }
 }
 
 function normalizeOptions(
@@ -76,12 +85,46 @@ function normalizeOptions(
   return opts;
 }
 
+export async function subscribe(
+  dir: FilePath,
+  fn: SubscribeCallback,
+  opts?: Options,
+): Promise<AsyncSubscription> {
+  const binding = getBinding(opts);
+
+  dir = path.resolve(dir);
+  opts = normalizeOptions(dir, opts);
+  await binding.subscribe(dir, fn, opts);
+
+  return {
+    unsubscribe() {
+      return binding.unsubscribe(dir, fn, opts);
+    },
+  };
+}
+
+export function unsubscribe(
+  dir: FilePath,
+  fn: SubscribeCallback,
+  opts?: Options,
+): Promise<void> {
+  const binding = getBinding(opts);
+
+  return binding.unsubscribe(
+    path.resolve(dir),
+    fn,
+    normalizeOptions(dir, opts),
+  );
+}
+
 export function writeSnapshot(
   dir: FilePath,
   snapshot: FilePath,
   opts?: Options,
 ): Promise<FilePath> {
-  return getBinding().writeSnapshot(
+  const binding = getBinding(opts);
+
+  return binding.writeSnapshot(
     path.resolve(dir),
     path.resolve(snapshot),
     normalizeOptions(dir, opts),
@@ -93,37 +136,11 @@ export function getEventsSince(
   snapshot: FilePath,
   opts?: Options,
 ): Promise<Event[]> {
-  return getBinding().getEventsSince(
+  const binding = getBinding(opts);
+
+  return binding.getEventsSince(
     path.resolve(dir),
     path.resolve(snapshot),
-    normalizeOptions(dir, opts),
-  );
-}
-
-export async function subscribe(
-  dir: FilePath,
-  fn: SubscribeCallback,
-  opts?: Options,
-): Promise<AsyncSubscription> {
-  dir = path.resolve(dir);
-  opts = normalizeOptions(dir, opts);
-  await getBinding().subscribe(dir, fn, opts);
-
-  return {
-    unsubscribe() {
-      return getBinding().unsubscribe(dir, fn, opts);
-    },
-  };
-}
-
-export function unsubscribe(
-  dir: FilePath,
-  fn: SubscribeCallback,
-  opts?: Options,
-): Promise<void> {
-  return getBinding().unsubscribe(
-    path.resolve(dir),
-    fn,
     normalizeOptions(dir, opts),
   );
 }
