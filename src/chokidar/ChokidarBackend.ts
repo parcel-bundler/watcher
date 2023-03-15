@@ -65,8 +65,6 @@ export class ChokidarBackend {
     watcher.on('error', (error) => {
       fn(error, []);
     });
-
-    return () => watcher.close();
   }
 
   async unsubscribe(dir: FilePath, fn: SubscribeCallback, opts?: Options) {
