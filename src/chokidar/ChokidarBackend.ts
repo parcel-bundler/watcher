@@ -102,6 +102,10 @@ export class ChokidarBackend {
     const events: Event[] = [];
 
     for (const line of lines) {
+      if (!line) {
+        continue;
+      }
+
       const segments = line.split('/');
       const pathLength = parseInt(segments.shift()!);
       const rest = segments.join('/');
