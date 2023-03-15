@@ -2,33 +2,34 @@ import {Event, FilePath, Options, SubscribeCallback} from '../..';
 import {watch, FSWatcher} from 'chokidar';
 import fs from 'fs';
 import path from 'path';
-import {minimatch} from 'minimatch';
+
+const REGEX_CACHE = new Map<string, RegExp>();
 
 const watchers = new Map<SubscribeCallback, Map<string, FSWatcher>>();
 
-async function getTree(filePath: string) {
-  const entries = new Map<string, {mtime: number; isDir: boolean}>();
-
-  try {
-    const fileStat = await fs.promises.stat(filePath);
-    const isDir = fileStat.isDirectory();
-    entries.set(filePath, {mtime: +fileStat.mtime, isDir});
-
-    if (isDir) {
-      const files = await fs.promises.readdir(filePath);
-      for (const file of files) {
-        for (const [_filePath, entry] of await getTree(
-          path.join(filePath, file),
-        )) {
-          entries.set(_filePath, entry);
-        }
-      }
-    }
-  } catch {}
-  return entries;
-}
-
 export class ChokidarBackend {
+  private isIgnored(path: string, opts?: any) {
+    if (opts?.ignorePaths.includes(path)) {
+      return true;
+    }
+
+    if (
+      opts?.ignoreGlobs.some((glob: string) => {
+        let regex = REGEX_CACHE.get(glob);
+        if (!regex) {
+          regex = new RegExp(glob);
+          REGEX_CACHE.set(glob, regex);
+        }
+
+        return regex.test(glob);
+      })
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   async subscribe(dir: FilePath, fn: SubscribeCallback, opts?: Options) {
     const watcher = watch(dir, {
       ignored: opts?.ignore,
@@ -42,6 +43,10 @@ export class ChokidarBackend {
     dirWatchers.set(dir, watcher);
 
     watcher.on('all', (event, path) => {
+      if (this.isIgnored(path, opts)) {
+        return;
+      }
+
       const type =
         event === 'change'
           ? ('update' as const)
@@ -69,6 +74,10 @@ export class ChokidarBackend {
     let lines = '';
 
     for (const [path, {mtime, isDir}] of await getTree(dir)) {
+      if (this.isIgnored(path, opts)) {
+        continue;
+      }
+
       lines += `${path.length}${path}${mtime} ${+isDir}\n`;
     }
 
@@ -93,6 +102,11 @@ export class ChokidarBackend {
       const rest = segments.join('/');
 
       const path = `/${rest.slice(0, pathLength - 1)}`;
+
+      if (this.isIgnored(path, opts)) {
+        continue;
+      }
+
       const mtimeAndIsDir = path.slice(pathLength).split(' ');
       const mtime = parseInt(mtimeAndIsDir[0]);
       const isDir = Boolean(+mtimeAndIsDir[1]);
@@ -116,6 +130,10 @@ export class ChokidarBackend {
     }
 
     for (const path of nowEntries.keys()) {
+      if (this.isIgnored(path, opts)) {
+        continue;
+      }
+
       if (!prevPaths.has(path)) {
         events.push({path, type: 'create'});
       }
@@ -123,4 +141,26 @@ export class ChokidarBackend {
 
     return events;
   }
+}
+
+async function getTree(filePath: string) {
+  const entries = new Map<string, {mtime: number; isDir: boolean}>();
+
+  try {
+    const fileStat = await fs.promises.stat(filePath);
+    const isDir = fileStat.isDirectory();
+    entries.set(filePath, {mtime: +fileStat.mtime, isDir});
+
+    if (isDir) {
+      const files = await fs.promises.readdir(filePath);
+      for (const file of files) {
+        for (const [_filePath, entry] of await getTree(
+          path.join(filePath, file),
+        )) {
+          entries.set(_filePath, entry);
+        }
+      }
+    }
+  } catch {}
+  return entries;
 }
