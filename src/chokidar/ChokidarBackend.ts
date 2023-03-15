@@ -9,12 +9,12 @@ const watchers = new Map<SubscribeCallback, Map<string, FSWatcher>>();
 
 export class ChokidarBackend {
   private isIgnored(path: string, opts?: any) {
-    if (opts?.ignorePaths.includes(path)) {
+    if (opts?.ignorePaths?.includes(path)) {
       return true;
     }
 
     if (
-      opts?.ignoreGlobs.some((glob: string) => {
+      opts?.ignoreGlobs?.some((glob: string) => {
         let regex = REGEX_CACHE.get(glob);
         if (!regex) {
           regex = new RegExp(glob);
