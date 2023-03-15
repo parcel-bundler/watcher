@@ -2,8 +2,9 @@ import {Event, FilePath, Options, SubscribeCallback} from '../..';
 import {watch, FSWatcher} from 'chokidar';
 import fs from 'fs';
 import path from 'path';
+import {minimatch} from 'minimatch';
 
-const watchers = new Map<SubscribeCallback, FSWatcher>();
+const watchers = new Map<SubscribeCallback, Map<string, FSWatcher>>();
 
 async function getTree(filePath: string) {
   const entries = new Map<string, {mtime: number; isDir: boolean}>();
@@ -33,7 +34,12 @@ export class ChokidarBackend {
       ignored: opts?.ignore,
     });
 
-    watchers.set(fn, watcher);
+    let dirWatchers = watchers.get(fn);
+    if (!dirWatchers) {
+      dirWatchers = new Map();
+      watchers.set(fn, dirWatchers);
+    }
+    dirWatchers.set(dir, watcher);
 
     watcher.on('all', (event, path) => {
       const type =
@@ -54,7 +60,7 @@ export class ChokidarBackend {
   }
 
   async unsubscribe(dir: FilePath, fn: SubscribeCallback, opts?: Options) {
-    const watcher = watchers.get(fn);
+    const watcher = watchers.get(fn)?.get(dir);
 
     await watcher?.close();
   }
@@ -70,7 +76,11 @@ export class ChokidarBackend {
   }
 
   async getEventsSince(dir: FilePath, snapshot: FilePath, opts?: Options) {
-    const lines = fs.readFileSync(snapshot, 'utf8').split('\n');
+    try {
+      var lines = fs.readFileSync(snapshot, 'utf8').split('\n');
+    } catch (e) {
+      return [];
+    }
 
     const prevPaths = new Set();
     const nowEntries = await getTree(dir);
@@ -82,7 +92,7 @@ export class ChokidarBackend {
       const pathLength = parseInt(segments.shift()!);
       const rest = segments.join('/');
 
-      const path = rest.slice(0, pathLength);
+      const path = `/${rest.slice(0, pathLength - 1)}`;
       const mtimeAndIsDir = path.slice(pathLength).split(' ');
       const mtime = parseInt(mtimeAndIsDir[0]);
       const isDir = Boolean(+mtimeAndIsDir[1]);

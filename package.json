@@ -28,7 +28,8 @@
   ],
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc -t 10.0.0 2> /dev/null || true",
-    "build": "tsc",
+    "build": "yarn clean && tsc",
+    "clean": "rm index.js index.d.ts src/chokidar/ChokidarBackend.d.ts src/chokidar/ChokidarBackend.js",
     "prepack": "yarn build",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "install": "node-gyp-build 2> /dev/null || true",
@@ -52,6 +53,7 @@
   "dependencies": {
     "is-glob": "^4.0.3",
     "micromatch": "^4.0.5",
+    "minimatch": "^7.4.2",
     "node-addon-api": "^3.2.1",
     "node-gyp-build": "^4.3.0"
   },
