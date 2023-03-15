@@ -9,7 +9,12 @@ const watchers = new Map<SubscribeCallback, Map<string, FSWatcher>>();
 
 export class ChokidarBackend {
   private isIgnored(path: string, opts?: any) {
-    if (opts?.ignorePaths?.includes(path)) {
+    if (
+      opts?.ignorePaths?.some(
+        (ignorePath: string) =>
+          path === ignorePath || path.startsWith(ignorePath + '/'),
+      )
+    ) {
       return true;
     }
 
