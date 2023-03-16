@@ -55,6 +55,7 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/unix/legacy.cc"
+            "src/unix/atshims.cc"
           ],
           "defines": [
             "WATCHMAN",
