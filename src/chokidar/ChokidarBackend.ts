@@ -38,6 +38,7 @@ export class ChokidarBackend {
   async subscribe(dir: FilePath, fn: SubscribeCallback, opts?: Options) {
     const watcher = watch(dir, {
       ignored: opts?.ignore,
+      ignoreInitial: true,
     });
 
     let dirWatchers = watchers.get(fn);
