@@ -1,6 +1,6 @@
 {
-  "name": "@parcel/watcher",
-  "version": "2.1.0",
+  "name": "@webassembly/parcel__watcher",
+  "version": "2.1.0-blitz.2",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
@@ -51,6 +51,7 @@
     ]
   },
   "dependencies": {
+    "chokidar": "^3.5.3",
     "is-glob": "^4.0.3",
     "micromatch": "^4.0.5",
     "node-addon-api": "^3.2.1",
