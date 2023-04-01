@@ -34,7 +34,7 @@
             "ARCHS": ["arm64"]
           }
         }],
-        ['OS=="linux"', {
+        ['OS=="linux" or OS=="android"', {
           "sources": [
             "src/watchman/BSER.cc",
             "src/watchman/WatchmanBackend.cc",
