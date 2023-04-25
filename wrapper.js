@@ -1,12 +1,13 @@
 const path = require('path');
 const micromatch = require('micromatch');
 const isGlob = require('is-glob');
+const git = require('./git.js');
 
 function normalizeOptions(dir, opts = {}) {
-  const { ignore, ...rest } = opts;
+  const {ignore, ...rest} = opts;
 
   if (Array.isArray(ignore)) {
-    opts = { ...rest };
+    opts = {...rest};
 
     for (const value of ignore) {
       if (isGlob(value)) {
@@ -23,7 +24,7 @@ function normalizeOptions(dir, opts = {}) {
           // C++ does not support lookbehind regex patterns, they
           // were only added later to JavaScript engines
           // (https://bit.ly/3V7S6UL)
-          lookbehinds: false
+          lookbehinds: false,
         });
         opts.ignoreGlobs.push(regex.source);
       } else {
@@ -42,6 +43,14 @@ function normalizeOptions(dir, opts = {}) {
 exports.createWrapper = (binding) => {
   return {
     writeSnapshot(dir, snapshot, opts) {
+      if (opts?.backend === 'git') {
+        return git.writeSnapshot(
+          path.resolve(dir),
+          path.resolve(snapshot),
+          normalizeOptions(dir, opts),
+        );
+      }
+
       return binding.writeSnapshot(
         path.resolve(dir),
         path.resolve(snapshot),
@@ -49,6 +58,13 @@ exports.createWrapper = (binding) => {
       );
     },
     getEventsSince(dir, snapshot, opts) {
+      if (opts?.backend === 'git') {
+        return git.getEventsSince(
+          path.resolve(dir),
+          path.resolve(snapshot),
+          normalizeOptions(dir, opts),
+        );
+      }
       return binding.getEventsSince(
         path.resolve(dir),
         path.resolve(snapshot),
@@ -56,6 +72,10 @@ exports.createWrapper = (binding) => {
       );
     },
     async subscribe(dir, fn, opts) {
+      if (opts?.backend === 'git') {
+        throw new Error('Unsupported with git backend');
+      }
+
       dir = path.resolve(dir);
       opts = normalizeOptions(dir, opts);
       await binding.subscribe(dir, fn, opts);
@@ -67,11 +87,15 @@ exports.createWrapper = (binding) => {
       };
     },
     unsubscribe(dir, fn, opts) {
+      if (opts?.backend === 'git') {
+        throw new Error('Unsupported with git backend');
+      }
+
       return binding.unsubscribe(
         path.resolve(dir),
         fn,
         normalizeOptions(dir, opts),
       );
-    }
+    },
   };
 };

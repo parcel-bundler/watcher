@@ -28,6 +28,7 @@
     "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "build": "node-gyp rebuild -j 8 --debug --verbose",
+    "debugbuild": "node-gyp build --debug -j8",
     "test": "mocha"
   },
   "engines": {
@@ -48,7 +49,9 @@
     "detect-libc": "^1.0.3",
     "is-glob": "^4.0.3",
     "micromatch": "^4.0.5",
-    "node-addon-api": "^7.0.0"
+    "node-addon-api": "^7.0.0",
+    "nullthrows": "^1.1.1",
+    "simple-git": "^3.17.0"
   },
   "devDependencies": {
     "fs-extra": "^10.0.0",
