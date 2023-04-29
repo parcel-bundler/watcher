@@ -2,7 +2,7 @@ declare type FilePath = string;
 declare type GlobPattern = string;
 
 declare namespace ParcelWatcher {
-  export type BackendType = 
+  export type BackendType =
     | 'fs-events'
     | 'watchman'
     | 'inotify'
@@ -10,12 +10,12 @@ declare namespace ParcelWatcher {
     | 'brute-force';
   export type EventType = 'create' | 'update' | 'delete';
   export interface Options {
-    ignore?: (FilePath|GlobPattern)[];
+    ignore?: (FilePath | GlobPattern)[];
     backend?: BackendType;
   }
   export type SubscribeCallback = (
     err: Error | null,
-    events: Event[]
+    events: Event[],
   ) => unknown;
   export interface AsyncSubscription {
     unsubscribe(): Promise<void>;
@@ -27,22 +27,22 @@ declare namespace ParcelWatcher {
   export function getEventsSince(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
+    opts?: Options,
   ): Promise<Event[]>;
   export function subscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: Options
+    opts?: Options,
   ): Promise<AsyncSubscription>;
   export function unsubscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: Options
+    opts?: Options,
   ): Promise<void>;
   export function writeSnapshot(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
+    opts?: Options,
   ): Promise<FilePath>;
 }
 

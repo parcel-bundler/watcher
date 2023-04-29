@@ -2,7 +2,7 @@
 declare type FilePath = string;
 declare type GlobPattern = string;
 
-export type BackendType = 
+export type BackendType =
   | 'fs-events'
   | 'watchman'
   | 'inotify'
@@ -10,39 +10,36 @@ export type BackendType =
   | 'brute-force';
 export type EventType = 'create' | 'update' | 'delete';
 export interface Options {
-  ignore?: Array<FilePath | GlobPattern>,
-  backend?: BackendType
+  ignore?: Array<FilePath | GlobPattern>;
+  backend?: BackendType;
 }
-export type SubscribeCallback = (
-  err: ?Error,
-  events: Array<Event>
-) => mixed;
+export type SubscribeCallback = (err: ?Error, events: Array<Event>) => mixed;
 export interface AsyncSubscription {
-  unsubscribe(): Promise<void>
+  unsubscribe(): Promise<void>;
 }
 export interface Event {
-  path: FilePath,
-  type: EventType
+  path: FilePath;
+  type: EventType;
 }
-declare module.exports: {
+declare module.exports: {|
   getEventsSince(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
+    opts?: Options,
   ): Promise<Array<Event>>,
   subscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: Options
+    opts?: Options,
   ): Promise<AsyncSubscription>,
   unsubscribe(
     dir: FilePath,
     fn: SubscribeCallback,
-    opts?: Options
+    opts?: Options,
   ): Promise<void>,
   writeSnapshot(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
-  ): Promise<FilePath>
-}
+    opts?: Options,
+  ): Promise<FilePath>,
+|};
