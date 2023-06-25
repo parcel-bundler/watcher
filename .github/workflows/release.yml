@@ -1,0 +1,60 @@
+name: release
+
+on:
+  push:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            arch: x64
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: ubuntu-latest
+            arch: x64
+            image: ghcr.io/prebuild/centos7-devtoolset7:2.1.1
+          - os: ubuntu-latest
+            arch: x64
+            image: ghcr.io/prebuild/alpine:2.1.1
+          - os: ubuntu-latest
+            arch: arm64
+            image: ghcr.io/prebuild/linux-arm64-lts:2.1.1
+          - os: ubuntu-latest
+            arch: arm64
+            image: ghcr.io/prebuild/linux-arm64-musl:2.1.1
+          - os: ubuntu-latest
+            arch: arm64
+            image: ghcr.io/prebuild/linux-armv7:2.1.1
+      runs-on: ${{matrix.os}}
+      container:
+        image: ${{matrix.image}}
+      steps:
+        - uses: actions/checkout@v3
+        - uses: actions/setup-node@v3
+          with:
+            cache: yarn
+            node-version: 18
+        - run: yarn --frozen-lockfile
+        - run: yarn prebuild --arch ${{ matrix.arch }}
+        - name: Upload artifacts
+          uses: actions/upload-artifact@v3
+          with:
+            name: prebuilds
+            path: prebuilds
+
+  release:
+    runs-on: ubuntu-latest
+    needs:
+      - build
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: prebuilds
+      - name: debug
+        run: ls -lh prebuilds/**
