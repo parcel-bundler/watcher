@@ -63,16 +63,17 @@ jobs:
     needs:
       - build
     steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: 16
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
           path: prebuilds
       - name: debug
         run: ls -lh prebuilds/*/*
-      - uses: actions/setup-node@v3
-        with:
-          cache: yarn
-          node-version: 16
       - name: Build npm packages
         run: node scripts/build-npm.js
       - name: Upload artifacts
