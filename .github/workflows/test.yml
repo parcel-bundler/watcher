@@ -1,0 +1,46 @@
+name: test
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [16, 18, 20]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: ${{matrix.node}}
+      - name: Install watchman
+        if: ${{ matrix.os == 'macos-latest' }}
+        run:
+          # https://github.com/actions/setup-python/issues/577
+          rm /usr/local/bin/2to3 || true
+          rm /usr/local/bin/2to3-3.11 || true
+          rm /usr/local/bin/idle3 || true
+          rm /usr/local/bin/idle3.11 || true
+          rm /usr/local/bin/pydoc3 || true
+          rm /usr/local/bin/pydoc3.11 || true
+          rm /usr/local/bin/python3 || true
+          rm /usr/local/bin/python3.11 || true
+          rm /usr/local/bin/python3-config || true
+          rm /usr/local/bin/python3.11-config || true
+          brew update
+          brew install watchman
+      - name: Copy watchman
+        if: ${{ matrix.os == 'windows-latest' }}
+        run:
+          cp -rf $(System.DefaultWorkingDirectory)\watchman $(Agent.HomeDirectory)
+          set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
+          echo "##vso[task.setvariable variable=PATH]%PATH%"
+          watchman -v
+      - run: yarn --frozen-lockfile
+      - run: yarn test
