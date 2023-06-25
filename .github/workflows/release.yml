@@ -13,6 +13,8 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
+          - os: windows-latest
+            arch: arm64
           - os: macos-latest
             arch: x64
           - os: macos-latest
@@ -37,6 +39,9 @@ jobs:
             arch: arm
             libc: glibc
             image: ghcr.io/prebuild/linux-armv7:2.1.1
+          - os: ubuntu-latest
+            arch: arm64
+            image: ghcr.io/prebuild/android-arm64:2.1.1
     runs-on: ${{matrix.os}}
     container:
       image: ${{matrix.image}}

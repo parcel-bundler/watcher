@@ -16,6 +16,10 @@ const triples = [
     arch: 'x64'
   },
   {
+    platform: 'win32',
+    arch: 'arm64'
+  },
+  {
     platform: 'linux',
     arch: 'x64',
     libc: 'glibc'
@@ -39,6 +43,10 @@ const triples = [
     platform: 'linux',
     arch: 'arm',
     libc: 'glibc'
+  },
+  {
+    platform: 'android',
+    arch: 'arm64'
   },
 ];
 
