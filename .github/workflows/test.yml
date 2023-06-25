@@ -51,8 +51,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
           Copy-Item -Path watchman -Destination %HOME%
-          set PATH=%PATH%;%HOME%\watchman\windows\bin
-          echo "##vso[task.setvariable variable=PATH]%PATH%"
+          $env:PATH += ";%HOME%\watchman\windows\bin"
           watchman -v
       - run: yarn --frozen-lockfile
       - run: yarn test
