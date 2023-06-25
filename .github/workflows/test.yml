@@ -12,7 +12,14 @@ jobs:
       matrix:
         node: [16, 18, 20]
         os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            container: jasperdm/alpine-watchman:latest
+          - os: ubuntu-latest
+            container: jasperdm/centos-watchman:latest
     runs-on: ${{matrix.os}}
+    container:
+      image: ${{matrix.container}}
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -38,8 +45,8 @@ jobs:
       - name: Copy watchman
         if: ${{ matrix.os == 'windows-latest' }}
         run:
-          cp -rf $(System.DefaultWorkingDirectory)\watchman $(Agent.HomeDirectory)
-          set PATH=%PATH%;$(Agent.HomeDirectory)\watchman\windows\bin
+          cp -rf watchman $HOME
+          set PATH=%PATH%;$HOME\watchman\windows\bin
           echo "##vso[task.setvariable variable=PATH]%PATH%"
           watchman -v
       - run: yarn --frozen-lockfile
