@@ -52,6 +52,7 @@ jobs:
         run: |
           Copy-Item -Recurse -Path watchman -Destination $home
           $env:PATH += ";$home\watchman\windows\bin"
+          Add-Content $env:GITHUB_PATH "$home\watchman\windows\bin"
           watchman -v
       - run: yarn --frozen-lockfile
       - run: yarn test
