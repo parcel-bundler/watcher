@@ -30,22 +30,22 @@ jobs:
           - os: ubuntu-latest
             arch: arm64
             image: ghcr.io/prebuild/linux-armv7:2.1.1
-      runs-on: ${{matrix.os}}
-      container:
-        image: ${{matrix.image}}
-      steps:
-        - uses: actions/checkout@v3
-        - uses: actions/setup-node@v3
-          with:
-            cache: yarn
-            node-version: 18
-        - run: yarn --frozen-lockfile
-        - run: yarn prebuild --arch ${{ matrix.arch }}
-        - name: Upload artifacts
-          uses: actions/upload-artifact@v3
-          with:
-            name: prebuilds
-            path: prebuilds
+    runs-on: ${{matrix.os}}
+    container:
+      image: ${{matrix.image}}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: 18
+      - run: yarn --frozen-lockfile
+      - run: yarn prebuild --arch ${{ matrix.arch }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: prebuilds
+          path: prebuilds
 
   release:
     runs-on: ubuntu-latest
