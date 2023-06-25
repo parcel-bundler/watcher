@@ -36,10 +36,21 @@ jobs:
           brew update
           brew install watchman
           watchman -v
+      - name: Install watchman
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          wget https://github.com/facebook/watchman/releases/download/v2023.06.19.00/watchman-v2023.06.19.00-linux.zip
+          unzip watchman-*-linux.zip
+          cd watchman-v2023.06.19.00-linux
+          sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
+          sudo cp bin/* /usr/local/bin
+          sudo cp lib/* /usr/local/lib
+          sudo chmod 755 /usr/local/bin/watchman
+          sudo chmod 2777 /usr/local/var/run/watchman
       - name: Copy watchman
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          cp -rf watchman %HOME%
+          Copy-Item -Path watchman -Destination %HOME%
           set PATH=%PATH%;%HOME%\watchman\windows\bin
           echo "##vso[task.setvariable variable=PATH]%PATH%"
           watchman -v
