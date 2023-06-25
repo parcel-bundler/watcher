@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 18
+          node-version: 16
       - run: yarn --frozen-lockfile --ignore-scripts
       - run: yarn prebuild --arch ${{ matrix.arch }}
       - name: Upload artifacts
