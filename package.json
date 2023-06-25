@@ -1,6 +1,6 @@
 {
   "name": "@parcel/watcher",
-  "version": "2.1.0",
+  "version": "2.2.0-alpha.0",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
@@ -17,13 +17,10 @@
     "url": "https://opencollective.com/parcel"
   },
   "files": [
-    "src",
-    "prebuilds",
     "index.js",
     "index.js.flow",
     "index.d.ts",
     "package.json",
-    "binding.gyp",
     "README.md"
   ],
   "scripts": {
