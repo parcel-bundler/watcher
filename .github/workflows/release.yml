@@ -19,18 +19,23 @@ jobs:
             arch: arm64
           - os: ubuntu-latest
             arch: x64
+            libc: glibc
             image: ghcr.io/prebuild/centos7-devtoolset7:2.1.1
           - os: ubuntu-latest
             arch: x64
+            libc: musl
             image: ghcr.io/prebuild/alpine:2.1.1
           - os: ubuntu-latest
             arch: arm64
+            libc: glibc
             image: ghcr.io/prebuild/linux-arm64-lts:2.1.1
           - os: ubuntu-latest
             arch: arm64
+            libc: musl
             image: ghcr.io/prebuild/linux-arm64-musl:2.1.1
           - os: ubuntu-latest
-            arch: arm64
+            arch: arm
+            libc: glibc
             image: ghcr.io/prebuild/linux-armv7:2.1.1
     runs-on: ${{matrix.os}}
     container:
@@ -44,7 +49,7 @@ jobs:
           cache: yarn
           node-version: 16
       - run: yarn --frozen-lockfile --ignore-scripts
-      - run: yarn prebuild --arch ${{ matrix.arch }}
+      - run: yarn prebuild --arch ${{ matrix.arch }} --libc ${{ matrix.libc }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -61,4 +66,4 @@ jobs:
         with:
           path: prebuilds
       - name: debug
-        run: ls -lh prebuilds/**
+        run: ls -lh prebuilds/*/*
