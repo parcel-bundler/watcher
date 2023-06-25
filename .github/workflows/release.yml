@@ -49,7 +49,9 @@ jobs:
           cache: yarn
           node-version: 16
       - run: yarn --frozen-lockfile --ignore-scripts
-      - run: yarn prebuild --arch ${{ matrix.arch }} --libc ${{ matrix.libc }}
+      - run: yarn prebuild --arch ${{ matrix.arch }}
+        env:
+          PREBUILD_LIBC: ${{ matrix.libc }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -67,3 +69,10 @@ jobs:
           path: prebuilds
       - name: debug
         run: ls -lh prebuilds/*/*
+      - name: Build npm packages
+        run: node scripts/build-npm.js
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm
+          path: npm
