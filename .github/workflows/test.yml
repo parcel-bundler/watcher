@@ -50,8 +50,8 @@ jobs:
       - name: Copy watchman
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
-          Copy-Item -Path watchman -Destination %HOME%
-          $env:PATH += ";%HOME%\watchman\windows\bin"
+          Copy-Item -Path watchman -Destination $home
+          $env:PATH += ";$home\watchman\windows\bin"
           watchman -v
       - run: yarn --frozen-lockfile
       - run: yarn test
