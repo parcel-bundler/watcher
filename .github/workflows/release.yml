@@ -41,7 +41,7 @@ jobs:
         with:
           cache: yarn
           node-version: 16
-      - run: yarn --frozen-lockfile
+      - run: yarn --frozen-lockfile --ignore-scripts
       - run: yarn prebuild --arch ${{ matrix.arch }}
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
