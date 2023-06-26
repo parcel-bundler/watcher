@@ -61,7 +61,6 @@ function normalizeOptions(dir, opts = {}) {
     }
   }
 
-  console.log(opts)
   return opts;
 }
 

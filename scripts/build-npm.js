@@ -69,7 +69,6 @@ for (let triple of triples) {
 }
 
 pkg.optionalDependencies = optionalDependencies;
-console.log(optionalDependencies);
 fs.writeFileSync(`${dir}/package.json`, JSON.stringify(pkg, false, 2) + '\n');
 
 function buildNode(triple, t) {
