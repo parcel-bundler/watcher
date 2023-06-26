@@ -24,7 +24,7 @@
     "README.md"
   ],
   "scripts": {
-    "prebuild": "prebuildify --napi --strip --tag-libc -t 16.0.0",
+    "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "build": "node-gyp rebuild -j 8 --debug --verbose",
     "test": "mocha"

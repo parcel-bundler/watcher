@@ -13,35 +13,45 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
+            node: 16
           - os: windows-latest
             arch: arm64
+            node: 20
           - os: macos-latest
             arch: x64
+            node: 16
           - os: macos-latest
             arch: arm64
+            node: 16
           - os: ubuntu-latest
             arch: x64
             libc: glibc
             image: ghcr.io/prebuild/centos7-devtoolset7:2.1.1
+            node: 16
           - os: ubuntu-latest
             arch: x64
             libc: musl
             image: ghcr.io/prebuild/alpine:2.1.1
+            node: 16
           - os: ubuntu-latest
             arch: arm64
             libc: glibc
             image: ghcr.io/prebuild/linux-arm64-lts:2.1.1
+            node: 16
           - os: ubuntu-latest
             arch: arm64
             libc: musl
             image: ghcr.io/prebuild/linux-arm64-musl:2.1.1
+            node: 16
           - os: ubuntu-latest
             arch: arm
             libc: glibc
             image: ghcr.io/prebuild/linux-armv7:2.1.1
+            node: 16
           - os: ubuntu-latest
             arch: arm64
             image: ghcr.io/prebuild/android-arm64:2.1.1
+            node: 16
     runs-on: ${{matrix.os}}
     container:
       image: ${{matrix.image}}
@@ -52,9 +62,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 16
+          node-version: ${{matrix.node}}
       - run: yarn --frozen-lockfile --ignore-scripts
-      - run: yarn prebuild --arch ${{ matrix.arch }}
+      - run: yarn prebuild --arch ${{ matrix.arch }} -t ${{ matrix.node }}
         env:
           PREBUILD_LIBC: ${{ matrix.libc }}
       - name: Upload artifacts
