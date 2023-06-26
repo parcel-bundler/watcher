@@ -64,7 +64,7 @@ jobs:
           cache: yarn
           node-version: ${{matrix.node}}
       - run: yarn --frozen-lockfile --ignore-scripts
-      - run: yarn prebuild --arch ${{ matrix.arch }} -t ${{ matrix.node }}
+      - run: yarn prebuild --arch ${{ matrix.arch }} -t ${{ matrix.node }}.0.0
         env:
           PREBUILD_LIBC: ${{ matrix.libc }}
       - name: Upload artifacts
