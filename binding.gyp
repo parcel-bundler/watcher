@@ -5,7 +5,6 @@
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc", "src/Glob.cc" ],
       "include_dirs" : ["<!(node -p \"require('node-addon-api').include_dir\")"],
-      "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],
       "conditions": [
@@ -69,5 +68,8 @@
         }]
       ]
     }
-  ]
+  ],
+  "variables": {
+    "openssl_fips": ""
+  }
 }
