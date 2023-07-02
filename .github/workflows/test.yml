@@ -23,16 +23,7 @@ jobs:
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
           # https://github.com/actions/setup-python/issues/577
-          rm /usr/local/bin/2to3 || true
-          rm /usr/local/bin/2to3-3.11 || true
-          rm /usr/local/bin/idle3 || true
-          rm /usr/local/bin/idle3.11 || true
-          rm /usr/local/bin/pydoc3 || true
-          rm /usr/local/bin/pydoc3.11 || true
-          rm /usr/local/bin/python3 || true
-          rm /usr/local/bin/python3.11 || true
-          rm /usr/local/bin/python3-config || true
-          rm /usr/local/bin/python3.11-config || true
+          brew unlink python@3.10
           brew update
           brew install watchman
           watchman -v
