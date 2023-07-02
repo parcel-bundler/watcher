@@ -22,10 +22,14 @@ jobs:
       - name: Install watchman
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          # https://github.com/actions/setup-python/issues/577
-          brew unlink python@3.10
-          brew update
-          brew install watchman
+          wget https://github.com/facebook/watchman/releases/download/v2023.05.01.00/watchman-v2023.05.01.00-macos.zip
+          unzip watchman-*-macos.zip
+          cd watchman-v2023.05.01.00-macos
+          sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
+          sudo cp bin/* /usr/local/bin
+          sudo cp lib/* /usr/local/lib
+          sudo chmod 755 /usr/local/bin/watchman
+          sudo chmod 2777 /usr/local/var/run/watchman
           watchman -v
       - name: Install watchman
         if: ${{ matrix.os == 'ubuntu-latest' }}
