@@ -79,7 +79,7 @@ describe('watcher', () => {
       });
 
       describe('files', () => {
-        it('should emit when a file is created', async () => {
+        it.only('should emit when a file is created', async () => {
           let f = getFilename();
           fs.writeFile(f, 'hello world');
           let res = await nextEvent();
