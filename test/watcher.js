@@ -79,7 +79,7 @@ describe('watcher', () => {
       });
 
       describe('files', () => {
-        it.only('should emit when a file is created', async () => {
+        it('should emit when a file is created', async () => {
           let f = getFilename();
           fs.writeFile(f, 'hello world');
           let res = await nextEvent();
@@ -821,6 +821,8 @@ describe('watcher', () => {
         fs.writeFile(f, 'hello world');
         let [res] = await Promise.all([nextEvent(), workerPromise]);
         assert.deepEqual(res, [{type: 'create', path: f}]);
+
+        await worker.terminate();
       });
     });
   });
