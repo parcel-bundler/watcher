@@ -137,9 +137,9 @@ bool Watcher::watch(Function callback) {
   );
 
   mCallbacks.push_back(Callback {
-    .tsfn = tsfn,
-    .ref = Napi::Persistent(callback),
-    .threadId = std::this_thread::get_id()
+    tsfn,
+    Napi::Persistent(callback),
+    std::this_thread::get_id()
   });
 
   return true;
