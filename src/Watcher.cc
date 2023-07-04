@@ -40,10 +40,7 @@ void removeShared(Watcher *watcher) {
 Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs)
   : mDir(dir),
     mIgnorePaths(ignorePaths),
-    mIgnoreGlobs(ignoreGlobs),
-    mWatched(false),
-    mAsync(NULL),
-    mCallingCallbacks(false) {
+    mIgnoreGlobs(ignoreGlobs) {
       mDebounce = Debounce::getShared();
       mDebounce->add(this, [this] () {
         triggerCallbacks();
@@ -68,112 +65,109 @@ void Watcher::notify() {
   }
 }
 
-void Watcher::notifyError(std::exception &err) {
-  std::unique_lock<std::mutex> lk(mMutex);
-  if (mCallingCallbacks) {
-    mCallbackSignal.wait();
-    mCallbackSignal.reset();
-  }
+struct CallbackData {
+  std::string error;
+  std::vector<Event> events;
+  CallbackData(std::string error, std::vector<Event> events) : error(error), events(events) {}
+};
 
-  mError = err.what();
-  triggerCallbacks();
-}
-
-void Watcher::triggerCallbacks() {
-  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
-  if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mError.size() > 0)) {
-    if (mCallingCallbacks) {
-      mCallbackSignal.wait();
-      mCallbackSignal.reset();
-    }
-
-    mCallbackEvents = mEvents.getEvents();
-    mEvents.clear();
-
-    uv_async_send(mAsync);
-  }
-}
-
-Value Watcher::callbackEventsToJS(const Env& env) {
-  std::lock_guard<std::mutex> l(mCallbackEventsMutex);
+Value callbackEventsToJS(const Env &env, std::vector<Event> &events) {
   EscapableHandleScope scope(env);
-  Array arr = Array::New(env, mCallbackEvents.size());
+  Array arr = Array::New(env, events.size());
   size_t currentEventIndex = 0;
-  for (auto eventIterator = mCallbackEvents.begin(); eventIterator != mCallbackEvents.end(); eventIterator++) {
+  for (auto eventIterator = events.begin(); eventIterator != events.end(); eventIterator++) {
     arr.Set(currentEventIndex++, eventIterator->toJS(env));
   }
   return scope.Escape(arr);
 }
 
-// TODO: Doesn't this need some kind of locking?
-void Watcher::clearCallbacks() {
-  mCallbacks.clear();
-}
+void callJSFunction(Napi::Env env, Function jsCallback, CallbackData *data) {
+  HandleScope scope(env);
+  auto err = data->error.size() > 0 ? Error::New(env, data->error).Value() : env.Null();
+  auto events = callbackEventsToJS(env, data->events);
+  jsCallback.Call({err, events});
+  delete data;
 
-void Watcher::fireCallbacks(uv_async_t *handle) {
-  Watcher *watcher = (Watcher *)handle->data;
-  watcher->mCallingCallbacks = true;
-
-  watcher->mCallbacksIterator = watcher->mCallbacks.begin();
-  while (watcher->mCallbacksIterator != watcher->mCallbacks.end()) {
-    auto it = watcher->mCallbacksIterator;
-    HandleScope scope(it->Env());
-    auto err = watcher->mError.size() > 0 ? Error::New(it->Env(), watcher->mError).Value() : it->Env().Null();
-    auto events = watcher->callbackEventsToJS(it->Env());
-
-    it->MakeCallback(it->Env().Global(), std::initializer_list<napi_value>{err, events});
-    // Throw errors from the callback as fatal exceptions
-    // If we don't handle these node segfaults...
-    if (it->Env().IsExceptionPending()) {
-      Napi::Error err = it->Env().GetAndClearPendingException();
-      napi_fatal_exception(it->Env(), err.Value());
-    }
-
-    // If the iterator was changed, then the callback trigged an unwatch.
-    // The iterator will have been set to the next valid callback.
-    // If it is the same as before, increment it.
-    if (watcher->mCallbacksIterator == it) {
-      watcher->mCallbacksIterator++;
-    }
-  }
-
-  watcher->mCallingCallbacks = false;
-
-  if (watcher->mError.size() > 0) {
-    watcher->clearCallbacks();
-  }
-
-  if (watcher->mCallbacks.size() == 0) {
-    watcher->unref();
-  } else {
-    watcher->mCallbackSignal.notify();
+  // Throw errors from the callback as fatal exceptions
+  // If we don't handle these node segfaults...
+  if (env.IsExceptionPending()) {
+    Napi::Error err = env.GetAndClearPendingException();
+    napi_fatal_exception(env, err.Value());
   }
 }
 
-bool Watcher::watch(FunctionReference callback) {
+void Watcher::notifyError(std::exception &err) {
   std::unique_lock<std::mutex> lk(mMutex);
-  auto res = mCallbacks.insert(std::move(callback));
-  if (res.second && !mWatched) {
-    mAsync = new uv_async_t;
-    mAsync->data = (void *)this;
-    uv_async_init(uv_default_loop(), mAsync, Watcher::fireCallbacks);
-    mWatched = true;
-    return true;
+  for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
+    CallbackData *data = new CallbackData(err.what(), {});
+    it->tsfn.BlockingCall(data, callJSFunction);
   }
 
-  return false;
+  clearCallbacks();
 }
 
+// This function is called from the debounce thread.
+void Watcher::triggerCallbacks() {
+  std::unique_lock<std::mutex> lk(mMutex);
+  if (mCallbacks.size() > 0 && mEvents.size() > 0) {
+    auto events = mEvents.getEvents();
+    mEvents.clear();
+
+    for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
+      it->tsfn.BlockingCall(new CallbackData("", events), callJSFunction);
+    }
+  }
+}
+
+// This should be called from the JavaScript thread.
+bool Watcher::watch(Function callback) {
+  std::unique_lock<std::mutex> lk(mMutex);
+
+  auto it = findCallback(callback);
+  if (it != mCallbacks.end()) {
+    return false;
+  }
+
+  auto tsfn = ThreadSafeFunction::New(
+    callback.Env(),
+    callback,
+    "Watcher callback",
+    0, // Unlimited queue
+    1 // Initial thread count
+  );
+
+  mCallbacks.push_back(Callback {
+    .tsfn = tsfn,
+    .ref = Napi::Persistent(callback),
+    .threadId = std::this_thread::get_id()
+  });
+
+  return true;
+}
+
+// This should be called from the JavaScript thread.
+std::vector<Callback>::iterator Watcher::findCallback(Function callback) {
+  for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
+    // Only consider callbacks created by the same thread, or V8 will panic.
+    if (it->threadId == std::this_thread::get_id() && it->ref.Value() == callback) {
+      return it;
+    }
+  }
+
+  return mCallbacks.end();
+}
+
+// This should be called from the JavaScript thread.
 bool Watcher::unwatch(Function callback) {
   std::unique_lock<std::mutex> lk(mMutex);
 
   bool removed = false;
-  for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-    if (it->Value() == callback) {
-      mCallbacksIterator = mCallbacks.erase(it);
-      removed = true;
-      break;
-    }
+  auto it = findCallback(callback);
+  if (it != mCallbacks.end()) {
+    it->tsfn.Release();
+    it->ref.Unref();
+    mCallbacks.erase(it);
+    removed = true;
   }
 
   if (removed && mCallbacks.size() == 0) {
@@ -185,18 +179,25 @@ bool Watcher::unwatch(Function callback) {
 }
 
 void Watcher::unref() {
-  if (mCallbacks.size() == 0 && !mCallingCallbacks) {
-    if (mWatched) {
-      mWatched = false;
-      uv_close((uv_handle_t *)mAsync, Watcher::onClose);
-    }
-
+  if (mCallbacks.size() == 0) {
     removeShared(this);
   }
 }
 
-void Watcher::onClose(uv_handle_t *handle) {
-  delete (uv_async_t *)handle;
+void Watcher::destroy() {
+  std::unique_lock<std::mutex> lk(mMutex);
+  clearCallbacks();
+}
+
+// Private because it doesn't lock.
+void Watcher::clearCallbacks() {
+  for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
+    it->tsfn.Release();
+    it->ref.Unref();
+  }
+
+  mCallbacks.clear();
+  unref();
 }
 
 bool Watcher::isIgnored(std::string path) {
@@ -208,7 +209,7 @@ bool Watcher::isIgnored(std::string path) {
   }
 
   auto basePath = mDir + DIR_SEP;
-  
+
   if (path.rfind(basePath, 0) != 0) {
     return false;
   }

@@ -4,8 +4,8 @@
 #include <condition_variable>
 #include <unordered_set>
 #include <set>
-#include <uv.h>
 #include <node_api.h>
+#include <sys/stat.h>
 #include "Glob.hh"
 #include "Event.hh"
 #include "Debounce.hh"
@@ -14,13 +14,18 @@
 
 using namespace Napi;
 
+struct Callback {
+  Napi::ThreadSafeFunction tsfn;
+  Napi::FunctionReference ref;
+  std::thread::id threadId;
+};
+
 struct Watcher {
   std::string mDir;
   std::unordered_set<std::string> mIgnorePaths;
   std::unordered_set<Glob> mIgnoreGlobs;
   EventList mEvents;
   void *state;
-  bool mWatched;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
   ~Watcher();
@@ -32,31 +37,23 @@ struct Watcher {
   void wait();
   void notify();
   void notifyError(std::exception &err);
-  bool watch(FunctionReference callback);
+  bool watch(Function callback);
   bool unwatch(Function callback);
   void unref();
   bool isIgnored(std::string path);
+  void destroy();
 
   static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
 
 private:
   std::mutex mMutex;
-  std::mutex mCallbackEventsMutex;
   std::condition_variable mCond;
-  uv_async_t *mAsync;
-  std::set<FunctionReference> mCallbacks;
-  std::set<FunctionReference>::iterator mCallbacksIterator;
-  bool mCallingCallbacks;
-  std::vector<Event> mCallbackEvents;
+  std::vector<Callback> mCallbacks;
   std::shared_ptr<Debounce> mDebounce;
-  Signal mCallbackSignal;
-  std::string mError;
 
-  Value callbackEventsToJS(const Env& env);
+  std::vector<Callback>::iterator findCallback(Function callback);
   void clearCallbacks();
   void triggerCallbacks();
-  static void fireCallbacks(uv_async_t *handle);
-  static void onClose(uv_handle_t *handle);
 };
 
 class WatcherError : public std::runtime_error {
