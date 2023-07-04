@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #ifdef _WIN32
+#include <winsock2.h>
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -19,12 +20,12 @@ public:
     #ifdef _WIN32
       while (true) {
         mPipe = CreateFile(
-          path.data(), // pipe name 
-          GENERIC_READ | GENERIC_WRITE, // read and write access 
-          0, // no sharing 
+          path.data(), // pipe name
+          GENERIC_READ | GENERIC_WRITE, // read and write access
+          0, // no sharing
           NULL, // default security attributes
-          OPEN_EXISTING, // opens existing pipe 
-          FILE_FLAG_OVERLAPPED, // attributes 
+          OPEN_EXISTING, // opens existing pipe
+          FILE_FLAG_OVERLAPPED, // attributes
           NULL // no template file
         );
 
@@ -74,11 +75,11 @@ public:
       OVERLAPPED overlapped;
       overlapped.hEvent = mWriter;
       bool success = WriteFile(
-        mPipe, // pipe handle 
-        buf.data(), // message 
-        buf.size(), // message length 
-        NULL, // bytes written 
-        &overlapped // overlapped 
+        mPipe, // pipe handle
+        buf.data(), // message
+        buf.size(), // message length
+        NULL, // bytes written
+        &overlapped // overlapped
       );
 
       if (mStopped) {
@@ -122,11 +123,11 @@ public:
       OVERLAPPED overlapped;
       overlapped.hEvent = mReader;
       bool success = ReadFile(
-        mPipe, // pipe handle 
-        buf, // buffer to receive reply 
-        len, // size of buffer 
-        NULL, // number of bytes read 
-        &overlapped // overlapped 
+        mPipe, // pipe handle
+        buf, // buffer to receive reply
+        len, // size of buffer
+        NULL, // number of bytes read
+        &overlapped // overlapped
       );
 
       if (!success && !mStopped) {
@@ -140,7 +141,7 @@ public:
       if (!success && !mStopped) {
         throw std::runtime_error("GetOverlappedResult failed");
       }
-      
+
       return read;
     #else
       int r = ::read(mSock, buf, len);
