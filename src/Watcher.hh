@@ -5,7 +5,6 @@
 #include <unordered_set>
 #include <set>
 #include <node_api.h>
-#include <sys/stat.h>
 #include "Glob.hh"
 #include "Event.hh"
 #include "Debounce.hh"
