@@ -791,38 +791,40 @@ describe('watcher', () => {
         });
       });
 
-      it('should support worker threads', async function () {
-        let worker = new Worker(`
-          const {parentPort} = require('worker_threads');
-          const {tmpDir, backend, modulePath} = require('worker_threads').workerData;
-          const watcher = require(modulePath);
-          async function run() {
-            let sub = await watcher.subscribe(tmpDir, async (err, events) => {
-              await sub.unsubscribe();
-              parentPort.postMessage('success');
-            }, {backend});
-            parentPort.postMessage('ready');
-          }
+      describe('workers', () => {
+        it('should support worker threads', async function () {
+          let worker = new Worker(`
+            const {parentPort} = require('worker_threads');
+            const {tmpDir, backend, modulePath} = require('worker_threads').workerData;
+            const watcher = require(modulePath);
+            async function run() {
+              let sub = await watcher.subscribe(tmpDir, async (err, events) => {
+                await sub.unsubscribe();
+                parentPort.postMessage('success');
+              }, {backend});
+              parentPort.postMessage('ready');
+            }
 
-          run();
-        `, {eval: true, workerData: {tmpDir, backend, modulePath: require.resolve('../')}});
+            run();
+          `, {eval: true, workerData: {tmpDir, backend, modulePath: require.resolve('../')}});
 
-        await new Promise((resolve, reject) => {
-          worker.once('message', resolve);
-          worker.once('error', reject);
+          await new Promise((resolve, reject) => {
+            worker.once('message', resolve);
+            worker.once('error', reject);
+          });
+
+          let workerPromise = new Promise((resolve, reject) => {
+            worker.once('message', resolve);
+            worker.once('error', reject);
+          });
+
+          let f = getFilename();
+          fs.writeFile(f, 'hello world');
+          let [res] = await Promise.all([nextEvent(), workerPromise]);
+          assert.deepEqual(res, [{type: 'create', path: f}]);
+
+          await worker.terminate();
         });
-
-        let workerPromise = new Promise((resolve, reject) => {
-          worker.once('message', resolve);
-          worker.once('error', reject);
-        });
-
-        let f = getFilename();
-        fs.writeFile(f, 'hello world');
-        let [res] = await Promise.all([nextEvent(), workerPromise]);
-        assert.deepEqual(res, [{type: 'create', path: f}]);
-
-        await worker.terminate();
       });
     });
   });
