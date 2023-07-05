@@ -791,7 +791,7 @@ describe('watcher', () => {
         });
       });
 
-      describe('workers', () => {
+      describe('worker threads', () => {
         it('should support worker threads', async function () {
           let worker = new Worker(`
             const {parentPort} = require('worker_threads');
