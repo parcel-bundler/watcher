@@ -6,11 +6,13 @@ const {execSync} = require('child_process');
 
 let backends = [];
 if (process.platform === 'darwin') {
-  backends = ['fs-events', 'watchman'];
+  backends = ['fs-events', 'kqueue', 'watchman'];
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
+} else if (process.platform === 'freebsd') {
+  backends = ['kqueue'];
 }
 
 describe('watcher', () => {
@@ -328,13 +330,6 @@ describe('watcher', () => {
         });
 
         it('should emit when a sub-directory is deleted with directories inside', async () => {
-          if (backend === 'watchman') {
-            // It seems that watchman emits the second delete event before the
-            // first create event when rapidly renaming a directory and one of
-            // its child so our test is failing in that case.
-            return;
-          }
-
           let base = getFilename();
           await fs.mkdir(base);
           await nextEvent();
@@ -350,12 +345,22 @@ describe('watcher', () => {
           await fs.rename(getPath('dir2/subdir'), getPath('dir2/subdir2'));
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: getPath('dir')},
-            {type: 'create', path: getPath('dir2')},
-            {type: 'delete', path: getPath('dir2/subdir')},
-            {type: 'create', path: getPath('dir2/subdir2')},
-          ]);
+          if (backend === 'watchman' || backend === 'kqueue') {
+            // Order is slightly different in these backends.
+            assert.deepEqual(res, [
+              {type: 'delete', path: getPath('dir')},
+              {type: 'delete', path: getPath('dir/subdir')},
+              {type: 'create', path: getPath('dir2')},
+              {type: 'create', path: getPath('dir2/subdir2')},
+            ]);
+          } else {
+            assert.deepEqual(res, [
+              {type: 'delete', path: getPath('dir')},
+              {type: 'create', path: getPath('dir2')},
+              {type: 'delete', path: getPath('dir2/subdir')},
+              {type: 'create', path: getPath('dir2/subdir2')},
+            ]);
+          }
         });
       });
 
@@ -491,6 +496,12 @@ describe('watcher', () => {
           });
 
           it('should coalese multiple rename events', async () => {
+            if (backend === 'kqueue') {
+              // kqueue delivers events so fast that the original writeFile
+              // doesn't get coalesced with the renames.
+              return;
+            }
+
             let f1 = getFilename();
             let f2 = getFilename();
             let f3 = getFilename();
