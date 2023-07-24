@@ -1,9 +1,11 @@
-const watcher = require('../');
+const watcherNative = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 const {execSync} = require('child_process');
 const {Worker} = require('worker_threads');
+
+let watcher = watcherNative;
 
 let backends = [];
 if (process.platform === 'darwin') {
@@ -12,6 +14,10 @@ if (process.platform === 'darwin') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
+}
+
+if (process.env.TEST_WASM) {
+  backends = ['wasm'];
 }
 
 describe('watcher', () => {
@@ -50,6 +56,13 @@ describe('watcher', () => {
       let ignoreDir, ignoreFile, ignoreGlobDir, fileToRename, dirToRename, sub;
 
       before(async () => {
+        if (backend === 'wasm') {
+          watcher = await import('../wasm/index.mjs');
+          await watcher.default();
+        } else {
+          watcher = watcherNative;
+        }
+
         tmpDir = path.join(
           fs.realpathSync(require('os').tmpdir()),
           Math.random().toString(31).slice(2),
@@ -121,6 +134,11 @@ describe('watcher', () => {
         });
 
         it('should emit when a file is renamed only changing case', async () => {
+          if (backend === 'wasm') {
+            // WASM backend doesn't handle macOS case-insensitive filesystem.
+            return;
+          }
+
           let f1 = getFilename();
           let f2 = path.join(path.dirname(f1), path.basename(f1).toUpperCase());
           fs.writeFile(f1, 'hello world');
@@ -190,7 +208,7 @@ describe('watcher', () => {
         });
 
         it('should handle when the directory to watch is deleted', async () => {
-          if (backend === 'watchman') {
+          if (backend === 'watchman' || backend === 'wasm') {
             // Watchman doesn't handle this correctly
             return;
           }
@@ -329,7 +347,7 @@ describe('watcher', () => {
         });
 
         it('should emit when a sub-directory is deleted with directories inside', async () => {
-          if (backend === 'watchman') {
+          if (backend === 'watchman' || backend === 'wasm') {
             // It seems that watchman emits the second delete event before the
             // first create event when rapidly renaming a directory and one of
             // its child so our test is failing in that case.
@@ -469,7 +487,7 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'update', path: f1}]);
         });
 
-        if (backend !== 'fs-events') {
+        if (backend !== 'fs-events' && backend !== 'wasm') {
           it('should ignore files that are created and deleted rapidly', async () => {
             let f1 = getFilename();
             let f2 = getFilename();
@@ -791,41 +809,43 @@ describe('watcher', () => {
         });
       });
 
-      describe('worker threads', () => {
-        it('should support worker threads', async function () {
-          let worker = new Worker(`
-            const {parentPort} = require('worker_threads');
-            const {tmpDir, backend, modulePath} = require('worker_threads').workerData;
-            const watcher = require(modulePath);
-            async function run() {
-              let sub = await watcher.subscribe(tmpDir, async (err, events) => {
-                await sub.unsubscribe();
-                parentPort.postMessage('success');
-              }, {backend});
-              parentPort.postMessage('ready');
-            }
+      if (backend !== 'wasm') {
+        describe('worker threads', () => {
+          it('should support worker threads', async function () {
+            let worker = new Worker(`
+              const {parentPort} = require('worker_threads');
+              const {tmpDir, backend, modulePath} = require('worker_threads').workerData;
+              const watcher = require(modulePath);
+              async function run() {
+                let sub = await watcher.subscribe(tmpDir, async (err, events) => {
+                  await sub.unsubscribe();
+                  parentPort.postMessage('success');
+                }, {backend});
+                parentPort.postMessage('ready');
+              }
 
-            run();
-          `, {eval: true, workerData: {tmpDir, backend, modulePath: require.resolve('../')}});
+              run();
+            `, {eval: true, workerData: {tmpDir, backend, modulePath: require.resolve('../')}});
 
-          await new Promise((resolve, reject) => {
-            worker.once('message', resolve);
-            worker.once('error', reject);
+            await new Promise((resolve, reject) => {
+              worker.once('message', resolve);
+              worker.once('error', reject);
+            });
+
+            let workerPromise = new Promise((resolve, reject) => {
+              worker.once('message', resolve);
+              worker.once('error', reject);
+            });
+
+            let f = getFilename();
+            fs.writeFile(f, 'hello world');
+            let [res] = await Promise.all([nextEvent(), workerPromise]);
+            assert.deepEqual(res, [{type: 'create', path: f}]);
+
+            await worker.terminate();
           });
-
-          let workerPromise = new Promise((resolve, reject) => {
-            worker.once('message', resolve);
-            worker.once('error', reject);
-          });
-
-          let f = getFilename();
-          fs.writeFile(f, 'hello world');
-          let [res] = await Promise.all([nextEvent(), workerPromise]);
-          assert.deepEqual(res, [{type: 'create', path: f}]);
-
-          await worker.terminate();
         });
-      });
+      }
     });
   });
 

@@ -1,6 +1,4 @@
-const path = require('path');
-const micromatch = require('micromatch');
-const isGlob = require('is-glob');
+const {createWrapper} = require('./wrapper');
 
 let name = `@parcel/watcher-${process.platform}-${process.arch}`;
 if (process.platform === 'linux') {
@@ -64,38 +62,8 @@ function normalizeOptions(dir, opts = {}) {
   return opts;
 }
 
-exports.writeSnapshot = (dir, snapshot, opts) => {
-  return binding.writeSnapshot(
-    path.resolve(dir),
-    path.resolve(snapshot),
-    normalizeOptions(dir, opts),
-  );
-};
-
-exports.getEventsSince = (dir, snapshot, opts) => {
-  return binding.getEventsSince(
-    path.resolve(dir),
-    path.resolve(snapshot),
-    normalizeOptions(dir, opts),
-  );
-};
-
-exports.subscribe = async (dir, fn, opts) => {
-  dir = path.resolve(dir);
-  opts = normalizeOptions(dir, opts);
-  await binding.subscribe(dir, fn, opts);
-
-  return {
-    unsubscribe() {
-      return binding.unsubscribe(dir, fn, opts);
-    },
-  };
-};
-
-exports.unsubscribe = (dir, fn, opts) => {
-  return binding.unsubscribe(
-    path.resolve(dir),
-    fn,
-    normalizeOptions(dir, opts),
-  );
-};
+const wrapper = createWrapper(binding);
+exports.writeSnapshot = wrapper.writeSnapshot;
+exports.getEventsSince = wrapper.getEventsSince;
+exports.subscribe = wrapper.subscribe;
+exports.unsubscribe = wrapper.unsubscribe;

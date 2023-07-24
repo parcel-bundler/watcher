@@ -6,11 +6,12 @@
 
 struct Glob {
   std::size_t mHash;
-  std::regex mRegex;
   std::string mRaw;
+  #ifndef __wasm32__
+  std::regex mRegex;
+  #endif
 
   Glob(std::string raw);
-  Glob(std::string raw, std::regex regex);
 
   bool operator==(const Glob &other) const {
     return mHash == other.mHash;

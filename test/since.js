@@ -1,7 +1,10 @@
-const watcher = require('../');
+const watcherNative = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
+
+let watcher = watcherNative;
+let watcherWasm;
 
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 const tmpDir = path.join(
@@ -17,6 +20,10 @@ if (process.platform === 'darwin') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
+}
+
+if (process.env.TEST_WASM) {
+  backends = ['wasm'];
 }
 
 let c = 0;
@@ -48,6 +55,18 @@ describe('since', () => {
 
   backends.forEach((backend) => {
     describe(backend, () => {
+      before(async function () {
+        if (backend === 'wasm') {
+          if (!watcherWasm) {
+            watcherWasm = await import('../wasm/index.mjs');
+            await watcherWasm.default();
+          }
+          watcher = watcherWasm;
+        } else {
+          watcher = watcherNative;
+        }
+      });
+
       describe('files', () => {
         it('should emit when a file is created', async function () {
           this.timeout(5000);
