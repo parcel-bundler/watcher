@@ -1,4 +1,5 @@
 #include "DirTree.hh"
+#include <inttypes.h>
 
 static std::mutex mDirCacheMutex;
 static std::unordered_map<std::string, std::weak_ptr<DirTree>> dirTreeCache;
@@ -140,12 +141,12 @@ DirEntry::DirEntry(FILE *f) {
     path.resize(size);
     if (fread(&path[0], sizeof(char), size, f)) {
       int d = 0;
-      fscanf(f, "%llu %d\n", &mtime, &d);
+      fscanf(f, "%" PRIu64 " %d\n", &mtime, &d);
       isDir = d == 1;
     }
   }
 }
 
 void DirEntry::write(FILE *f) const {
-  fprintf(f, "%zu%s%llu %d\n", path.size(), path.c_str(), mtime, isDir);
+  fprintf(f, "%zu%s%" PRIu64 " %d\n", path.size(), path.c_str(), mtime, isDir);
 }

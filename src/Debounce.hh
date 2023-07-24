@@ -3,6 +3,7 @@
 
 #include <thread>
 #include <unordered_map>
+#include <functional>
 #include "Signal.hh"
 
 #define MIN_WAIT_TIME 50

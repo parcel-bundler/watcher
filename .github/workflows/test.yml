@@ -57,10 +57,6 @@ jobs:
       image: emscripten/emsdk
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          cache: yarn
-          node-version: 18
       - run: corepack enable
       - run: yarn --frozen-lockfile
       - run: make wasm-debug
