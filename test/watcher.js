@@ -492,16 +492,16 @@ describe('watcher', () => {
             fs.rename(f1, f2);
 
             let res = await nextEvent();
-            assert.deepEqual(res, [{type: 'create', path: f2}]);
-          });
-
-          it('should coalese multiple rename events', async () => {
             if (backend === 'kqueue') {
               // kqueue delivers events so fast that the original writeFile
               // doesn't get coalesced with the renames.
-              return;
+              assert(res.find(v => v.type === 'create' && v.path === f2));
+            } else {
+              assert.deepEqual(res, [{type: 'create', path: f2}]);
             }
+          });
 
+          it('should coalese multiple rename events', async () => {
             let f1 = getFilename();
             let f2 = getFilename();
             let f3 = getFilename();
@@ -512,7 +512,13 @@ describe('watcher', () => {
             fs.rename(f3, f4);
 
             let res = await nextEvent();
-            assert.deepEqual(res, [{type: 'create', path: f4}]);
+            if (backend === 'kqueue') {
+              // kqueue delivers events so fast that the original writeFile
+              // doesn't get coalesced with the renames.
+              assert(res.find(v => v.type === 'create' && v.path === f4));
+            } else {
+              assert.deepEqual(res, [{type: 'create', path: f4}]);
+            }
           });
         }
 

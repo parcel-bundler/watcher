@@ -66,6 +66,5 @@ jobs:
             echo "~~~~ yarn --version ~~~~"
             yarn --version
           run: |
-            yarn  --frozen-lockfile
-            yarn build
+            yarn --frozen-lockfile
             yarn test
