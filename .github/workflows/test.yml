@@ -61,6 +61,7 @@ jobs:
         with:
           cache: yarn
           node-version: 18
+      - run: corepack enable
       - run: yarn --frozen-lockfile
       - run: make wasm-debug
       - run: TEST_WASM=1 yarn test

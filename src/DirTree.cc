@@ -100,8 +100,7 @@ void DirTree::remove(std::string path) {
 void DirTree::write(FILE *f) {
   std::lock_guard<std::mutex> lock(mMutex);
 
-  // stream << entries.size() << "\n";
-  fprintf(f, "%lu\n", entries.size());
+  fprintf(f, "%zu\n", entries.size());
   for (auto it = entries.begin(); it != entries.end(); it++) {
     it->second.write(f);
   }
@@ -137,7 +136,7 @@ DirEntry::DirEntry(std::string p, uint64_t t, bool d) {
 
 DirEntry::DirEntry(FILE *f) {
   size_t size;
-  if (fscanf(f, "%lu", &size)) {
+  if (fscanf(f, "%zu", &size)) {
     path.resize(size);
     if (fread(&path[0], sizeof(char), size, f)) {
       int d = 0;
@@ -148,5 +147,5 @@ DirEntry::DirEntry(FILE *f) {
 }
 
 void DirEntry::write(FILE *f) const {
-  fprintf(f, "%lu%s%llu %d\n", path.size(), path.c_str(), mtime, isDir);
+  fprintf(f, "%zu%s%llu %d\n", path.size(), path.c_str(), mtime, isDir);
 }
