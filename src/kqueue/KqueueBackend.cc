@@ -2,6 +2,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "KqueueBackend.hh"
 
 #if __APPLE__
