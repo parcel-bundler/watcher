@@ -46,12 +46,7 @@ public:
   void remove(std::string path) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
-    if (event->isCreated) {
-      // Ignore event when rapidly created and removed
-      mEvents.erase(path);
-    } else {
-      event->isDeleted = true;
-    }
+    event->isDeleted = true;
   }
 
   size_t size() {
@@ -63,7 +58,9 @@ public:
     std::lock_guard<std::mutex> l(mMutex);
     std::vector<Event> eventsCloneVector;
     for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
-      eventsCloneVector.push_back(it->second);
+      if (!(it->second.isCreated && it->second.isDeleted)) {
+        eventsCloneVector.push_back(it->second);
+      }
     }
     return eventsCloneVector;
   }
