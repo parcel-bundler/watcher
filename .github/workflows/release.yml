@@ -112,21 +112,16 @@ jobs:
         uses: actions/download-artifact@v3
       - name: Build npm packages
         run: node scripts/build-npm.js
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: npm
-          path: npm
-      # - name: Publish to npm
-      #   env:
-      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #   run: |
-      #     echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
-      #     for pkg in npm/*; do
-      #       echo "Publishing $pkg..."
-      #       cd $pkg;
-      #       npm publish;
-      #       cd ../..;
-      #     done
-      #     echo "Publishing @parcel/watcher..."
-      #     npm publish
+      - name: Publish to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
+          for pkg in npm/*; do
+            echo "Publishing $pkg..."
+            cd $pkg;
+            npm publish;
+            cd ../..;
+          done
+          echo "Publishing @parcel/watcher..."
+          npm publish
