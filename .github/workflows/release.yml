@@ -88,6 +88,7 @@ jobs:
             yarn --version
           run: |
             yarn --frozen-lockfile --ignore-scripts
+            npm install node-gyp -g
             yarn prebuild --arch x64 -t 16.0.0
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
@@ -110,6 +111,11 @@ jobs:
         uses: actions/download-artifact@v3
       - name: Build npm packages
         run: node scripts/build-npm.js
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: npm
+          path: npm
       # - name: Publish to npm
       #   env:
       #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
