@@ -2,6 +2,8 @@
 #define EVENT_H
 
 #include <string>
+#include <node_api.h>
+#include "wasm/include.h"
 #include <napi.h>
 #include <mutex>
 #include <map>

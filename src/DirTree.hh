@@ -3,8 +3,6 @@
 
 #include <string>
 #include <unordered_map>
-#include <ostream>
-#include <istream>
 #include <memory>
 #include "Event.hh"
 
@@ -21,8 +19,8 @@ struct DirEntry {
   mutable void *state;
 
   DirEntry(std::string p, uint64_t t, bool d);
-  DirEntry(std::istream &stream);
-  void write(std::ostream &stream) const;
+  DirEntry(FILE *f);
+  void write(FILE *f) const;
   bool operator==(const DirEntry &other) const {
     return path == other.path;
   }
@@ -32,12 +30,12 @@ class DirTree {
 public:
   static std::shared_ptr<DirTree> getCached(std::string root);
   DirTree(std::string root) : root(root), isComplete(false) {}
-  DirTree(std::string root, std::istream &stream);
+  DirTree(std::string root, FILE *f);
   DirEntry *add(std::string path, uint64_t mtime, bool isDir);
   DirEntry *find(std::string path);
   DirEntry *update(std::string path, uint64_t mtime);
   void remove(std::string path);
-  void write(std::ostream &stream);
+  void write(FILE *f);
   void getChanges(DirTree *snapshot, EventList &events);
 
   std::mutex mMutex;

@@ -35,6 +35,11 @@ void removeShared(Watcher *watcher) {
       break;
     }
   }
+
+  // Free up memory.
+  if (sharedWatchers.size() == 0) {
+    sharedWatchers.rehash(0);
+  }
 }
 
 Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs)

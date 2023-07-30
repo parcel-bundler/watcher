@@ -1,7 +1,7 @@
 #include <unordered_set>
-#include <iostream>
-#include <napi.h>
 #include <node_api.h>
+#include "wasm/include.h"
+#include <napi.h>
 #include "Glob.hh"
 #include "Event.hh"
 #include "Backend.hh"
@@ -40,7 +40,7 @@ std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
         Value item = items.Get(Number::New(env, i));
         if (item.IsString()) {
           auto key = item.As<String>().Utf8Value();
-          result.emplace(key, std::regex(key.c_str()));
+          result.emplace(key);
         }
       }
     }

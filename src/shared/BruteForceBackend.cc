@@ -1,5 +1,4 @@
 #include <string>
-#include <fstream>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BruteForceBackend.hh"
@@ -19,18 +18,24 @@ std::shared_ptr<DirTree> BruteForceBackend::getTree(Watcher &watcher, bool shoul
 void BruteForceBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   auto tree = getTree(watcher);
-  std::ofstream ofs(*snapshotPath);
-  tree->write(ofs);
+  FILE *f = fopen(snapshotPath->c_str(), "w");
+  if (!f) {
+    throw std::runtime_error(std::string("Unable to open snapshot file: ") + strerror(errno));
+  }
+
+  tree->write(f);
+  fclose(f);
 }
 
 void BruteForceBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
-  std::ifstream ifs(*snapshotPath);
-  if (ifs.fail()) {
-    return;
+  FILE *f = fopen(snapshotPath->c_str(), "r");
+  if (!f) {
+    throw std::runtime_error(std::string("Unable to open snapshot file: ") + strerror(errno));
   }
 
-  DirTree snapshot{watcher.mDir, ifs};
+  DirTree snapshot{watcher.mDir, f};
   auto now = getTree(watcher);
   now->getChanges(&snapshot, watcher.mEvents);
+  fclose(f);
 }

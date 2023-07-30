@@ -1,8 +1,9 @@
 #ifndef PROMISE_RUNNER_H
 #define PROMISE_RUNNER_H
 
-#include <napi.h>
 #include <node_api.h>
+#include "wasm/include.h"
+#include <napi.h>
 
 using namespace Napi;
 
@@ -12,7 +13,7 @@ public:
   Promise::Deferred deferred;
 
   PromiseRunner(Env env) : env(env), deferred(Promise::Deferred::New(env)) {
-    napi_status status = napi_create_async_work(env, nullptr, env.Undefined(), 
+    napi_status status = napi_create_async_work(env, nullptr, env.Undefined(),
                                                 onExecute, onWorkComplete, this, &work);
     if (status != napi_ok) {
       work = nullptr;

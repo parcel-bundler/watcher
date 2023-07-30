@@ -13,6 +13,9 @@
 #ifdef KQUEUE
 #include "kqueue/KqueueBackend.hh"
 #endif
+#ifdef __wasm32__
+#include "wasm/WasmBackend.hh"
+#endif
 #include "shared/BruteForceBackend.hh"
 
 #include "Backend.hh"
@@ -49,6 +52,11 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
       return std::make_shared<KqueueBackend>();
     }
   #endif
+  #ifdef __wasm32__
+    if (backend == "wasm" || backend == "default") {
+      return std::make_shared<WasmBackend>();
+    }
+  #endif
   if (backend == "brute-force" || backend == "default") {
     return std::make_shared<BruteForceBackend>();
   }
@@ -79,20 +87,33 @@ void removeShared(Backend *backend) {
       break;
     }
   }
+
+  // Free up memory.
+  if (sharedBackends.size() == 0) {
+    sharedBackends.rehash(0);
+  }
 }
 
 void Backend::run() {
-  mThread = std::thread([this] () {
+  #ifndef __wasm32__
+    mThread = std::thread([this] () {
+      try {
+        start();
+      } catch (std::exception &err) {
+        handleError(err);
+      }
+    });
+
+    if (mThread.joinable()) {
+      mStartedSignal.wait();
+    }
+  #else
     try {
       start();
     } catch (std::exception &err) {
       handleError(err);
     }
-  });
-
-  if (mThread.joinable()) {
-    mStartedSignal.wait();
-  }
+  #endif
 }
 
 void Backend::notifyStarted() {
@@ -104,15 +125,17 @@ void Backend::start() {
 }
 
 Backend::~Backend() {
-  // Wait for thread to stop
-  if (mThread.joinable()) {
-    // If the backend is being destroyed from the thread itself, detach, otherwise join.
-    if (mThread.get_id() == std::this_thread::get_id()) {
-      mThread.detach();
-    } else {
-      mThread.join();
+  #ifndef __wasm32__
+    // Wait for thread to stop
+    if (mThread.joinable()) {
+      // If the backend is being destroyed from the thread itself, detach, otherwise join.
+      if (mThread.get_id() == std::this_thread::get_id()) {
+        mThread.detach();
+      } else {
+        mThread.join();
+      }
     }
-  }
+  #endif
 }
 
 void Backend::watch(Watcher &watcher) {

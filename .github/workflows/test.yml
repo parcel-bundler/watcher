@@ -3,7 +3,6 @@ on:
   push:
     branches: [master]
   pull_request:
-    branches: [master]
 
 jobs:
   test:
@@ -51,6 +50,7 @@ jobs:
           watchman -v
       - run: yarn --frozen-lockfile
       - run: yarn test
+
   test-freebsd:
     runs-on: macos-latest
     steps:
@@ -68,3 +68,18 @@ jobs:
           run: |
             yarn --frozen-lockfile
             yarn test
+
+  test-wasm:
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk
+    steps:
+      - uses: actions/checkout@v3
+      - run: corepack enable
+      - uses: actions/setup-node@v3
+        with:
+          cache: yarn
+          node-version: 18
+      - run: yarn --frozen-lockfile
+      - run: make wasm-debug
+      - run: TEST_WASM=1 yarn test
