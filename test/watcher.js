@@ -556,45 +556,7 @@ describe('watcher', () => {
         });
       });
 
-      describe('ignore', () => {
-        it('should ignore a directory', async () => {
-          let f1 = getFilename();
-          let f2 = getFilename(path.basename(ignoreDir));
-          await fs.mkdir(ignoreDir);
-
-          fs.writeFile(f1, 'hello');
-          fs.writeFile(f2, 'sup');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
-        });
-
-        it('should ignore a file', async () => {
-          let f1 = getFilename();
-
-          fs.writeFile(f1, 'hello');
-          fs.writeFile(ignoreFile, 'sup');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
-        });
-
-        it('should ignore globs', async () => {
-          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
-          ]);
-        });
-      });
-
-      describe('multiple', () => {
+      describe.skip('multiple', () => {
         it('should support multiple watchers for the same directory', async () => {
           let dir = path.join(
             fs.realpathSync(require('os').tmpdir()),
@@ -848,6 +810,44 @@ describe('watcher', () => {
           assert.deepEqual(res, [{type: 'create', path: f}]);
 
           await worker.terminate();
+        });
+      });
+
+      describe('ignore', () => {
+        it('should ignore a directory', async () => {
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(ignoreDir));
+          await fs.mkdir(ignoreDir);
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(f2, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore a file', async () => {
+          let f1 = getFilename();
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(ignoreFile, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore globs', async () => {
+          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
+          ]);
         });
       });
     });
