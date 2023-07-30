@@ -13,6 +13,7 @@
 #endif
 #include <dirent.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"

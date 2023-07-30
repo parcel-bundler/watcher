@@ -7,6 +7,7 @@
 #define __THROW
 
 #include <fts.h>
+#include <sys/stat.h>
 #include "../DirTree.hh"
 #include "../shared/BruteForceBackend.hh"
 

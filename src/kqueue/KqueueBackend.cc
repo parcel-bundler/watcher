@@ -2,6 +2,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <libgen.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "KqueueBackend.hh"
 
 #if __APPLE__
@@ -204,6 +207,11 @@ bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Wat
   std::vector<KqueueSubscription *> subs = findSubscriptions(path);
   std::string dirStart = path + DIR_SEP;
 
+  std::unordered_set<std::shared_ptr<DirTree>> trees;
+  for (auto it = subs.begin(); it != subs.end(); it++) {
+    trees.emplace((*it)->tree);
+  }
+
   std::unordered_set<std::string> entries;
   struct dirent *entry;
   while ((entry = readdir(dir))) {
@@ -214,39 +222,55 @@ bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Wat
     std::string fullpath = dirStart + entry->d_name;
     entries.emplace(fullpath);
 
-    for (auto it = subs.begin(); it != subs.end(); it++) {
-      KqueueSubscription *sub = *it;
-      if (sub->watcher->isIgnored(fullpath)) {
-        continue;
-      }
-
-      if (!sub->tree->find(fullpath)) {
+    for (auto it = trees.begin(); it != trees.end(); it++) {
+      std::shared_ptr<DirTree> tree = *it;
+      if (!tree->find(fullpath)) {
         struct stat st;
         fstatat(fd, entry->d_name, &st, AT_SYMLINK_NOFOLLOW);
-        sub->tree->add(fullpath, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
-        sub->watcher->mEvents.create(fullpath);
-        watchers.emplace(sub->watcher);
+        tree->add(fullpath, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
-        bool success = watchDir(*sub->watcher, fullpath, sub->tree);
-        if (!success) {
-          sub->tree->remove(fullpath);
-          return false;
+        // Notify all watchers with the same tree.
+        for (auto i = subs.begin(); i != subs.end(); i++) {
+          KqueueSubscription *sub = *i;
+          if (sub->tree == tree) {
+            if (sub->watcher->isIgnored(fullpath)) {
+              continue;
+            }
+
+            sub->watcher->mEvents.create(fullpath);
+            watchers.emplace(sub->watcher);
+
+            bool success = watchDir(*sub->watcher, fullpath, sub->tree);
+            if (!success) {
+              sub->tree->remove(fullpath);
+              return false;
+            }
+          }
         }
       }
     }
   }
 
-  for (auto it = subs.begin(); it != subs.end(); it++) {
-    KqueueSubscription *sub = *it;
-    for (auto it = sub->tree->entries.begin(); it != sub->tree->entries.end();) {
-      if (it->first.rfind(dirStart, 0) == 0 && entries.count(it->first) == 0) {
-        sub->watcher->mEvents.remove(it->first);
-        watchers.emplace(sub->watcher);
-        mFdToEntry.erase((int)(size_t)it->second.state);
-        mSubscriptions.erase(it->first);
-        it = sub->tree->entries.erase(it);
+  for (auto it = trees.begin(); it != trees.end(); it++) {
+    std::shared_ptr<DirTree> tree = *it;
+    for (auto entry = tree->entries.begin(); entry != tree->entries.end();) {
+      if (entry->first.rfind(dirStart, 0) == 0 && entries.count(entry->first) == 0) {
+        // Notify all watchers with the same tree.
+        for (auto i = subs.begin(); i != subs.end(); i++) {
+          if ((*i)->tree == tree) {
+            KqueueSubscription *sub = *i;
+            if (!sub->watcher->isIgnored(entry->first)) {
+              sub->watcher->mEvents.remove(entry->first);
+              watchers.emplace(sub->watcher);
+            }
+          }
+        }
+
+        mFdToEntry.erase((int)(size_t)entry->second.state);
+        mSubscriptions.erase(entry->first);
+        entry = tree->entries.erase(entry);
       } else {
-        it++;
+        entry++;
       }
     }
   }

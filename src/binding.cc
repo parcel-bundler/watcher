@@ -31,7 +31,7 @@ std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
 
 std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
   std::unordered_set<Glob> result;
-  
+
   if (opts.IsObject()) {
     Value v = opts.As<Object>().Get(String::New(env, "ignoreGlobs"));
     if (v.IsArray()) {
@@ -165,7 +165,7 @@ public:
     );
 
     backend = getBackend(env, opts);
-    callback = Persistent(fn.As<Function>());
+    watcher->watch(fn.As<Function>());
   }
 
 private:
@@ -174,8 +174,12 @@ private:
   FunctionReference callback;
 
   void execute() override {
-    backend->watch(*watcher);
-    watcher->watch(std::move(callback));
+    try {
+      backend->watch(*watcher);
+    } catch (std::exception &err) {
+      watcher->destroy();
+      throw;
+    }
   }
 };
 
