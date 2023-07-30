@@ -24,7 +24,7 @@ js = js.replace('../wrapper.js', './wrapper.js');
 fs.writeFileSync(`${dir}/npm/wasm/index.mjs`, js);
 
 fs.copyFileSync(`${dir}/wrapper.js`, `${dir}/npm/wasm/wrapper.js`);
-fs.copyFileSync(`${dir}/build/Release/watcher.wasm`, `${dir}/npm/wasm/watcher.wasm`);
+fs.copyFileSync(`${dir}/wasm/watcher.wasm`, `${dir}/npm/wasm/watcher.wasm`);
 
 let wasmPkg = { ...pkg };
 wasmPkg.name = '@parcel/watcher-wasm';
