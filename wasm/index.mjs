@@ -223,7 +223,9 @@ const wasi = {
       let ptr = env.u32[iov >> 2];
       let len = env.u32[(iov + 4) >> 2];
       iov += 8;
-      buffers.push(env.memory.subarray(ptr, ptr + len));
+      if (len > 0) {
+        buffers.push(env.memory.subarray(ptr, ptr + len));
+      }
     }
     let wrote = fs.writevSync(fd, buffers);
     env.u32[pnum >> 2] = wrote;
@@ -235,7 +237,9 @@ const wasi = {
       let ptr = env.u32[iov >> 2];
       let len = env.u32[(iov + 4) >> 2];
       iov += 8;
-      buffers.push(env.memory.subarray(ptr, ptr + len));
+      if (len > 0) {
+        buffers.push(env.memory.subarray(ptr, ptr + len));
+      }
     }
 
     let read = fs.readvSync(fd, buffers);
