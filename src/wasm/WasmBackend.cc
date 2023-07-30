@@ -71,7 +71,11 @@ bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<W
     if (lstat(path.c_str(), &st)) {
       // If the entry being deleted/moved is a directory, remove it from the list of subscriptions
       DirEntry *entry = sub->tree->find(path);
-      if (entry && entry->isDir) {
+      if (!entry) {
+        return false;
+      }
+
+      if (entry->isDir) {
         std::string pathStart = path + DIR_SEP;
         for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
           if (it->second->path == path || it->second->path.rfind(pathStart, 0) == 0) {
@@ -84,7 +88,7 @@ bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<W
 
         // Remove all sub-entries
         for (auto it = sub->tree->entries.begin(); it != sub->tree->entries.end();) {
-          if (it->first == path || it->first.rfind(pathStart, 0) == 0) {
+          if (it->first.rfind(pathStart, 0) == 0) {
             watcher->mEvents.remove(it->first);
             it = sub->tree->entries.erase(it);
           } else {
