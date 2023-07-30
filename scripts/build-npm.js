@@ -48,6 +48,10 @@ const triples = [
     platform: 'android',
     arch: 'arm64'
   },
+  {
+    platform: 'freebsd',
+    arch: 'x64'
+  }
 ];
 
 let optionalDependencies = {};

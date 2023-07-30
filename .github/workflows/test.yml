@@ -51,6 +51,24 @@ jobs:
       - run: yarn --frozen-lockfile
       - run: yarn test
 
+  test-freebsd:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test in FreeBSD
+        uses: vmactions/freebsd-vm@v0
+        with:
+          usesh: true
+          prepare: |
+            pkg install -y -f curl node libnghttp2 npm yarn
+            echo "~~~~ node -v ~~~~"
+            node -v
+            echo "~~~~ yarn --version ~~~~"
+            yarn --version
+          run: |
+            yarn --frozen-lockfile
+            yarn test
+
   test-wasm:
     runs-on: ubuntu-latest
     container:

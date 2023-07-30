@@ -10,6 +10,9 @@
 #ifdef INOTIFY
 #include "linux/InotifyBackend.hh"
 #endif
+#ifdef KQUEUE
+#include "kqueue/KqueueBackend.hh"
+#endif
 #ifdef __wasm32__
 #include "wasm/WasmBackend.hh"
 #endif
@@ -42,6 +45,11 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
   #ifdef INOTIFY
     if (backend == "inotify" || backend == "default") {
       return std::make_shared<InotifyBackend>();
+    }
+  #endif
+  #ifdef KQUEUE
+    if (backend == "kqueue" || backend == "default") {
+      return std::make_shared<KqueueBackend>();
     }
   #endif
   #ifdef __wasm32__

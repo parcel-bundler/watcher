@@ -9,11 +9,13 @@ let watcher = watcherNative;
 
 let backends = [];
 if (process.platform === 'darwin') {
-  backends = ['fs-events', 'watchman'];
+  backends = ['fs-events', 'kqueue', 'watchman'];
 } else if (process.platform === 'linux') {
   backends = ['inotify', 'watchman'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
+} else if (process.platform === 'freebsd') {
+  backends = ['kqueue'];
 }
 
 if (process.env.TEST_WASM) {
@@ -369,12 +371,22 @@ describe('watcher', () => {
           await fs.rename(getPath('dir2/subdir'), getPath('dir2/subdir2'));
 
           let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'delete', path: getPath('dir')},
-            {type: 'create', path: getPath('dir2')},
-            {type: 'delete', path: getPath('dir2/subdir')},
-            {type: 'create', path: getPath('dir2/subdir2')},
-          ]);
+          if (backend === 'kqueue') {
+            // Order is slightly different.
+            assert.deepEqual(res, [
+              {type: 'delete', path: getPath('dir')},
+              {type: 'delete', path: getPath('dir/subdir')},
+              {type: 'create', path: getPath('dir2')},
+              {type: 'create', path: getPath('dir2/subdir2')},
+            ]);
+          } else {
+            assert.deepEqual(res, [
+              {type: 'delete', path: getPath('dir')},
+              {type: 'create', path: getPath('dir2')},
+              {type: 'delete', path: getPath('dir2/subdir')},
+              {type: 'create', path: getPath('dir2/subdir2')},
+            ]);
+          }
         });
       });
 
@@ -506,7 +518,13 @@ describe('watcher', () => {
             fs.rename(f1, f2);
 
             let res = await nextEvent();
-            assert.deepEqual(res, [{type: 'create', path: f2}]);
+            if (backend === 'kqueue') {
+              // kqueue delivers events so fast that the original writeFile
+              // doesn't get coalesced with the renames.
+              assert(res.find(v => v.type === 'create' && v.path === f2));
+            } else {
+              assert.deepEqual(res, [{type: 'create', path: f2}]);
+            }
           });
 
           it('should coalese multiple rename events', async () => {
@@ -520,7 +538,13 @@ describe('watcher', () => {
             fs.rename(f3, f4);
 
             let res = await nextEvent();
-            assert.deepEqual(res, [{type: 'create', path: f4}]);
+            if (backend === 'kqueue') {
+              // kqueue delivers events so fast that the original writeFile
+              // doesn't get coalesced with the renames.
+              assert(res.find(v => v.type === 'create' && v.path === f4));
+            } else {
+              assert.deepEqual(res, [{type: 'create', path: f4}]);
+            }
           });
         }
 
@@ -547,44 +571,6 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           assert.deepEqual(res, [{type: 'delete', path: f1}]);
-        });
-      });
-
-      describe('ignore', () => {
-        it('should ignore a directory', async () => {
-          let f1 = getFilename();
-          let f2 = getFilename(path.basename(ignoreDir));
-          await fs.mkdir(ignoreDir);
-
-          fs.writeFile(f1, 'hello');
-          fs.writeFile(f2, 'sup');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
-        });
-
-        it('should ignore a file', async () => {
-          let f1 = getFilename();
-
-          fs.writeFile(f1, 'hello');
-          fs.writeFile(ignoreFile, 'sup');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [{type: 'create', path: f1}]);
-        });
-
-        it('should ignore globs', async () => {
-          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
-
-          let res = await nextEvent();
-          assert.deepEqual(res, [
-            {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
-          ]);
         });
       });
 
@@ -846,6 +832,44 @@ describe('watcher', () => {
           });
         });
       }
+
+      describe('ignore', () => {
+        it('should ignore a directory', async () => {
+          let f1 = getFilename();
+          let f2 = getFilename(path.basename(ignoreDir));
+          await fs.mkdir(ignoreDir);
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(f2, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore a file', async () => {
+          let f1 = getFilename();
+
+          fs.writeFile(f1, 'hello');
+          fs.writeFile(ignoreFile, 'sup');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f1}]);
+        });
+
+        it('should ignore globs', async () => {
+          fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
+          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
+
+          let res = await nextEvent();
+          assert.deepEqual(res, [
+            {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
+          ]);
+        });
+      });
     });
   });
 
