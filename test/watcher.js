@@ -556,7 +556,7 @@ describe('watcher', () => {
         });
       });
 
-      describe.skip('multiple', () => {
+      describe('multiple', () => {
         it('should support multiple watchers for the same directory', async () => {
           let dir = path.join(
             fs.realpathSync(require('os').tmpdir()),
