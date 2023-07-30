@@ -20,6 +20,10 @@ const triples = [
     arch: 'arm64'
   },
   {
+    platform: 'win32',
+    arch: 'ia32'
+  },
+  {
     platform: 'linux',
     arch: 'x64',
     libc: 'glibc'
