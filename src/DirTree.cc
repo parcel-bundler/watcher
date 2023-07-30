@@ -36,7 +36,7 @@ std::shared_ptr<DirTree> DirTree::getCached(std::string root) {
 
 DirTree::DirTree(std::string root, FILE *f) : root(root), isComplete(true) {
   size_t size;
-  if (fscanf(f, "%lu", &size)) {
+  if (fscanf(f, "%zu", &size)) {
     for (size_t i = 0; i < size; i++) {
       DirEntry entry(f);
       entries.emplace(entry.path, entry);
