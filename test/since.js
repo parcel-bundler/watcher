@@ -59,7 +59,6 @@ describe('since', () => {
         if (backend === 'wasm') {
           if (!watcherWasm) {
             watcherWasm = await import('../wasm/index.mjs');
-            await watcherWasm.default();
           }
           watcher = watcherWasm;
         } else {

@@ -112,19 +112,14 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 
 The `@parcel/watcher-wasm` package can be used in place of `@parcel/watcher` on unsupported platforms. It relies on the Node `fs` module, so in non-Node environments such as browsers, an `fs` polyfill will be needed. The `@parcel/watcher-wasm` package is published as an ESM-only module.
 
-The WASM API is identical, except you must initialize it first.
+**Note**: the WASM implementation is significantly less efficient than the native implementations because it must crawl the file system to watch each directory individually. Use the native `@parcel/watcher` package wherever possible.
 
 ```js
-import init, {subscribe} from '@parcel/watcher-wasm';
-
-// Load and initialize the WASM module.
-await init();
+import {subscribe} from '@parcel/watcher-wasm';
 
 // Use the module as documented above.
 subscribe(/* ... */);
 ```
-
-By default, `init` loads the WASM file relative to its JavaScript, but you can pass a URL to the `watcher.wasm` file if you are hosting it elsewhere.
 
 ## Who is using this?
 

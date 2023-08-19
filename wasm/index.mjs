@@ -1,11 +1,9 @@
 import { Environment, napi } from 'napi-wasm';
 import fs from 'fs';
 import Path from 'path';
-import micromatch from 'micromatch';
-import isGlob from 'is-glob';
 import { createWrapper } from '../wrapper.js';
 
-let wrapper, env;
+let env;
 let encoder = new TextEncoder;
 
 let constants = {
@@ -300,56 +298,16 @@ function align(len, p) {
   return Math.ceil(len / p) * p;
 }
 
-export default async function init(input) {
-  input = input ?? new URL('../build/Debug/watcher.wasm', import.meta.url);
-  if (typeof input === 'string' || (typeof Request === 'function' && input instanceof Request) || (typeof URL === 'function' && input instanceof URL)) {
-    input = fetchOrReadFromFs(input);
-  }
+let wasmBytes = fs.readFileSync(new URL('../build/Debug/watcher.wasm', import.meta.url));
+let wasmModule = new WebAssembly.Module(wasmBytes);
+let instance = new WebAssembly.Instance(wasmModule, {
+  napi,
+  env: wasm_env,
+  wasi_snapshot_preview1: wasi
+});
 
-  const { instance } = await load(await input, {
-    napi,
-    env: wasm_env,
-    wasi_snapshot_preview1: wasi
-  });
-
-  env = new Environment(instance);
-  wrapper = createWrapper(env.exports);
-}
-
-async function load(module, imports) {
-  if (typeof Response === 'function' && module instanceof Response) {
-    if (typeof WebAssembly.instantiateStreaming === 'function') {
-      try {
-        return await WebAssembly.instantiateStreaming(module, imports);
-      } catch (e) {
-        if (module.headers.get('Content-Type') != 'application/wasm') {
-          console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    const bytes = await module.arrayBuffer();
-    return await WebAssembly.instantiate(bytes, imports);
-  } else {
-    const instance = await WebAssembly.instantiate(module, imports);
-    if (instance instanceof WebAssembly.Instance) {
-      return { instance, module };
-    } else {
-      return instance;
-    }
-  }
-}
-
-async function fetchOrReadFromFs(inputPath) {
-  try {
-    const fs = await import('fs');
-    return fs.readFileSync(inputPath);
-  } catch {
-    return fetch(inputPath);
-  }
-}
+env = new Environment(instance);
+let wrapper = createWrapper(env.exports);
 
 export function writeSnapshot(dir, snapshot, opts) {
   return wrapper.writeSnapshot(dir, snapshot, opts);

@@ -60,7 +60,6 @@ describe('watcher', () => {
       before(async () => {
         if (backend === 'wasm') {
           watcher = await import('../wasm/index.mjs');
-          await watcher.default();
         } else {
           watcher = watcherNative;
         }
