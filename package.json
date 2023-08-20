@@ -1,6 +1,6 @@
 {
   "name": "@parcel/watcher",
-  "version": "2.3.0-alpha.2",
+  "version": "2.3.0-alpha.3",
   "main": "index.js",
   "types": "index.d.ts",
   "repository": {
@@ -20,6 +20,7 @@
     "index.js",
     "index.js.flow",
     "index.d.ts",
+    "wrapper.js",
     "package.json",
     "README.md"
   ],

@@ -131,6 +131,7 @@ jobs:
         with:
           cache: yarn
           node-version: 16
+      - run: yarn --frozen-lockfile --ignore-scripts
       - name: Download artifacts
         uses: actions/download-artifact@v3
       - name: Build npm packages

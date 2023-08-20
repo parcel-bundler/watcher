@@ -25,6 +25,7 @@ fs.writeFileSync(`${dir}/npm/wasm/index.mjs`, js);
 
 fs.copyFileSync(`${dir}/wrapper.js`, `${dir}/npm/wasm/wrapper.js`);
 fs.copyFileSync(`${dir}/wasm/watcher.wasm`, `${dir}/npm/wasm/watcher.wasm`);
+fs.cpSync(`${dir}/node_modules/napi-wasm`, `${dir}/npm/wasm/node_modules/napi-wasm`, {recursive: true});
 
 let wasmPkg = { ...pkg };
 wasmPkg.name = '@parcel/watcher-wasm';
@@ -38,6 +39,7 @@ wasmPkg.dependencies = {
   'is-glob': pkg.dependencies['is-glob'],
   'micromatch': pkg.dependencies['micromatch']
 };
+wasmPkg.bundledDependencies = ['napi-wasm']; // for stackblitz
 delete wasmPkg.exports;
 delete wasmPkg.binary;
 delete wasmPkg['lint-staged'];
