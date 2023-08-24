@@ -254,7 +254,12 @@ bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Wat
   for (auto it = trees.begin(); it != trees.end(); it++) {
     std::shared_ptr<DirTree> tree = *it;
     for (auto entry = tree->entries.begin(); entry != tree->entries.end();) {
-      if (entry->first.rfind(dirStart, 0) == 0 && entries.count(entry->first) == 0) {
+
+      if (
+        entry->first.rfind(dirStart, 0) == 0 &&
+        entry->first.find(DIR_SEP, dirStart.length()) == std::string::npos &&
+        entries.count(entry->first) == 0
+      ) {
         // Notify all watchers with the same tree.
         for (auto i = subs.begin(); i != subs.end(); i++) {
           if ((*i)->tree == tree) {
