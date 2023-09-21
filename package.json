@@ -22,7 +22,9 @@
     "index.d.ts",
     "wrapper.js",
     "package.json",
-    "README.md"
+    "README.md",
+    "binding.gyp",
+    "src"
   ],
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc",
