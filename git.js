@@ -103,11 +103,13 @@ module.exports.getEventsSince = async function getEventsSince(
 ) {
   const git = simpleGit({baseDir: dir});
 
-  let snapshotData;
-  try {
-    snapshotData = JSON.parse(await fs.readFile(snapshotPath, 'utf8'));
-  } catch (e) {
-    return [];
+  let snapshotData = opts.remoteSnapshot;
+  if (!snapshotData) {
+    try {
+      snapshotData = JSON.parse(await fs.readFile(snapshotPath, 'utf8'));
+    } catch (e) {
+      return [];
+    }
   }
 
   let oldCommit = snapshotData.commit;

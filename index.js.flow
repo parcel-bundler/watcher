@@ -9,10 +9,10 @@ export type BackendType =
   | 'windows'
   | 'brute-force';
 export type EventType = 'create' | 'update' | 'delete';
-export interface Options {
-  ignore?: Array<FilePath | GlobPattern>;
-  backend?: BackendType;
-}
+export type Options = {|
+  ignore?: Array<FilePath | GlobPattern>,
+  backend?: BackendType,
+|};
 export type SubscribeCallback = (err: ?Error, events: Array<Event>) => mixed;
 export interface AsyncSubscription {
   unsubscribe(): Promise<void>;
