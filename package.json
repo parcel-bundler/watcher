@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "detect-libc": "^1.0.3",
+    "esbuild": "^0.19.8",
     "is-glob": "^4.0.3",
     "micromatch": "^4.0.5",
     "node-addon-api": "^7.0.0"
