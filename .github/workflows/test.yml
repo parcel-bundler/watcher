@@ -52,11 +52,11 @@ jobs:
       - run: yarn test
 
   test-freebsd:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Test in FreeBSD
-        uses: vmactions/freebsd-vm@v0
+        uses: vmactions/freebsd-vm@v1
         with:
           usesh: true
           prepare: |
