@@ -32,6 +32,7 @@ const cjsBuild = {
   bundle: true,
   format: 'cjs',
   platform: 'node',
+  packages: 'external',
   outdir: `${dir}/npm/wasm`,
   outExtension: { '.js': '.cjs' },
   inject: [`${dir}/wasm/import.meta.url-polyfill.js`],
