@@ -86,6 +86,7 @@
     }
   ],
   "variables": {
-    "openssl_fips": ""
+    "openssl_fips": "",
+    "node_use_dtrace": "false"
   }
 }
