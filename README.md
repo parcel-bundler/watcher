@@ -110,7 +110,7 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 
 ## WASM
 
-The `@parcel/watcher-wasm` package can be used in place of `@parcel/watcher` on unsupported platforms. It relies on the Node `fs` module, so in non-Node environments such as browsers, an `fs` polyfill will be needed. The `@parcel/watcher-wasm` package is published as an ESM-only module.
+The `@parcel/watcher-wasm` package can be used in place of `@parcel/watcher` on unsupported platforms. It relies on the Node `fs` module, so in non-Node environments such as browsers, an `fs` polyfill will be needed.
 
 **Note**: the WASM implementation is significantly less efficient than the native implementations because it must crawl the file system to watch each directory individually. Use the native `@parcel/watcher` package wherever possible.
 
