@@ -76,8 +76,14 @@ for (let triple of triples) {
   buildNode(triple, t);
 }
 
+try {
+  fs.mkdirSync(dir + '/npm/watcher');
+} catch (err) { }
+for (let file of pkg.files) {
+  fs.copyFileSync(`${dir}/${file}`, `npm/watcher/${file}`);
+}
 pkg.optionalDependencies = optionalDependencies;
-fs.writeFileSync(`${dir}/package.json`, JSON.stringify(pkg, false, 2) + '\n');
+fs.writeFileSync(`${dir}/npm/watcher/package.json`, JSON.stringify(pkg, false, 2) + '\n');
 
 function buildNode(triple, t) {
   let pkg2 = { ...pkg };
