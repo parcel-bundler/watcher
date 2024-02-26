@@ -1,11 +1,14 @@
 #include <CoreServices/CoreServices.h>
 #include <sys/stat.h>
-#include <string>
+
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <unordered_set>
-#include "../Event.hh"
-#include "../Backend.hh"
+
 #include "./FSEventsBackend.hh"
+#include "../Backend.hh"
+#include "../Event.hh"
 #include "../Watcher.hh"
 
 #define CONVERT_TIME(ts) ((uint64_t)ts.tv_sec * 1000000000 + ts.tv_nsec)
@@ -156,9 +159,16 @@ void FSEventsCallback(
       if (isModified && (entry || (ctime <= since && ctime != 0))) {
         state->tree->update(paths[i], mtime);
         list->update(paths[i]);
-      } else {
+      } else if (isCreated || isRenamed) {
         state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
         list->create(paths[i]);
+      } else {
+        std::ostringstream errorMsgStream;
+        errorMsgStream << "Unknown set of flags for path " << paths[i] << ": "
+                       << std::hex << eventFlags[i];
+        std::exception watcherError =
+            WatcherError(std::string(errorMsgStream.str()), watcher);
+        watcher->notifyError(watcherError);
       }
     }
   }
