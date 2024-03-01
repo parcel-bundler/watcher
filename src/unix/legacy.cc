@@ -24,6 +24,10 @@
 #endif
 #define ISDOT(a) (a[0] == '.' && (!a[1] || (a[1] == '.' && !a[2])))
 
+#ifdef __PASE__
+#include "atshims.hh"
+#endif
+
 void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, const std::string &dirname) {
     int open_flags = (O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOCTTY | O_NONBLOCK | O_NOFOLLOW);
     int new_fd = openat(parent_fd, relative, open_flags);
@@ -48,7 +52,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
             if (!watcher.isIgnored(fullPath)) {
                 struct stat attrib;
                 fstatat(new_fd, ent->d_name, &attrib, AT_SYMLINK_NOFOLLOW);
-                bool isDir = ent->d_type == DT_DIR;
+                bool isDir = S_ISDIR(attrib.st_mode);
 
                 if (isDir) {
                     iterateDir(watcher, tree, ent->d_name, new_fd, fullPath);

@@ -49,6 +49,27 @@
             "BRUTE_FORCE"
           ]
         }],
+        # Depending on version of Python, IBM i can identify as AIX or OS400
+        ['OS=="aix" or OS=="os400"', {
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/WatchmanBackend.cc",
+            "src/shared/BruteForceBackend.cc",
+            "src/unix/legacy.cc",
+            "src/unix/atshims.cc"
+          ],
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE"
+          ],
+          # Required for threaded parts of stdc++
+          'ldflags': [
+            '-pthread',
+          ],
+          'cflags': [
+            '-pthread',
+          ],
+        }],
         ['OS=="win"', {
           "sources": [
             "src/watchman/BSER.cc",
