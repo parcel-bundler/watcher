@@ -21,8 +21,8 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     std::string spec = path + "\\*";
     directories.pop();
 
-    WIN32_FIND_DATA ffd;
-    hFind = FindFirstFile(spec.c_str(), &ffd);
+    WIN32_FIND_DATAW ffd;
+    hFind = FindFirstFileW(extendedWidePath(spec).data(), &ffd);
 
     if (hFind == INVALID_HANDLE_VALUE)  {
       if (path == watcher.mDir) {
@@ -35,8 +35,8 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     }
 
     do {
-      if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
-        std::string fullPath = path + "\\" + ffd.cFileName;
+      if (wcscmp(ffd.cFileName, L".") != 0 && wcscmp(ffd.cFileName, L"..") != 0) {
+        std::string fullPath = path + "\\" + utf16ToUtf8(ffd.cFileName, sizeof(ffd.cFileName));
         if (watcher.isIgnored(fullPath)) {
           continue;
         }
@@ -46,7 +46,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
           directories.push(fullPath);
         }
       }
-    } while (FindNextFile(hFind, &ffd) != 0);
+    } while (FindNextFileW(hFind, &ffd) != 0);
 
     FindClose(hFind);
   }
@@ -80,7 +80,7 @@ public:
     mWriteBuffer.resize(DEFAULT_BUF_SIZE);
 
     mDirectoryHandle = CreateFileW(
-      utf8ToUtf16(watcher->mDir).data(),
+      extendedWidePath(watcher->mDir).data(),
       FILE_LIST_DIRECTORY,
       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
       NULL,
@@ -178,7 +178,7 @@ public:
       case ERROR_ACCESS_DENIED: {
         // This can happen if the watched directory is deleted. Check if that is the case,
         // and if so emit a delete event. Otherwise, fall through to default error case.
-        DWORD attrs = GetFileAttributesW(utf8ToUtf16(mWatcher->mDir).data());
+        DWORD attrs = GetFileAttributesW(extendedWidePath(mWatcher->mDir).data());
         bool isDir = attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY);
         if (!isDir) {
           mWatcher->mEvents.remove(mWatcher->mDir);
@@ -224,7 +224,7 @@ public:
       case FILE_ACTION_ADDED:
       case FILE_ACTION_RENAMED_NEW_NAME: {
         WIN32_FILE_ATTRIBUTE_DATA data;
-        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+        if (GetFileAttributesExW(extendedWidePath(path).data(), GetFileExInfoStandard, &data)) {
           mWatcher->mEvents.create(path);
           mTree->add(path, CONVERT_TIME(data.ftLastWriteTime), data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
         }
@@ -232,7 +232,7 @@ public:
       }
       case FILE_ACTION_MODIFIED: {
         WIN32_FILE_ATTRIBUTE_DATA data;
-        if (GetFileAttributesExW(utf8ToUtf16(path).data(), GetFileExInfoStandard, &data)) {
+        if (GetFileAttributesExW(extendedWidePath(path).data(), GetFileExInfoStandard, &data)) {
           mTree->update(path, CONVERT_TIME(data.ftLastWriteTime));
           if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
             mWatcher->mEvents.update(path);
