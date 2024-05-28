@@ -238,21 +238,20 @@ std::string WatchmanBackend::clock(Watcher &watcher) {
   return found->second.stringValue();
 }
 
-void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *inputSnapshotPath) {
+void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   watchmanWatch(watcher.mDir);
 
-  const auto clockValue = clock(watcher);
-  const auto snapshotPath = std::filesystem::path(*inputSnapshotPath);
-  auto temporaryFilePath = std::filesystem::path(snapshotPath);
-  temporaryFilePath.replace_filename(".parcel-temporary-snapshot.txt");
+  auto clockValue = clock(watcher);
+  auto temporaryDirectory = std::filesystem::temp_directory_path();
+  auto temporaryFilePath = temporaryDirectory.append("tmp-parcel-snapshot.txt");
   {
-    std::ofstream ofs(temporaryFilePath);
+    std::ofstream ofs(*snapshotPath);
     ofs << clockValue;
     ofs.flush();
     ofs.close();
   }
-  std::filesystem::rename(temporaryFilePath, snapshotPath);
+  std::filesystem::rename(temporaryFilePath, *snapshotPath);
 }
 
 void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
