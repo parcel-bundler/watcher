@@ -248,6 +248,8 @@ void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
   {
     std::ofstream ofs(temporaryFilePath);
     ofs << clockValue;
+    ofs.flush();
+    ofs.close();
   }
   std::filesystem::rename(temporaryFilePath, *snapshotPath);
 }
