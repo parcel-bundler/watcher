@@ -246,7 +246,7 @@ void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
   auto temporaryDirectory = std::filesystem::temp_directory_path();
   auto temporaryFilePath = temporaryDirectory.append("tmp-parcel-snapshot.txt");
   {
-    std::ofstream ofs(*snapshotPath);
+    std::ofstream ofs(*temporaryFilePath);
     ofs << clockValue;
     ofs.flush();
     ofs.close();
