@@ -1,4 +1,5 @@
 #include "DirTree.hh"
+#include <inttypes.h>
 
 static std::mutex mDirCacheMutex;
 static std::unordered_map<std::string, std::weak_ptr<DirTree>> dirTreeCache;
@@ -8,6 +9,11 @@ struct DirTreeDeleter {
     std::lock_guard<std::mutex> lock(mDirCacheMutex);
     dirTreeCache.erase(tree->root);
     delete tree;
+
+    // Free up memory.
+    if (dirTreeCache.size() == 0) {
+      dirTreeCache.rehash(0);
+    }
   }
 };
 
@@ -28,11 +34,11 @@ std::shared_ptr<DirTree> DirTree::getCached(std::string root) {
   return tree;
 }
 
-DirTree::DirTree(std::string root, std::istream &stream) : root(root), isComplete(true) {
+DirTree::DirTree(std::string root, FILE *f) : root(root), isComplete(true) {
   size_t size;
-  if (stream >> size) {
+  if (fscanf(f, "%zu", &size)) {
     for (size_t i = 0; i < size; i++) {
-      DirEntry entry(stream);
+      DirEntry entry(f);
       entries.emplace(entry.path, entry);
     }
   }
@@ -92,19 +98,19 @@ void DirTree::remove(std::string path) {
   entries.erase(path);
 }
 
-void DirTree::write(std::ostream &stream) {
+void DirTree::write(FILE *f) {
   std::lock_guard<std::mutex> lock(mMutex);
 
-  stream << entries.size() << "\n";
+  fprintf(f, "%zu\n", entries.size());
   for (auto it = entries.begin(); it != entries.end(); it++) {
-    it->second.write(stream);
+    it->second.write(f);
   }
 }
 
 void DirTree::getChanges(DirTree *snapshot, EventList &events) {
   std::lock_guard<std::mutex> lock(mMutex);
   std::lock_guard<std::mutex> snapshotLock(snapshot->mMutex);
-  
+
   for (auto it = entries.begin(); it != entries.end(); it++) {
     auto found = snapshot->entries.find(it->first);
     if (found == snapshot->entries.end()) {
@@ -129,18 +135,18 @@ DirEntry::DirEntry(std::string p, uint64_t t, bool d) {
   state = NULL;
 }
 
-DirEntry::DirEntry(std::istream &stream) {
+DirEntry::DirEntry(FILE *f) {
   size_t size;
-
-  if (stream >> size) {
+  if (fscanf(f, "%zu", &size)) {
     path.resize(size);
-    if (stream.read(&path[0], size)) {
-      stream >> mtime;
-      stream >> isDir;
+    if (fread(&path[0], sizeof(char), size, f)) {
+      int d = 0;
+      fscanf(f, "%" PRIu64 " %d\n", &mtime, &d);
+      isDir = d == 1;
     }
   }
 }
 
-void DirEntry::write(std::ostream &stream) const {
-  stream << path.size() << path << mtime << " " << isDir << "\n";
+void DirEntry::write(FILE *f) const {
+  fprintf(f, "%zu%s%" PRIu64 " %d\n", path.size(), path.c_str(), mtime, isDir);
 }

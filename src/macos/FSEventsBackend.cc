@@ -106,7 +106,7 @@ void FSEventsCallback(
       if (stat(paths[i], &file)) {
         continue;
       }
-      
+
       // Ignore if mtime is the same as the last event.
       // This prevents duplicate events from being emitted.
       // If tv_nsec is zero, the file system probably only has second-level
@@ -151,7 +151,7 @@ void FSEventsCallback(
       if (entry && entry->mtime == mtime && file.st_mtimespec.tv_nsec != 0) {
         continue;
       }
-      
+
       // Some mounted file systems report a creation time of 0/unix epoch which we special case.
       if (isModified && (entry || (ctime <= since && ctime != 0))) {
         state->tree->update(paths[i], mtime);
@@ -163,9 +163,7 @@ void FSEventsCallback(
     }
   }
 
-  if (watcher->mWatched) {
-    watcher->notify();
-  }
+  watcher->notify();
 
   // Stop watching if the root directory was deleted.
   if (deletedRoot) {

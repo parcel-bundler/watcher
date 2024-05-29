@@ -3,9 +3,8 @@
     {
       "target_name": "watcher",
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
-      "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc", "src/Glob.cc" ],
+      "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc", "src/Glob.cc", "src/Debounce.cc" ],
       "include_dirs" : ["<!(node -p \"require('node-addon-api').include_dir\")"],
-      "dependencies": ["<!(node -p \"require('node-addon-api').gyp\")"],
       'cflags!': [ '-fno-exceptions' ],
       'cflags_cc!': [ '-fno-exceptions' ],
       "conditions": [
@@ -15,7 +14,8 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/unix/fts.cc",
-            "src/macos/FSEventsBackend.cc"
+            "src/macos/FSEventsBackend.cc",
+            "src/kqueue/KqueueBackend.cc"
           ],
           "link_settings": {
             "libraries": ["CoreServices.framework"]
@@ -23,7 +23,8 @@
           "defines": [
             "WATCHMAN",
             "BRUTE_FORCE",
-            "FS_EVENTS"
+            "FS_EVENTS",
+            "KQUEUE"
           ],
           "xcode_settings": {
             "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
@@ -66,8 +67,26 @@
               "ExceptionHandling": 1,  # /EHsc
             }
           }
+        }],
+        ['OS=="freebsd"', {
+          "sources": [
+            "src/watchman/BSER.cc",
+            "src/watchman/WatchmanBackend.cc",
+            "src/shared/BruteForceBackend.cc",
+            "src/unix/fts.cc",
+            "src/kqueue/KqueueBackend.cc"
+          ],
+          "defines": [
+            "WATCHMAN",
+            "BRUTE_FORCE",
+            "KQUEUE"
+          ]
         }]
       ]
     }
-  ]
+  ],
+  "variables": {
+    "openssl_fips": "",
+    "node_use_dtrace": "false"
+  }
 }

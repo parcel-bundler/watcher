@@ -7,7 +7,7 @@ A native C++ Node module for querying and subscribing to filesystem events. Used
 - **Watch** - subscribe to realtime recursive directory change notifications when files or directories are created, updated, or deleted.
 - **Query** - performantly query for historical change events in a directory, even when your program is not running.
 - **Native** - implemented in C++ for performance and low-level integration with the operating system.
-- **Cross platform** - includes backends for macOS, Linux, Windows, and Watchman.
+- **Cross platform** - includes backends for macOS, Linux, Windows, FreeBSD, and Watchman.
 - **Performant** - events are throttled in C++ so the JavaScript thread is not overwhelmed during large filesystem changes (e.g. `git checkout` or `npm install`).
 - **Scalable** - tens of thousands of files can be watched or queried at once with good performance.
 
@@ -64,6 +64,7 @@ await subscription.unsubscribe();
 - [Watchman](https://facebook.github.io/watchman/) if installed
 - [inotify](http://man7.org/linux/man-pages/man7/inotify.7.html) on Linux
 - [ReadDirectoryChangesW](https://msdn.microsoft.com/en-us/library/windows/desktop/aa365465%28v%3Dvs.85%29.aspx) on Windows
+- [kqueue](https://man.freebsd.org/cgi/man.cgi?kqueue) on FreeBSD, or as an alternative to FSEvents on macOS
 
 You can specify the exact backend you wish to use by passing the `backend` option. If that backend is not available on the current platform, the default backend will be used instead. See below for the list of backend names that can be passed to the options.
 
@@ -89,7 +90,7 @@ The events returned are exactly the same as the events that would be passed to t
 
 - [FSEvents](https://developer.apple.com/documentation/coreservices/file_system_events) on macOS
 - [Watchman](https://facebook.github.io/watchman/) if installed
-- [fts](http://man7.org/linux/man-pages/man3/fts.3.html) (brute force) on Linux
+- [fts](http://man7.org/linux/man-pages/man3/fts.3.html) (brute force) on Linux and FreeBSD
 - [FindFirstFile](https://docs.microsoft.com/en-us/windows/desktop/api/fileapi/nf-fileapi-findfirstfilea) (brute force) on Windows
 
 The FSEvents (macOS) and Watchman backends are significantly more performant than the brute force backends used by default on Linux and Windows, for example returning results in miliseconds instead of seconds for large directory trees. This is because a background daemon monitoring filesystem changes on those platforms allows us to query cached data rather than traversing the filesystem manually (brute force).
@@ -103,9 +104,22 @@ You can specify the exact backend you wish to use by passing the `backend` optio
 All of the APIs in `@parcel/watcher` support the following options, which are passed as an object as the last function argument.
 
 - `ignore` - an array of paths or glob patterns to ignore. uses [`is-glob`](https://github.com/micromatch/is-glob) to distinguish paths from globs. glob patterns are parsed with [`micromatch`](https://github.com/micromatch/micromatch) (see [features](https://github.com/micromatch/micromatch#matching-features)).
-  - paths can be relative or absolute and can either be files or directories. No events will be emitted about these files or directories or their children. 
+  - paths can be relative or absolute and can either be files or directories. No events will be emitted about these files or directories or their children.
   - glob patterns match on relative paths from the root that is watched. No events will be emitted for matching paths.
-- `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
+- `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"kqueue"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
+
+## WASM
+
+The `@parcel/watcher-wasm` package can be used in place of `@parcel/watcher` on unsupported platforms. It relies on the Node `fs` module, so in non-Node environments such as browsers, an `fs` polyfill will be needed.
+
+**Note**: the WASM implementation is significantly less efficient than the native implementations because it must crawl the file system to watch each directory individually. Use the native `@parcel/watcher` package wherever possible.
+
+```js
+import {subscribe} from '@parcel/watcher-wasm';
+
+// Use the module as documented above.
+subscribe(/* ... */);
+```
 
 ## Who is using this?
 
@@ -114,6 +128,7 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 - [Tailwind CSS Intellisense](https://github.com/tailwindlabs/tailwindcss-intellisense)
 - [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
 - [Nx](https://nx.dev)
+- [Nuxt](https://nuxt.com)
 
 ## License
 

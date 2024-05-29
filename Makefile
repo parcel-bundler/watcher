@@ -1,21 +1,37 @@
-.PHONY: docker-build-centos docker-build-alpine docker-push-centos
+NODE_PATH := $(dir $(shell which node))
+HEADERS_URL := $(shell node -p "process.release.headersUrl")
+NODE_VERSION := $(shell node -p "process.version")
 
-current_dir = $(shell pwd)
-GIT_SHA = $(shell git log -1 --pretty=%h)
+INCS_Debug := \
+	-Ibuild/node-$(NODE_VERSION)/include/node \
+	-I$(shell node -p "require('node-addon-api').include_dir")
 
-git_sha:
-	echo GIT_SHA is $(GIT_SHA)
+SRC := src/binding.cc src/Watcher.cc src/Backend.cc src/DirTree.cc src/Glob.cc src/Debounce.cc src/shared/BruteForceBackend.cc src/unix/legacy.cc src/wasm/WasmBackend.cc
+FLAGS := $(INCS_Debug) \
+	-Oz \
+	-flto \
+	-fwasm-exceptions \
+	-DNAPI_HAS_THREADS=1 \
+	-sEXPORTED_FUNCTIONS="['_napi_register_wasm_v1', '_wasm_backend_event_handler', '_malloc', '_free', '_on_timeout']" \
+	-sERROR_ON_UNDEFINED_SYMBOLS=0 \
+	-s INITIAL_MEMORY=524288000
 
-docker-build-centos:
-	docker build -t jasperdm/centos-watchman:latest -t jasperdm/centos-watchman:$(GIT_SHA) -f ./docker-agents/centos.Dockerfile . --progress plain
+build/node-headers.tar.gz:
+	curl $(HEADERS_URL) -o build/node-headers.tar.gz
 
-docker-build-alpine:
-	docker build -t jasperdm/alpine-watchman:latest -t jasperdm/alpine-watchman:$(GIT_SHA) -f ./docker-agents/alpine.Dockerfile . --progress plain
+build/node-$(NODE_VERSION): build/node-headers.tar.gz
+	tar -xvf build/node-headers.tar.gz -C build
+	touch build/node-$(NODE_VERSION)
 
-docker-push-centos:
-	docker push jasperdm/centos-watchman:${GIT_SHA}
-	docker push jasperdm/centos-watchman:latest
+build/Release/watcher.wasm: build/node-$(NODE_VERSION) $(SRC)
+	mkdir -p build/Release
+	em++ $(FLAGS) -sDECLARE_ASM_MODULE_EXPORTS=0 -o build/Release/watcher.js $(SRC)
 
-docker-push-alpine:
-	docker push jasperdm/alpine-watchman:${GIT_SHA}
-	docker push jasperdm/alpine-watchman:latest
+build/Debug/watcher.wasm: build/node-$(NODE_VERSION) $(SRC)
+	mkdir -p build/Debug
+	em++ -g $(FLAGS) -o build/Debug/watcher.js $(SRC)
+
+wasm: build/Release/watcher.wasm
+wasm-debug: build/Debug/watcher.wasm
+
+.PHONY: wasm wasm-debug

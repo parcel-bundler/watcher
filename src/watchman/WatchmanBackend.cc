@@ -13,6 +13,7 @@
 #define popen _popen
 #define pclose _pclose
 #else
+#include <sys/stat.h>
 #define normalizePath(dir) dir
 #endif
 
@@ -53,7 +54,7 @@ std::string getSockPath() {
   BSER b = readBSER([fp] (char *buf, size_t len) {
     return fread(buf, sizeof(char), len, fp);
   });
-  
+
   pclose(fp);
 
   auto objValue = b.objectValue();
@@ -113,7 +114,7 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
   if (found == obj.end()) {
     throw WatcherError("Error reading changes from watchman", &watcher);
   }
-  
+
   auto files = found->second.arrayValue();
   for (auto it = files.begin(); it != files.end(); it++) {
     auto file = it->objectValue();
@@ -325,7 +326,7 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
 void WatchmanBackend::unsubscribe(Watcher &watcher) {
   std::string id = getId(watcher);
   auto erased = mSubscriptions.erase(id);
-  
+
   if (erased) {
     BSER::Array cmd;
     cmd.push_back("unsubscribe");
