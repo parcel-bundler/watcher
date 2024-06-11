@@ -9,8 +9,8 @@ class WindowsBackend : public BruteForceBackend {
 public:
   void start() override;
   ~WindowsBackend();
-  void subscribe(Watcher &watcher) override;
-  void unsubscribe(Watcher &watcher) override;
+  void subscribe(WatcherRef watcher) override;
+  void unsubscribe(WatcherRef watcher) override;
 private:
   bool mRunning;
 };

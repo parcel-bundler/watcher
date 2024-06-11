@@ -13,10 +13,18 @@
 
 using namespace Napi;
 
+struct Watcher;
+using WatcherRef = std::shared_ptr<Watcher>;
+
 struct Callback {
   Napi::ThreadSafeFunction tsfn;
   Napi::FunctionReference ref;
   std::thread::id threadId;
+};
+
+class WatcherState {
+public:
+    virtual ~WatcherState() = default;
 };
 
 struct Watcher {
@@ -24,7 +32,7 @@ struct Watcher {
   std::unordered_set<std::string> mIgnorePaths;
   std::unordered_set<Glob> mIgnoreGlobs;
   EventList mEvents;
-  void *state;
+  std::shared_ptr<WatcherState> state;
 
   Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
   ~Watcher();
@@ -42,7 +50,7 @@ struct Watcher {
   bool isIgnored(std::string path);
   void destroy();
 
-  static std::shared_ptr<Watcher> getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
+  static WatcherRef getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
 
 private:
   std::mutex mMutex;
@@ -57,9 +65,9 @@ private:
 
 class WatcherError : public std::runtime_error {
 public:
-  Watcher *mWatcher;
-  WatcherError(std::string msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
-  WatcherError(const char *msg, Watcher *watcher) : std::runtime_error(msg), mWatcher(watcher) {}
+  WatcherRef mWatcher;
+  WatcherError(std::string msg, WatcherRef watcher) : std::runtime_error(msg), mWatcher(watcher) {}
+  WatcherError(const char *msg, WatcherRef watcher) : std::runtime_error(msg), mWatcher(watcher) {}
 };
 
 #endif

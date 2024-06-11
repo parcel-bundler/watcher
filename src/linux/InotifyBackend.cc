@@ -64,7 +64,7 @@ InotifyBackend::~InotifyBackend() {
 }
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void InotifyBackend::subscribe(Watcher &watcher) {
+void InotifyBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
@@ -78,7 +78,7 @@ void InotifyBackend::subscribe(Watcher &watcher) {
   }
 }
 
-bool InotifyBackend::watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree) {
+bool InotifyBackend::watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree) {
   int wd = inotify_add_watch(mInotify, path.c_str(), INOTIFY_MASK);
   if (wd == -1) {
     return false;
@@ -213,7 +213,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void InotifyBackend::unsubscribe(Watcher &watcher) {
+void InotifyBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
     if (it->second->watcher == &watcher) {

@@ -8,12 +8,12 @@ class FSEventsBackend : public Backend {
 public:
   void start() override;
   ~FSEventsBackend();
-  void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
-  void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
-  void subscribe(Watcher &watcher) override;
-  void unsubscribe(Watcher &watcher) override;
+  void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) override;
+  void getEventsSince(WatcherRef watcher, std::string *snapshotPath) override;
+  void subscribe(WatcherRef watcher) override;
+  void unsubscribe(WatcherRef watcher) override;
 private:
-  void startStream(Watcher &watcher, FSEventStreamEventId id);
+  void startStream(WatcherRef watcher, FSEventStreamEventId id);
   CFRunLoopRef mRunLoop;
 };
 

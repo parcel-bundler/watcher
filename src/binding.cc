@@ -79,11 +79,11 @@ public:
   }
 private:
   std::shared_ptr<Backend> backend;
-  std::shared_ptr<Watcher> watcher;
+  WatcherRef watcher;
   std::string snapshotPath;
 
   void execute() override {
-    backend->writeSnapshot(*watcher, &snapshotPath);
+    backend->writeSnapshot(watcher, &snapshotPath);
   }
 };
 
@@ -107,11 +107,11 @@ public:
   }
 private:
   std::shared_ptr<Backend> backend;
-  std::shared_ptr<Watcher> watcher;
+  WatcherRef watcher;
   std::string snapshotPath;
 
   void execute() override {
-    backend->getEventsSince(*watcher, &snapshotPath);
+    backend->getEventsSince(watcher, &snapshotPath);
   }
 
   Value getResult() override {
@@ -169,13 +169,13 @@ public:
   }
 
 private:
-  std::shared_ptr<Watcher> watcher;
+  WatcherRef watcher;
   std::shared_ptr<Backend> backend;
   FunctionReference callback;
 
   void execute() override {
     try {
-      backend->watch(*watcher);
+      backend->watch(watcher);
     } catch (std::exception &err) {
       watcher->destroy();
       throw;
@@ -197,13 +197,13 @@ public:
   }
 
 private:
-  std::shared_ptr<Watcher> watcher;
+  WatcherRef watcher;
   std::shared_ptr<Backend> backend;
   bool shouldUnwatch;
 
   void execute() override {
     if (shouldUnwatch) {
-      backend->unwatch(*watcher);
+      backend->unwatch(watcher);
     }
   }
 };

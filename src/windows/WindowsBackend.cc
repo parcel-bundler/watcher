@@ -9,7 +9,7 @@
 #define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
+void BruteForceBackend::readTree(WatcherRef watcher, std::shared_ptr<DirTree> tree) {
   std::stack<std::string> directories;
 
   directories.push(watcher.mDir);
@@ -260,7 +260,7 @@ private:
 };
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void WindowsBackend::subscribe(Watcher &watcher) {
+void WindowsBackend::subscribe(WatcherRef watcher) {
   // Create a subscription for this watcher
   Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false));
   watcher.state = (void *)sub;
@@ -277,7 +277,7 @@ void WindowsBackend::subscribe(Watcher &watcher) {
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void WindowsBackend::unsubscribe(Watcher &watcher) {
+void WindowsBackend::unsubscribe(WatcherRef watcher) {
   Subscription *sub = (Subscription *)watcher.state;
   delete sub;
 }

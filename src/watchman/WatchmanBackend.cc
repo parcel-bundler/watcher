@@ -109,10 +109,10 @@ bool WatchmanBackend::checkAvailable() {
   }
 }
 
-void handleFiles(Watcher &watcher, BSER::Object obj) {
+void handleFiles(WatcherRef watcher, BSER::Object obj) {
   auto found = obj.find("files");
   if (found == obj.end()) {
-    throw WatcherError("Error reading changes from watchman", &watcher);
+    throw WatcherError("Error reading changes from watchman", watcher);
   }
 
   auto files = found->second.arrayValue();
@@ -125,17 +125,17 @@ void handleFiles(Watcher &watcher, BSER::Object obj) {
     auto mode = file.find("mode")->second.intValue();
     auto isNew = file.find("new")->second.boolValue();
     auto exists = file.find("exists")->second.boolValue();
-    auto path = watcher.mDir + DIR_SEP + name;
-    if (watcher.isIgnored(path)) {
+    auto path = watcher->mDir + DIR_SEP + name;
+    if (watcher->isIgnored(path)) {
       continue;
     }
 
     if (isNew && exists) {
-      watcher.mEvents.create(path);
+      watcher->mEvents.create(path);
     } else if (exists && !S_ISDIR(mode)) {
-      watcher.mEvents.update(path);
+      watcher->mEvents.update(path);
     } else if (!isNew && !exists) {
-      watcher.mEvents.remove(path);
+      watcher->mEvents.remove(path);
     }
   }
 }
@@ -150,7 +150,7 @@ void WatchmanBackend::handleSubscription(BSER::Object obj) {
 
   auto watcher = it->second;
   try {
-    handleFiles(*watcher, obj);
+    handleFiles(watcher, obj);
     watcher->notify();
   } catch (WatcherError &err) {
     handleWatcherError(err);
@@ -223,50 +223,50 @@ WatchmanBackend::~WatchmanBackend() {
   mEndedSignal.wait();
 }
 
-std::string WatchmanBackend::clock(Watcher &watcher) {
+std::string WatchmanBackend::clock(WatcherRef watcher) {
   BSER::Array cmd;
   cmd.push_back("clock");
-  cmd.push_back(normalizePath(watcher.mDir));
+  cmd.push_back(normalizePath(watcher->mDir));
 
   BSER::Object obj = watchmanRequest(cmd);
   auto found = obj.find("clock");
   if (found == obj.end()) {
-    throw WatcherError("Error reading clock from watchman", &watcher);
+    throw WatcherError("Error reading clock from watchman", watcher);
   }
 
   return found->second.stringValue();
 }
 
-void WatchmanBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+void WatchmanBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
-  watchmanWatch(watcher.mDir);
+  watchmanWatch(watcher->mDir);
 
   std::ofstream ofs(*snapshotPath);
   ofs << clock(watcher);
 }
 
-void WatchmanBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
     return;
   }
 
-  watchmanWatch(watcher.mDir);
+  watchmanWatch(watcher->mDir);
 
   std::string clock;
   ifs >> clock;
 
   BSER::Array cmd;
   cmd.push_back("since");
-  cmd.push_back(normalizePath(watcher.mDir));
+  cmd.push_back(normalizePath(watcher->mDir));
   cmd.push_back(clock);
 
   BSER::Object obj = watchmanRequest(cmd);
   handleFiles(watcher, obj);
 }
 
-std::string getId(Watcher &watcher) {
+std::string getId(WatcherRef watcher) {
   std::ostringstream id;
   id << "parcel-";
   id << (void *)&watcher;
@@ -274,13 +274,13 @@ std::string getId(Watcher &watcher) {
 }
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void WatchmanBackend::subscribe(Watcher &watcher) {
-  watchmanWatch(watcher.mDir);
+void WatchmanBackend::subscribe(WatcherRef watcher) {
+  watchmanWatch(watcher->mDir);
 
   std::string id = getId(watcher);
   BSER::Array cmd;
   cmd.push_back("subscribe");
-  cmd.push_back(normalizePath(watcher.mDir));
+  cmd.push_back(normalizePath(watcher->mDir));
   cmd.push_back(id);
 
   BSER::Array fields;
@@ -293,13 +293,13 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   opts.emplace("fields", fields);
   opts.emplace("since", clock(watcher));
 
-  if (watcher.mIgnorePaths.size() > 0) {
+  if (watcher->mIgnorePaths.size() > 0) {
     BSER::Array ignore;
     BSER::Array anyOf;
     anyOf.push_back("anyof");
 
-    for (auto it = watcher.mIgnorePaths.begin(); it != watcher.mIgnorePaths.end(); it++) {
-      std::string pathStart = watcher.mDir + DIR_SEP;
+    for (auto it = watcher->mIgnorePaths.begin(); it != watcher->mIgnorePaths.end(); it++) {
+      std::string pathStart = watcher->mDir + DIR_SEP;
       if (it->rfind(pathStart, 0) == 0) {
         auto relative = it->substr(pathStart.size());
         BSER::Array dirname;
@@ -318,19 +318,19 @@ void WatchmanBackend::subscribe(Watcher &watcher) {
   cmd.push_back(opts);
   watchmanRequest(cmd);
 
-  mSubscriptions.emplace(id, &watcher);
+  mSubscriptions.emplace(id, watcher);
   mRequestSignal.notify();
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void WatchmanBackend::unsubscribe(Watcher &watcher) {
+void WatchmanBackend::unsubscribe(WatcherRef watcher) {
   std::string id = getId(watcher);
   auto erased = mSubscriptions.erase(id);
 
   if (erased) {
     BSER::Array cmd;
     cmd.push_back("unsubscribe");
-    cmd.push_back(normalizePath(watcher.mDir));
+    cmd.push_back(normalizePath(watcher->mDir));
     cmd.push_back(id);
 
     watchmanRequest(cmd);

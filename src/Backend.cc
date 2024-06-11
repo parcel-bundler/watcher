@@ -138,13 +138,13 @@ Backend::~Backend() {
   #endif
 }
 
-void Backend::watch(Watcher &watcher) {
+void Backend::watch(WatcherRef watcher) {
   std::unique_lock<std::mutex> lock(mMutex);
-  auto res = mSubscriptions.find(&watcher);
+  auto res = mSubscriptions.find(watcher);
   if (res == mSubscriptions.end()) {
     try {
       this->subscribe(watcher);
-      mSubscriptions.insert(&watcher);
+      mSubscriptions.insert(watcher);
     } catch (std::exception &err) {
       unref();
       throw;
@@ -152,9 +152,9 @@ void Backend::watch(Watcher &watcher) {
   }
 }
 
-void Backend::unwatch(Watcher &watcher) {
+void Backend::unwatch(WatcherRef watcher) {
   std::unique_lock<std::mutex> lock(mMutex);
-  size_t deleted = mSubscriptions.erase(&watcher);
+  size_t deleted = mSubscriptions.erase(watcher);
   if (deleted > 0) {
     this->unsubscribe(watcher);
     unref();
@@ -168,7 +168,7 @@ void Backend::unref() {
 }
 
 void Backend::handleWatcherError(WatcherError &err) {
-  unwatch(*err.mWatcher);
+  unwatch(err.mWatcher);
   err.mWatcher->notifyError(err);
 }
 

@@ -24,7 +24,7 @@
 #endif
 #define ISDOT(a) (a[0] == '.' && (!a[1] || (a[1] == '.' && !a[2])))
 
-void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, const std::string &dirname) {
+void iterateDir(WatcherRef watcher, const std::shared_ptr <DirTree> tree, const char *relative, int parent_fd, const std::string &dirname) {
     int open_flags = (O_RDONLY | O_CLOEXEC | O_DIRECTORY | O_NOCTTY | O_NONBLOCK | O_NOFOLLOW);
     int new_fd = openat(parent_fd, relative, open_flags);
     if (new_fd == -1) {
@@ -68,7 +68,7 @@ void iterateDir(Watcher &watcher, const std::shared_ptr <DirTree> tree, const ch
     }
 }
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr <DirTree> tree) {
+void BruteForceBackend::readTree(WatcherRef watcher, std::shared_ptr <DirTree> tree) {
     int fd = open(watcher.mDir.c_str(), O_RDONLY);
     if (fd) {
         iterateDir(watcher, tree, ".", fd, watcher.mDir);

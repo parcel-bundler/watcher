@@ -7,7 +7,7 @@ void WasmBackend::start() {
   notifyStarted();
 }
 
-void WasmBackend::subscribe(Watcher &watcher) {
+void WasmBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
@@ -18,7 +18,7 @@ void WasmBackend::subscribe(Watcher &watcher) {
   }
 }
 
-void WasmBackend::watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree) {
+void WasmBackend::watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree) {
   int wd = wasm_backend_add_watch(path.c_str(), (void *)this);
   std::shared_ptr<WasmSubscription> sub = std::make_shared<WasmSubscription>();
   sub->tree = tree;
@@ -116,7 +116,7 @@ bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<W
   return true;
 }
 
-void WasmBackend::unsubscribe(Watcher &watcher) {
+void WasmBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
     if (it->second->watcher == &watcher) {
