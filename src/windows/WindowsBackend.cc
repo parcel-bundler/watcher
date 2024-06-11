@@ -67,7 +67,7 @@ WindowsBackend::~WindowsBackend() {
   QueueUserAPC([](__in ULONG_PTR) {}, mThread.native_handle(), (ULONG_PTR)this);
 }
 
-class Subscription: WatcherState {
+class Subscription: public WatcherState {
 public:
   Subscription(WindowsBackend *backend, WatcherRef watcher, std::shared_ptr<DirTree> tree) {
     mRunning = true;
