@@ -269,7 +269,7 @@ void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPa
 std::string getId(WatcherRef watcher) {
   std::ostringstream id;
   id << "parcel-";
-  id << (void *)&watcher;
+  id << static_cast<void*>(watcher.get());
   return id.str();
 }
 
