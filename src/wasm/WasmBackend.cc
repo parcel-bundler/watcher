@@ -23,7 +23,7 @@ void WasmBackend::watchDir(WatcherRef watcher, std::string path, std::shared_ptr
   std::shared_ptr<WasmSubscription> sub = std::make_shared<WasmSubscription>();
   sub->tree = tree;
   sub->path = path;
-  sub->watcher = &watcher;
+  sub->watcher = watcher;
   mSubscriptions.emplace(wd, sub);
 }
 
@@ -49,7 +49,7 @@ void WasmBackend::handleEvent(int wd, int type, char *filename) {
 
 bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<WasmSubscription> sub) {
   // Build full path and check if its in our ignore list.
-  Watcher *watcher = sub->watcher;
+  WatcherRef watcher = sub->watcher;
   std::string path = std::string(sub->path);
 
   if (filename[0] != '\0') {
@@ -108,7 +108,7 @@ bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<W
       // If this is a create, check if it's a directory and start watching if it is.
       DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
       if (entry->isDir) {
-        watchDir(*watcher, path, sub->tree);
+        watchDir(watcher, path, sub->tree);
       }
     }
   }
@@ -119,7 +119,7 @@ bool WasmBackend::handleSubscription(int type, char *filename, std::shared_ptr<W
 void WasmBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-    if (it->second->watcher == &watcher) {
+    if (it->second->watcher.get() == watcher.get()) {
       if (mSubscriptions.count(it->first) == 1) {
         wasm_backend_remove_watch(it->first);
       }

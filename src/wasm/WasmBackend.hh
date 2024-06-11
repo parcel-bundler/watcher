@@ -14,7 +14,7 @@ extern "C" {
 struct WasmSubscription {
   std::shared_ptr<DirTree> tree;
   std::string path;
-  Watcher *watcher;
+  WatcherRef watcher;
 };
 
 class WasmBackend : public BruteForceBackend {
