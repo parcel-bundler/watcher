@@ -40,8 +40,6 @@ bool pathExists(char *path) {
 
 class State: public WatcherState {
 public:
-  virtual ~State() override {}
-
   FSEventStreamRef stream;
   std::shared_ptr<DirTree> tree;
   uint64_t since;
@@ -177,7 +175,6 @@ void FSEventsCallback(
   // Stop watching if the root directory was deleted.
   if (deletedRoot) {
     stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
-    delete state;
     watcher->state = nullptr;
   }
 }
