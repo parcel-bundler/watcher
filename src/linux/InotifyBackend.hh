@@ -10,7 +10,7 @@
 struct InotifySubscription {
   std::shared_ptr<DirTree> tree;
   std::string path;
-  Watcher *watcher;
+  WatcherRef watcher;
 };
 
 class InotifyBackend : public BruteForceBackend {
@@ -27,7 +27,7 @@ private:
 
   bool watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree);
   void handleEvents();
-  void handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers);
+  void handleEvent(struct inotify_event *event, std::unordered_set<WatcherRef> &watchers);
   bool handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub);
 };
 

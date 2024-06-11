@@ -32,7 +32,7 @@ void iterateDir(WatcherRef watcher, const std::shared_ptr <DirTree> tree, const 
             return; // ignore insufficient permissions
         }
 
-        throw WatcherError(strerror(errno), &watcher);
+        throw WatcherError(strerror(errno), watcher);
     }
 
     struct stat rootAttributes;
@@ -45,7 +45,7 @@ void iterateDir(WatcherRef watcher, const std::shared_ptr <DirTree> tree, const 
 
             std::string fullPath = dirname + "/" + ent->d_name;
 
-            if (!watcher.isIgnored(fullPath)) {
+            if (!watcher->isIgnored(fullPath)) {
                 struct stat attrib;
                 fstatat(new_fd, ent->d_name, &attrib, AT_SYMLINK_NOFOLLOW);
                 bool isDir = ent->d_type == DT_DIR;
@@ -64,14 +64,14 @@ void iterateDir(WatcherRef watcher, const std::shared_ptr <DirTree> tree, const 
     }
 
     if (errno) {
-        throw WatcherError(strerror(errno), &watcher);
+        throw WatcherError(strerror(errno), watcher);
     }
 }
 
 void BruteForceBackend::readTree(WatcherRef watcher, std::shared_ptr <DirTree> tree) {
-    int fd = open(watcher.mDir.c_str(), O_RDONLY);
+    int fd = open(watcher->mDir.c_str(), O_RDONLY);
     if (fd) {
-        iterateDir(watcher, tree, ".", fd, watcher.mDir);
+        iterateDir(watcher, tree, ".", fd, watcher->mDir);
         close(fd);
     }
 }
