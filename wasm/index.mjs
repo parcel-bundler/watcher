@@ -156,7 +156,7 @@ const wasm_env = {
   emscripten_resize_heap() {
     return 0;
   },
-  abort() {},
+  _abort_js() {},
   wasm_backend_add_watch(filename, backend) {
     let path = env.getString(filename);
     let watch = fs.watch(path, {encoding: 'buffer'}, (eventType, filename) => {
