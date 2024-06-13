@@ -9,10 +9,10 @@
 #define NETWORK_BUF_SIZE 64 * 1024
 #define CONVERT_TIME(ft) ULARGE_INTEGER{ft.dwLowDateTime, ft.dwHighDateTime}.QuadPart
 
-void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree) {
+void BruteForceBackend::readTree(WatcherRef watcher, std::shared_ptr<DirTree> tree) {
   std::stack<std::string> directories;
 
-  directories.push(watcher.mDir);
+  directories.push(watcher->mDir);
 
   while (!directories.empty()) {
     HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -25,9 +25,9 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     hFind = FindFirstFile(spec.c_str(), &ffd);
 
     if (hFind == INVALID_HANDLE_VALUE)  {
-      if (path == watcher.mDir) {
+      if (path == watcher->mDir) {
         FindClose(hFind);
-        throw WatcherError("Error opening directory", &watcher);
+        throw WatcherError("Error opening directory", watcher);
       }
 
       tree->remove(path);
@@ -37,7 +37,7 @@ void BruteForceBackend::readTree(Watcher &watcher, std::shared_ptr<DirTree> tree
     do {
       if (strcmp(ffd.cFileName, ".") != 0 && strcmp(ffd.cFileName, "..") != 0) {
         std::string fullPath = path + "\\" + ffd.cFileName;
-        if (watcher.isIgnored(fullPath)) {
+        if (watcher->isIgnored(fullPath)) {
           continue;
         }
 
@@ -67,9 +67,9 @@ WindowsBackend::~WindowsBackend() {
   QueueUserAPC([](__in ULONG_PTR) {}, mThread.native_handle(), (ULONG_PTR)this);
 }
 
-class Subscription {
+class Subscription: public WatcherState {
 public:
-  Subscription(WindowsBackend *backend, Watcher *watcher, std::shared_ptr<DirTree> tree) {
+  Subscription(WindowsBackend *backend, WatcherRef watcher, std::shared_ptr<DirTree> tree) {
     mRunning = true;
     mBackend = backend;
     mWatcher = watcher;
@@ -109,7 +109,7 @@ public:
     }
   }
 
-  ~Subscription() {
+  virtual ~Subscription() {
     stop();
   }
 
@@ -250,7 +250,7 @@ public:
 
 private:
   WindowsBackend *mBackend;
-  Watcher *mWatcher;
+  std::shared_ptr<Watcher> mWatcher;
   std::shared_ptr<DirTree> mTree;
   bool mRunning;
   HANDLE mDirectoryHandle;
@@ -260,16 +260,16 @@ private:
 };
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void WindowsBackend::subscribe(Watcher &watcher) {
+void WindowsBackend::subscribe(WatcherRef watcher) {
   // Create a subscription for this watcher
-  Subscription *sub = new Subscription(this, &watcher, getTree(watcher, false));
-  watcher.state = (void *)sub;
+  auto sub = std::make_shared<Subscription>(this, watcher, getTree(watcher, false));
+  watcher->state = sub;
 
   // Queue polling for this subscription in the correct thread.
   bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
     Subscription *sub = (Subscription *)ptr;
     sub->run();
-  }, mThread.native_handle(), (ULONG_PTR)sub);
+  }, mThread.native_handle(), (ULONG_PTR)sub.get());
 
   if (!success) {
     throw std::runtime_error("Unable to queue APC");
@@ -277,7 +277,6 @@ void WindowsBackend::subscribe(Watcher &watcher) {
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void WindowsBackend::unsubscribe(Watcher &watcher) {
-  Subscription *sub = (Subscription *)watcher.state;
-  delete sub;
+void WindowsBackend::unsubscribe(WatcherRef watcher) {
+  watcher->state = nullptr;
 }

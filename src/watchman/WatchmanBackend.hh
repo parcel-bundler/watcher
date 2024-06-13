@@ -12,21 +12,21 @@ public:
   void start() override;
   WatchmanBackend() : mStopped(false) {};
   ~WatchmanBackend();
-  void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
-  void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
-  void subscribe(Watcher &watcher) override;
-  void unsubscribe(Watcher &watcher) override;
+  void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) override;
+  void getEventsSince(WatcherRef watcher, std::string *snapshotPath) override;
+  void subscribe(WatcherRef watcher) override;
+  void unsubscribe(WatcherRef watcher) override;
 private:
   std::unique_ptr<IPC> mIPC;
   Signal mRequestSignal;
   Signal mResponseSignal;
   BSER::Object mResponse;
   std::string mError;
-  std::unordered_map<std::string, Watcher *> mSubscriptions;
+  std::unordered_map<std::string, WatcherRef> mSubscriptions;
   bool mStopped;
   Signal mEndedSignal;
 
-  std::string clock(Watcher &watcher);
+  std::string clock(WatcherRef watcher);
   void watchmanWatch(std::string dir);
   BSER::Object watchmanRequest(BSER cmd);
   void handleSubscription(BSER::Object obj);

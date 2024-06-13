@@ -13,22 +13,22 @@ public:
   void notifyStarted();
 
   virtual void start();
-  virtual void writeSnapshot(Watcher &watcher, std::string *snapshotPath) = 0;
-  virtual void getEventsSince(Watcher &watcher, std::string *snapshotPath) = 0;
-  virtual void subscribe(Watcher &watcher) = 0;
-  virtual void unsubscribe(Watcher &watcher) = 0;
+  virtual void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) = 0;
+  virtual void getEventsSince(WatcherRef watcher, std::string *snapshotPath) = 0;
+  virtual void subscribe(WatcherRef watcher) = 0;
+  virtual void unsubscribe(WatcherRef watcher) = 0;
 
   static std::shared_ptr<Backend> getShared(std::string backend);
 
-  void watch(Watcher &watcher);
-  void unwatch(Watcher &watcher);
+  void watch(WatcherRef watcher);
+  void unwatch(WatcherRef watcher);
   void unref();
   void handleWatcherError(WatcherError &err);
 
   std::mutex mMutex;
   std::thread mThread;
 private:
-  std::unordered_set<Watcher *> mSubscriptions;
+  std::unordered_set<WatcherRef> mSubscriptions;
   Signal mStartedSignal;
 
   void handleError(std::exception &err);

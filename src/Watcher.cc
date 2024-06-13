@@ -4,21 +4,21 @@
 using namespace Napi;
 
 struct WatcherHash {
-  std::size_t operator() (std::shared_ptr<Watcher> const &k) const {
+  std::size_t operator() (WatcherRef const &k) const {
     return std::hash<std::string>()(k->mDir);
   }
 };
 
 struct WatcherCompare {
-  size_t operator() (std::shared_ptr<Watcher> const &a, std::shared_ptr<Watcher> const &b) const {
+  size_t operator() (WatcherRef const &a, WatcherRef const &b) const {
     return *a == *b;
   }
 };
 
-static std::unordered_set<std::shared_ptr<Watcher>, WatcherHash, WatcherCompare> sharedWatchers;
+static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare> sharedWatchers;
 
-std::shared_ptr<Watcher> Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs) {
-  std::shared_ptr<Watcher> watcher = std::make_shared<Watcher>(dir, ignorePaths, ignoreGlobs);
+WatcherRef Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs) {
+  WatcherRef watcher = std::make_shared<Watcher>(dir, ignorePaths, ignoreGlobs);
   auto found = sharedWatchers.find(watcher);
   if (found != sharedWatchers.end()) {
     return *found;

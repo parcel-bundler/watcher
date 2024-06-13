@@ -14,20 +14,20 @@ extern "C" {
 struct WasmSubscription {
   std::shared_ptr<DirTree> tree;
   std::string path;
-  Watcher *watcher;
+  WatcherRef watcher;
 };
 
 class WasmBackend : public BruteForceBackend {
 public:
   void start() override;
-  void subscribe(Watcher &watcher) override;
-  void unsubscribe(Watcher &watcher) override;
+  void subscribe(WatcherRef watcher) override;
+  void unsubscribe(WatcherRef watcher) override;
   void handleEvent(int wd, int type, char *filename);
 private:
   int mWasm;
   std::unordered_multimap<int, std::shared_ptr<WasmSubscription>> mSubscriptions;
 
-  void watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree);
+  void watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree);
   bool handleSubscription(int type, char *filename, std::shared_ptr<WasmSubscription> sub);
 };
 

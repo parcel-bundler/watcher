@@ -111,7 +111,7 @@ function buildNode(triple, t) {
     fs.mkdirSync(dir + '/npm/' + t);
   } catch (err) { }
   fs.writeFileSync(`${dir}/npm/${t}/package.json`, JSON.stringify(pkg2, false, 2) + '\n');
-  fs.copyFileSync(`${dir}/prebuilds/${triple.platform}-${triple.arch}/node.napi.${triple.libc || 'glibc'}.node`, `${dir}/npm/${t}/watcher.node`);
+  fs.copyFileSync(`${dir}/prebuilds/${triple.platform}-${triple.arch}/@parcel+watcher.${triple.libc || 'glibc'}.node`, `${dir}/npm/${t}/watcher.node`);
   fs.writeFileSync(`${dir}/npm/${t}/README.md`, `This is the ${t} build of @parcel/watcher. See https://github.com/parcel-bundler/watcher for details.`);
   fs.copyFileSync(`${dir}/LICENSE`, `${dir}/npm/${t}/LICENSE`);
 }

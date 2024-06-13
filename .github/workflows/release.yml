@@ -12,7 +12,7 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
-            node: 16
+            node: 18
           - os: windows-latest
             arch: arm64
             node: 20
@@ -21,10 +21,10 @@ jobs:
             node: 16
           - os: macos-latest
             arch: x64
-            node: 16
+            node: 18
           - os: macos-latest
             arch: arm64
-            node: 16
+            node: 18
           - os: ubuntu-latest
             arch: x64
             libc: glibc
@@ -34,26 +34,26 @@ jobs:
             arch: x64
             libc: musl
             image: ghcr.io/prebuild/alpine:2.1.1
-            node: 16
+            node: 18
           - os: ubuntu-latest
             arch: arm64
             libc: glibc
             image: ghcr.io/prebuild/linux-arm64-lts:2.1.1
-            node: 16
+            node: 18
           - os: ubuntu-latest
             arch: arm64
             libc: musl
             image: ghcr.io/prebuild/linux-arm64-musl:2.1.1
-            node: 16
+            node: 18
           - os: ubuntu-latest
             arch: arm
             libc: glibc
             image: ghcr.io/prebuild/linux-armv7:2.1.1
-            node: 16
+            node: 18
           - os: ubuntu-latest
             arch: arm64
             image: ghcr.io/prebuild/android-arm64:2.1.1
-            node: 16
+            node: 18
     runs-on: ${{matrix.os}}
     container:
       image: ${{matrix.image}}
@@ -93,7 +93,7 @@ jobs:
           run: |
             yarn --frozen-lockfile --ignore-scripts
             npm install node-gyp -g
-            yarn prebuild --arch x64 -t 16.0.0
+            yarn prebuild --arch x64 -t 18.0.0
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -130,7 +130,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           cache: yarn
-          node-version: 16
+          node-version: 18
       - run: yarn --frozen-lockfile --ignore-scripts
       - name: Download artifacts
         uses: actions/download-artifact@v3
