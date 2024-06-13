@@ -38,7 +38,8 @@ bool pathExists(char *path) {
   return res;
 }
 
-struct State {
+class State: public WatcherState {
+public:
   FSEventStreamRef stream;
   std::shared_ptr<DirTree> tree;
   uint64_t since;
@@ -53,9 +54,15 @@ void FSEventsCallback(
   const FSEventStreamEventId eventIds[]
 ) {
   char **paths = (char **)eventPaths;
-  Watcher *watcher = (Watcher *)clientCallBackInfo;
-  EventList *list = &watcher->mEvents;
-  State *state = (State *)watcher->state;
+  std::shared_ptr<Watcher>& watcher = *static_cast<std::shared_ptr<Watcher> *>(clientCallBackInfo);
+
+  EventList& list = watcher->mEvents;
+  if (watcher->state == nullptr) {
+      return;
+  }
+
+  auto stateGuard = watcher->state;
+  auto* state = static_cast<State*>(stateGuard.get());
   uint64_t since = state->since;
   bool deletedRoot = false;
 
@@ -94,10 +101,10 @@ void FSEventsCallback(
     // Handle unambiguous events first
     if (isCreated && !(isRemoved || isModified || isRenamed)) {
       state->tree->add(paths[i], 0, isDir);
-      list->create(paths[i]);
+      list.create(paths[i]);
     } else if (isRemoved && !(isCreated || isModified || isRenamed)) {
       state->tree->remove(paths[i]);
-      list->remove(paths[i]);
+      list.remove(paths[i]);
       if (paths[i] == watcher->mDir) {
         deletedRoot = true;
       }
@@ -125,7 +132,7 @@ void FSEventsCallback(
         state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
       }
 
-      list->update(paths[i]);
+      list.update(paths[i]);
     } else {
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // This helps disambiguate creates, updates, and deletes.
@@ -137,7 +144,7 @@ void FSEventsCallback(
         // we'd rather ignore this event completely). This will result in some extra delete events
         // being emitted for files we don't know about, but that is the best we can do.
         state->tree->remove(paths[i]);
-        list->remove(paths[i]);
+        list.remove(paths[i]);
         if (paths[i] == watcher->mDir) {
           deletedRoot = true;
         }
@@ -155,10 +162,10 @@ void FSEventsCallback(
       // Some mounted file systems report a creation time of 0/unix epoch which we special case.
       if (isModified && (entry || (ctime <= since && ctime != 0))) {
         state->tree->update(paths[i], mtime);
-        list->update(paths[i]);
+        list.update(paths[i]);
       } else {
         state->tree->add(paths[i], mtime, S_ISDIR(file.st_mode));
-        list->create(paths[i]);
+        list.create(paths[i]);
       }
     }
   }
@@ -168,29 +175,28 @@ void FSEventsCallback(
   // Stop watching if the root directory was deleted.
   if (deletedRoot) {
     stopStream((FSEventStreamRef)streamRef, CFRunLoopGetCurrent());
-    delete state;
-    watcher->state = NULL;
+    watcher->state = nullptr;
   }
 }
 
-void checkWatcher(Watcher &watcher) {
+void checkWatcher(WatcherRef watcher) {
   struct stat file;
-  if (stat(watcher.mDir.c_str(), &file)) {
-    throw WatcherError(strerror(errno), &watcher);
+  if (stat(watcher->mDir.c_str(), &file)) {
+    throw WatcherError(strerror(errno), watcher);
   }
 
   if (!S_ISDIR(file.st_mode)) {
-    throw WatcherError(strerror(ENOTDIR), &watcher);
+    throw WatcherError(strerror(ENOTDIR), watcher);
   }
 }
 
-void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
+void FSEventsBackend::startStream(WatcherRef watcher, FSEventStreamEventId id) {
   checkWatcher(watcher);
 
   CFAbsoluteTime latency = 0.001;
   CFStringRef fileWatchPath = CFStringCreateWithCString(
     NULL,
-    watcher.mDir.c_str(),
+    watcher->mDir.c_str(),
     kCFStringEncodingUTF8
   );
 
@@ -201,7 +207,9 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
     NULL
   );
 
-  FSEventStreamContext callbackInfo {0, (void *)&watcher, nullptr, nullptr, nullptr};
+  // Make a watcher reference we can pass into the callback. This ensures bumped ref-count.
+  std::shared_ptr<Watcher>* callbackWatcher = new std::shared_ptr<Watcher> (watcher);
+  FSEventStreamContext callbackInfo {0, static_cast<void*> (callbackWatcher), nullptr, nullptr, nullptr};
   FSEventStreamRef stream = FSEventStreamCreate(
     NULL,
     &FSEventsCallback,
@@ -212,8 +220,8 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
     kFSEventStreamCreateFlagFileEvents
   );
 
-  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher.mIgnorePaths.size(), NULL);
-  for (auto it = watcher.mIgnorePaths.begin(); it != watcher.mIgnorePaths.end(); it++) {
+  CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher->mIgnorePaths.size(), NULL);
+  for (auto it = watcher->mIgnorePaths.begin(); it != watcher->mIgnorePaths.end(); it++) {
     CFStringRef path = CFStringCreateWithCString(
       NULL,
       it->c_str(),
@@ -233,11 +241,12 @@ void FSEventsBackend::startStream(Watcher &watcher, FSEventStreamEventId id) {
 
   if (!started) {
     FSEventStreamRelease(stream);
-    throw WatcherError("Error starting FSEvents stream", &watcher);
+    throw WatcherError("Error starting FSEvents stream", watcher);
   }
 
-  State *s = (State *)watcher.state;
-  s->tree = std::make_shared<DirTree>(watcher.mDir);
+  auto stateGuard = watcher->state;
+  State* s = static_cast<State*>(stateGuard.get());
+  s->tree = std::make_shared<DirTree>(watcher->mDir);
   s->stream = stream;
 }
 
@@ -260,7 +269,7 @@ FSEventsBackend::~FSEventsBackend() {
   CFRelease(mRunLoop);
 }
 
-void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath) {
+void FSEventsBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   checkWatcher(watcher);
 
@@ -274,7 +283,7 @@ void FSEventsBackend::writeSnapshot(Watcher &watcher, std::string *snapshotPath)
   ofs << CONVERT_TIME(now);
 }
 
-void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath) {
+void FSEventsBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
@@ -286,33 +295,31 @@ void FSEventsBackend::getEventsSince(Watcher &watcher, std::string *snapshotPath
   ifs >> id;
   ifs >> since;
 
-  State *s = new State;
+  auto s = std::make_shared<State>();
   s->since = since;
-  watcher.state = (void *)s;
+  watcher->state = s;
 
   startStream(watcher, id);
-  watcher.wait();
+  watcher->wait();
   stopStream(s->stream, mRunLoop);
 
-  delete s;
-  watcher.state = NULL;
+  watcher->state = nullptr;
 }
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void FSEventsBackend::subscribe(Watcher &watcher) {
-  State *s = new State;
+void FSEventsBackend::subscribe(WatcherRef watcher) {
+  auto s = std::make_shared<State>();
   s->since = 0;
-  watcher.state = (void *)s;
+  watcher->state = s;
   startStream(watcher, kFSEventStreamEventIdSinceNow);
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void FSEventsBackend::unsubscribe(Watcher &watcher) {
-  State *s = (State *)watcher.state;
-  if (s != NULL) {
+void FSEventsBackend::unsubscribe(WatcherRef watcher) {
+  auto stateGuard = watcher->state;
+  State* s = static_cast<State*>(stateGuard.get());
+  if (s != nullptr) {
     stopStream(s->stream, mRunLoop);
-
-    delete s;
-    watcher.state = NULL;
+    watcher->state = nullptr;
   }
 }

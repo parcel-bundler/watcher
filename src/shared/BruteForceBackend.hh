@@ -7,19 +7,19 @@
 
 class BruteForceBackend : public Backend {
 public:
-  void writeSnapshot(Watcher &watcher, std::string *snapshotPath) override;
-  void getEventsSince(Watcher &watcher, std::string *snapshotPath) override;
-  void subscribe(Watcher &watcher) override {
+  void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) override;
+  void getEventsSince(WatcherRef watcher, std::string *snapshotPath) override;
+  void subscribe(WatcherRef watcher) override {
     throw "Brute force backend doesn't support subscriptions.";
   }
 
-  void unsubscribe(Watcher &watcher) override {
+  void unsubscribe(WatcherRef watcher) override {
     throw "Brute force backend doesn't support subscriptions.";
   }
 
-  std::shared_ptr<DirTree> getTree(Watcher &watcher, bool shouldRead = true);
+  std::shared_ptr<DirTree> getTree(WatcherRef watcher, bool shouldRead = true);
 private:
-  void readTree(Watcher &watcher, std::shared_ptr<DirTree> tree);
+  void readTree(WatcherRef watcher, std::shared_ptr<DirTree> tree);
 };
 
 #endif

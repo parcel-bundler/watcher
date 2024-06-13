@@ -64,7 +64,7 @@ InotifyBackend::~InotifyBackend() {
 }
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void InotifyBackend::subscribe(Watcher &watcher) {
+void InotifyBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
@@ -72,13 +72,13 @@ void InotifyBackend::subscribe(Watcher &watcher) {
     if (it->second.isDir) {
       bool success = watchDir(watcher, it->second.path, tree);
       if (!success) {
-        throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + strerror(errno), &watcher);
+        throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + strerror(errno), watcher);
       }
     }
   }
 }
 
-bool InotifyBackend::watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree) {
+bool InotifyBackend::watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree) {
   int wd = inotify_add_watch(mInotify, path.c_str(), INOTIFY_MASK);
   if (wd == -1) {
     return false;
@@ -87,7 +87,7 @@ bool InotifyBackend::watchDir(Watcher &watcher, std::string path, std::shared_pt
   std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>();
   sub->tree = tree;
   sub->path = path;
-  sub->watcher = &watcher;
+  sub->watcher = watcher;
   mSubscriptions.emplace(wd, sub);
 
   return true;
@@ -98,7 +98,7 @@ void InotifyBackend::handleEvents() {
   struct inotify_event *event;
 
   // Track all of the watchers that are touched so we can notify them at the end of the events.
-  std::unordered_set<Watcher *> watchers;
+  std::unordered_set<WatcherRef> watchers;
 
   while (true) {
     int n = read(mInotify, &buf, BUFFER_SIZE);
@@ -131,7 +131,7 @@ void InotifyBackend::handleEvents() {
   }
 }
 
-void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set<Watcher *> &watchers) {
+void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set<WatcherRef> &watchers) {
   std::unique_lock<std::mutex> lock(mMutex);
 
   // Find the subscriptions for this watch descriptor
@@ -150,7 +150,7 @@ void InotifyBackend::handleEvent(struct inotify_event *event, std::unordered_set
 
 bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub) {
   // Build full path and check if its in our ignore list.
-  Watcher *watcher = sub->watcher;
+  std::shared_ptr<Watcher> watcher = sub->watcher;
   std::string path = std::string(sub->path);
   bool isDir = event->mask & IN_ISDIR;
 
@@ -174,7 +174,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
-      bool success = watchDir(*watcher, path, sub->tree);
+      bool success = watchDir(watcher, path, sub->tree);
       if (!success) {
         sub->tree->remove(path);
         return false;
@@ -213,14 +213,14 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void InotifyBackend::unsubscribe(Watcher &watcher) {
+void InotifyBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-    if (it->second->watcher == &watcher) {
+    if (it->second->watcher.get() == watcher.get()) {
       if (mSubscriptions.count(it->first) == 1) {
         int err = inotify_rm_watch(mInotify, it->first);
         if (err == -1) {
-          throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), &watcher);
+          throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), watcher);
         }
       }
 

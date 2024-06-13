@@ -8,7 +8,7 @@
 #include "../Signal.hh"
 
 struct KqueueSubscription {
-  Watcher *watcher;
+  WatcherRef watcher;
   std::string path;
   std::shared_ptr<DirTree> tree;
   int fd;
@@ -18,8 +18,8 @@ class KqueueBackend : public BruteForceBackend {
 public:
   void start() override;
   ~KqueueBackend();
-  void subscribe(Watcher &watcher) override;
-  void unsubscribe(Watcher &watcher) override;
+  void subscribe(WatcherRef watcher) override;
+  void unsubscribe(WatcherRef watcher) override;
 private:
   int mKqueue;
   int mPipe[2];
@@ -27,8 +27,8 @@ private:
   std::unordered_map<int, DirEntry *> mFdToEntry;
   Signal mEndedSignal;
 
-  bool watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree);
-  bool compareDir(int fd, std::string &dir, std::unordered_set<Watcher *> &watchers);
+  bool watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree);
+  bool compareDir(int fd, std::string &dir, std::unordered_set<WatcherRef> &watchers);
   std::vector<KqueueSubscription *> findSubscriptions(std::string &path);
 };
 

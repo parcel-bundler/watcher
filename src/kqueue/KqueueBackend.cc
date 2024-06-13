@@ -57,7 +57,7 @@ void KqueueBackend::start() {
     }
 
     // Track all of the watchers that are touched so we can notify them at the end of the events.
-    std::unordered_set<Watcher *> watchers;
+    std::unordered_set<WatcherRef> watchers;
 
     for (int i = 0; i < event_count; i++) {
       int flags = events[i].fflags;
@@ -118,20 +118,20 @@ KqueueBackend::~KqueueBackend() {
   mEndedSignal.wait();
 }
 
-void KqueueBackend::subscribe(Watcher &watcher) {
+void KqueueBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
   for (auto it = tree->entries.begin(); it != tree->entries.end(); it++) {
     bool success = watchDir(watcher, it->second.path, tree);
     if (!success) {
-      throw WatcherError(std::string("error watching " + watcher.mDir + ": " + strerror(errno)), &watcher);
+      throw WatcherError(std::string("error watching " + watcher->mDir + ": " + strerror(errno)), watcher);
     }
   }
 }
 
-bool KqueueBackend::watchDir(Watcher &watcher, std::string path, std::shared_ptr<DirTree> tree) {
-  if (watcher.isIgnored(path)) {
+bool KqueueBackend::watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree) {
+  if (watcher->isIgnored(path)) {
     return false;
   }
 
@@ -141,7 +141,7 @@ bool KqueueBackend::watchDir(Watcher &watcher, std::string path, std::shared_ptr
   }
 
   KqueueSubscription sub = {
-    .watcher = &watcher,
+    .watcher = watcher,
     .path = path,
     .tree = tree
   };
@@ -189,7 +189,7 @@ std::vector<KqueueSubscription *> KqueueBackend::findSubscriptions(std::string &
   return subs;
 }
 
-bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Watcher *> &watchers) {
+bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<WatcherRef> &watchers) {
   // macOS doesn't support fdclosedir, so we have to duplicate the file descriptor
   // to ensure the closedir doesn't also stop watching.
   #if __APPLE__
@@ -240,7 +240,7 @@ bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Wat
             sub->watcher->mEvents.create(fullpath);
             watchers.emplace(sub->watcher);
 
-            bool success = watchDir(*sub->watcher, fullpath, sub->tree);
+            bool success = watchDir(sub->watcher, fullpath, sub->tree);
             if (!success) {
               sub->tree->remove(fullpath);
               return false;
@@ -289,10 +289,10 @@ bool KqueueBackend::compareDir(int fd, std::string &path, std::unordered_set<Wat
   return true;
 }
 
-void KqueueBackend::unsubscribe(Watcher &watcher) {
+void KqueueBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-    if (it->second.watcher == &watcher) {
+    if (it->second.watcher.get() == watcher.get()) {
       if (mSubscriptions.count(it->first) == 1) {
         // Closing the file descriptor automatically unwatches it in the kqueue.
         close(it->second.fd);
