@@ -58,7 +58,7 @@
     "lint-staged": "^11.1.2",
     "mocha": "^9.1.1",
     "napi-wasm": "^1.1.0",
-    "prebuildify": "^5.0.1",
+    "prebuildify": "^6.0.1",
     "prettier": "^2.3.2"
   },
   "binary": {

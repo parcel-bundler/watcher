@@ -29,7 +29,7 @@ jobs:
             arch: x64
             libc: glibc
             image: ghcr.io/prebuild/centos7-devtoolset7:2.1.1
-            node: 18
+            node: 16
           - os: ubuntu-latest
             arch: x64
             libc: musl
