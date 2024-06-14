@@ -17,7 +17,7 @@ let backends = [];
 if (process.platform === 'darwin') {
   backends = ['fs-events', 'watchman'];
 } else if (process.platform === 'linux') {
-  backends = ['inotify', 'watchman'];
+  backends = ['inotify', 'watchman', 'fanotify-crawl', 'fanotify-fs'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
 }
@@ -68,7 +68,7 @@ describe('since', () => {
 
       describe('files', () => {
         it('should emit when a file is created', async function () {
-          this.timeout(10000);
+          this.timeout(5000);
           let f = getFilename();
           await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
           if (isSecondPrecision) {

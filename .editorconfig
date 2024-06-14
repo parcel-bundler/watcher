@@ -13,3 +13,9 @@ trim_trailing_whitespace = true
 [*.md]
 max_line_length = 0
 trim_trailing_whitespace = false
+
+[*.{c++,cc,cpp,cxx,h,h++,hh,hpp,hxx,inl,ipp,tlh,tli}]
+cpp_new_line_before_open_brace_type = same_line
+cpp_new_line_before_open_brace_namespace = same_line
+cpp_new_line_before_open_brace_function = same_line
+cpp_new_line_before_open_brace_block = same_line

@@ -2,13 +2,16 @@ declare type FilePath = string;
 declare type GlobPattern = string;
 
 declare namespace ParcelWatcher {
-  export type BackendType = 
+  export type BackendType =
     | 'fs-events'
     | 'watchman'
     | 'inotify'
     | 'windows'
-    | 'brute-force';
-  export type EventType = 'create' | 'update' | 'delete';
+    | 'brute-force'
+    | 'fanotify-crawl'
+    | 'fanotify-fs'
+    ;
+  export type EventType = 'create' | 'update' | 'delete' | 'move';
   export interface Options {
     ignore?: (FilePath|GlobPattern)[];
     backend?: BackendType;
