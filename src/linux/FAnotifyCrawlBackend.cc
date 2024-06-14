@@ -80,7 +80,7 @@ void FAnotifyCrawlBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
-  for (auto& e : tree->entries) {
+  for (auto &e : tree->entries) {
     if (e.second.isDir) {
       bool success = watchDir(watcher, e.second.path, tree);
       if (!success) {
@@ -90,12 +90,8 @@ void FAnotifyCrawlBackend::subscribe(WatcherRef watcher) {
   }
 }
 
-bool FAnotifyCrawlBackend::watchDir(WatcherRef watcher, const std::string& path, std::shared_ptr<DirTree> tree) {
-  auto markRc = fanotify_mark(mFAnotifyFd
-    , FAN_MARK_ADD | FAN_MARK_DONT_FOLLOW | FAN_MARK_ONLYDIR
-    , FANOTIFY_MASK
-    , AT_FDCWD
-    , path.c_str());
+bool FAnotifyCrawlBackend::watchDir(WatcherRef watcher, const std::string &path, std::shared_ptr<DirTree> tree) {
+  auto markRc = fanotify_mark(mFAnotifyFd, FAN_MARK_ADD | FAN_MARK_DONT_FOLLOW | FAN_MARK_ONLYDIR, FANOTIFY_MASK, AT_FDCWD, path.c_str());
 
   if (markRc != 0) {
     return false;
@@ -139,7 +135,7 @@ void FAnotifyCrawlBackend::handleEvents() {
       break;
     }
 
-    auto event = reinterpret_cast<fanotify_event_metadata*>(buf);
+    auto event = reinterpret_cast<fanotify_event_metadata *>(buf);
     while (FAN_EVENT_OK(event, n)) {
       if (event->vers != FANOTIFY_METADATA_VERSION) {
         throw std::runtime_error("fanotify: wrong version");
@@ -153,10 +149,10 @@ void FAnotifyCrawlBackend::handleEvents() {
       unsigned processedLen = event->metadata_len;
 
       while (eventLen > processedLen) {
-        auto header = (fanotify_event_info_header*)((char*)event + processedLen);
+        auto header = (fanotify_event_info_header *)((char *)event + processedLen);
 
         if (FAN_EVENT_INFO_TYPE == header->info_type) {
-          auto fid = (fanotify_event_info_fid*)header;
+          auto fid = (fanotify_event_info_fid *)header;
           handleEvent(event, fid, watchers);
         }
 
@@ -167,29 +163,31 @@ void FAnotifyCrawlBackend::handleEvents() {
     }
   }
 
-  for (auto& w : watchers) {
+  for (auto &w : watchers) {
     w->notify();
   }
 }
 
-void FAnotifyCrawlBackend::handleEvent(fanotify_event_metadata* metadata, fanotify_event_info_fid* fid, std::unordered_set<WatcherRef>& watchers) {
+void FAnotifyCrawlBackend::handleEvent(
+  fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::unordered_set<WatcherRef> &watchers) {
   std::unique_lock<std::mutex> lock(mMutex);
 
   // Find the subscriptions for this watch descriptor
-  auto range = mSubscriptions.equal_range(toString((fsid_t*)&fid->fsid));
+  auto range = mSubscriptions.equal_range(toString((fsid_t *)&fid->fsid));
   std::unordered_set<std::shared_ptr<FAnotifySubscription>> set;
   for (auto it = range.first; it != range.second; ++it) {
     set.insert(it->second);
   }
 
-  for (auto& s : set) {
+  for (auto &s : set) {
     if (handleSubscription(metadata, fid, s)) {
       watchers.insert(s->watcher);
     }
   }
 }
 
-bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata, fanotify_event_info_fid* fid, std::shared_ptr<FAnotifySubscription> sub) {
+bool FAnotifyCrawlBackend::handleSubscription(
+  fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::shared_ptr<FAnotifySubscription> sub) {
   // Build full path and check if its in our ignore list.
   auto watcher = sub->watcher;
   std::string path(sub->path);
@@ -197,8 +195,8 @@ bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata,
 
 #ifdef FAN_EVENT_INFO_TYPE_DFID_NAME
   if (FAN_EVENT_INFO_TYPE_DFID_NAME == fid->hdr.info_type) {
-    auto handle = (file_handle*)fid->handle;
-    path.append("/").append((char*)handle + sizeof(file_handle) + handle->handle_bytes);
+    auto handle = (file_handle *)fid->handle;
+    path.append("/").append((char *)handle + sizeof(file_handle) + handle->handle_bytes);
   }
 #endif
 
@@ -215,7 +213,7 @@ bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata,
     // Use lstat to avoid resolving symbolic links that we cannot watch anyway
     // https://github.com/parcel-bundler/watcher/issues/76
     lstat(path.c_str(), &st);
-    DirEntry* entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
+    DirEntry *entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
       bool success = watchDir(watcher, path, sub->tree);

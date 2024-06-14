@@ -18,9 +18,14 @@ struct Event {
   bool isDeleted;
   bool isMoved;
 
-  Event(const std::string& path) : path(path), isCreated(false), isDeleted(false), isMoved(false) {}
+  Event(const std::string &path)
+      : path(path)
+      , isCreated(false)
+      , isDeleted(false)
+      , isMoved(false) {
+  }
 
-  Value toJS(const Env& env) {
+  Value toJS(const Env &env) {
     EscapableHandleScope scope(env);
     Object res = Object::New(env);
     res.Set(String::New(env, "path"), String::New(env, path.c_str()));
@@ -31,9 +36,9 @@ struct Event {
 
 class EventList {
 public:
-  void create(const std::string& path) {
+  void create(const std::string &path) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event* event = internalUpdate(path);
+    Event *event = internalUpdate(path);
     if (event->isDeleted) {
       // Assume update event when rapidly removed and created
       // https://github.com/parcel-bundler/watcher/issues/72
@@ -44,20 +49,20 @@ public:
     }
   }
 
-  Event* update(const std::string& path) {
+  Event *update(const std::string &path) {
     std::lock_guard<std::mutex> l(mMutex);
     return internalUpdate(path);
   }
 
-  void move(const std::string& path) {
+  void move(const std::string &path) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event* event = internalUpdate(path);
+    Event *event = internalUpdate(path);
     event->isMoved = true;
   }
 
-  void remove(const std::string& path) {
+  void remove(const std::string &path) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event* event = internalUpdate(path);
+    Event *event = internalUpdate(path);
     event->isDeleted = true;
   }
 
@@ -69,7 +74,7 @@ public:
   std::vector<Event> getEvents() {
     std::lock_guard<std::mutex> l(mMutex);
     std::vector<Event> eventsCloneVector;
-    for (auto& e : mEvents) {
+    for (auto &e : mEvents) {
       if (!(e.second.isCreated && e.second.isDeleted)) {
         eventsCloneVector.push_back(e.second);
       }
@@ -85,7 +90,7 @@ public:
 private:
   mutable std::mutex mMutex;
   std::map<std::string, Event> mEvents;
-  Event* internalUpdate(const std::string& path) {
+  Event *internalUpdate(const std::string &path) {
     auto found = mEvents.find(path);
     if (found == mEvents.end()) {
       auto it = mEvents.emplace(path, Event(path));
