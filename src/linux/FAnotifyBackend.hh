@@ -9,7 +9,7 @@
 struct FAnotifySubscription {
   std::shared_ptr<DirTree> tree;
   std::string path;
-  Watcher* watcher;
+  WatcherRef watcher;
   int mountFd;
 };
 
@@ -21,7 +21,7 @@ protected:
     static char abc[] = "0123456789abcdef";
     std::string result;
 
-    for (size_t i = 0; i < len;++i) {
+    for (size_t i = 0; i < len; ++i) {
       result.append(1, abc[data[i] >> 8]);
       result.append(1, abc[data[i] & 0x0f]);
     }

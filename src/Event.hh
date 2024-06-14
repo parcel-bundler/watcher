@@ -2,11 +2,13 @@
 #define EVENT_H
 
 #include <string>
-#include <node_api.h>
-#include "wasm/include.h"
-#include <napi.h>
 #include <mutex>
 #include <map>
+
+#include <node_api.h>
+#include <napi.h>
+
+#include "wasm/include.h"
 
 using namespace Napi;
 
@@ -67,9 +69,9 @@ public:
   std::vector<Event> getEvents() {
     std::lock_guard<std::mutex> l(mMutex);
     std::vector<Event> eventsCloneVector;
-    for (auto it = mEvents.begin(); it != mEvents.end(); ++it) {
-      if (!(it->second.isCreated && it->second.isDeleted)) {
-        eventsCloneVector.push_back(it->second);
+    for (auto& e : mEvents) {
+      if (!(e.second.isCreated && e.second.isDeleted)) {
+        eventsCloneVector.push_back(e.second);
       }
     }
     return eventsCloneVector;

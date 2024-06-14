@@ -76,7 +76,7 @@ FAnotifyCrawlBackend::~FAnotifyCrawlBackend() {
 }
 
 // This function is called by Backend::watch which takes a lock on mMutex
-void FAnotifyCrawlBackend::subscribe(Watcher& watcher) {
+void FAnotifyCrawlBackend::subscribe(WatcherRef watcher) {
   // Build a full directory tree recursively, and watch each directory.
   std::shared_ptr<DirTree> tree = getTree(watcher);
 
@@ -84,13 +84,13 @@ void FAnotifyCrawlBackend::subscribe(Watcher& watcher) {
     if (e.second.isDir) {
       bool success = watchDir(watcher, e.second.path, tree);
       if (!success) {
-        throw WatcherError(std::string("watchDir on '") + e.second.path + "' failed: " + strerror(errno), &watcher);
+        throw WatcherError(std::string("watchDir on '") + e.second.path + "' failed: " + strerror(errno), watcher);
       }
     }
   }
 }
 
-bool FAnotifyCrawlBackend::watchDir(Watcher& watcher, const std::string& path, std::shared_ptr<DirTree> tree) {
+bool FAnotifyCrawlBackend::watchDir(WatcherRef watcher, const std::string& path, std::shared_ptr<DirTree> tree) {
   auto markRc = fanotify_mark(mFAnotifyFd
     , FAN_MARK_ADD | FAN_MARK_DONT_FOLLOW | FAN_MARK_ONLYDIR
     , FANOTIFY_MASK
@@ -104,7 +104,7 @@ bool FAnotifyCrawlBackend::watchDir(Watcher& watcher, const std::string& path, s
   std::shared_ptr<FAnotifySubscription> sub = std::make_shared<FAnotifySubscription>();
   sub->tree = tree;
   sub->path = path;
-  sub->watcher = &watcher;
+  sub->watcher = watcher;
   sub->mountFd = open(path.c_str(), O_RDONLY);
 
   struct statfs statFs;
@@ -123,7 +123,7 @@ void FAnotifyCrawlBackend::handleEvents() {
   char buf[BUFFER_SIZE];
 
   // Track all of the watchers that are touched so we can notify them at the end of the events.
-  std::unordered_set<Watcher*> watchers;
+  std::unordered_set<WatcherRef> watchers;
 
   while (true) {
     auto n = read(mFAnotifyFd, &buf, BUFFER_SIZE);
@@ -172,7 +172,7 @@ void FAnotifyCrawlBackend::handleEvents() {
   }
 }
 
-void FAnotifyCrawlBackend::handleEvent(fanotify_event_metadata* metadata, fanotify_event_info_fid* fid, std::unordered_set<Watcher*>& watchers) {
+void FAnotifyCrawlBackend::handleEvent(fanotify_event_metadata* metadata, fanotify_event_info_fid* fid, std::unordered_set<WatcherRef>& watchers) {
   std::unique_lock<std::mutex> lock(mMutex);
 
   // Find the subscriptions for this watch descriptor
@@ -191,7 +191,7 @@ void FAnotifyCrawlBackend::handleEvent(fanotify_event_metadata* metadata, fanoti
 
 bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata, fanotify_event_info_fid* fid, std::shared_ptr<FAnotifySubscription> sub) {
   // Build full path and check if its in our ignore list.
-  Watcher* watcher = sub->watcher;
+  auto watcher = sub->watcher;
   std::string path(sub->path);
   bool isDir = (metadata->mask & FAN_ONDIR) == FAN_ONDIR;
 
@@ -218,7 +218,7 @@ bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata,
     DirEntry* entry = sub->tree->add(path, CONVERT_TIME(st.st_mtim), S_ISDIR(st.st_mode));
 
     if (entry->isDir) {
-      bool success = watchDir(*watcher, path, sub->tree);
+      bool success = watchDir(watcher, path, sub->tree);
       if (!success) {
         sub->tree->remove(path);
         return false;
@@ -259,14 +259,14 @@ bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata* metadata,
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
-void FAnotifyCrawlBackend::unsubscribe(Watcher& watcher) {
+void FAnotifyCrawlBackend::unsubscribe(WatcherRef watcher) {
   // Find any subscriptions pointing to this watcher, and remove them.
   for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-    if (it->second->watcher == &watcher) {
+    if (it->second->watcher == watcher) {
       if (mSubscriptions.count(it->first) == 1) {
         auto markRc = fanotify_mark(mFAnotifyFd, FAN_MARK_REMOVE, FANOTIFY_MASK, AT_FDCWD, it->second->path.c_str());
         if (markRc != 0) {
-          throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), &watcher);
+          throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), watcher);
         }
       }
 
