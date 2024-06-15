@@ -14,6 +14,8 @@ using namespace Napi;
 
 struct Event {
   std::string path;
+  std::string pathTo;
+  std::string pathFrom;
   bool isCreated;
   bool isDeleted;
   bool isMoved;
@@ -29,16 +31,24 @@ struct Event {
     EscapableHandleScope scope(env);
     Object res = Object::New(env);
     res.Set(String::New(env, "path"), String::New(env, path.c_str()));
-    res.Set(String::New(env, "type"), String::New(env, (isCreated ? "create" : isDeleted ? "delete" : isMoved ? "move" : "update")));
+    res.Set(String::New(env, "pathFrom"), String::New(env, pathFrom.c_str()));
+    res.Set(String::New(env, "pathTo"), String::New(env, pathTo.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, (isMoved ? "move" : isCreated ? "create" : isDeleted ? "delete" : "update")));
     return scope.Escape(res);
   }
 };
 
 class EventList {
 public:
-  void create(const std::string &path) {
+  void create(const std::string &path, bool isMoved = false) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
+    event->isMoved = isMoved;
+
+    if (isMoved) {
+      event->pathTo = path;
+    }
+
     if (event->isDeleted) {
       // Assume update event when rapidly removed and created
       // https://github.com/parcel-bundler/watcher/issues/72
@@ -54,16 +64,28 @@ public:
     return internalUpdate(path);
   }
 
-  void move(const std::string &path) {
+  void move(const std::string &path, const std::string &pathTo) {
     std::lock_guard<std::mutex> l(mMutex);
-    Event *event = internalUpdate(path);
-    event->isMoved = true;
+    Event *eventFrom = internalUpdate(path);
+    eventFrom->pathTo = pathTo;
+    eventFrom->pathFrom = path;
+    eventFrom->isMoved = true;
+
+    Event *eventTo = internalUpdate(pathTo);
+    eventTo->pathTo = pathTo;
+    eventTo->pathFrom = path;
+    eventTo->isMoved = true;
   }
 
-  void remove(const std::string &path) {
+  void remove(const std::string &path, bool isMoved = false) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
     event->isDeleted = true;
+    event->isMoved = isMoved;
+
+    if (isMoved) {
+      event->pathFrom = path;
+    }
   }
 
   size_t size() {

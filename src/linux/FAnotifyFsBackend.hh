@@ -9,7 +9,7 @@
 class FAnotifyFsBackend : public BruteForceBackend {
 public:
   void start() override;
-  ~FAnotifyFsBackend();
+  ~FAnotifyFsBackend() override;
   void subscribe(WatcherRef watcher) override;
   void unsubscribe(WatcherRef watcher) override;
 private:

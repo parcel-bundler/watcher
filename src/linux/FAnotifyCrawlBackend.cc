@@ -11,9 +11,11 @@
 #include "FAnotifyCrawlBackend.hh"
 
 #ifdef FAN_REPORT_DIR_FID
-#define FAN_EVENT_INFO_TYPE FAN_EVENT_INFO_TYPE_DFID_NAME
+#define FANOTIFY_EVENT_INFO_TYPE_FID FAN_EVENT_INFO_TYPE_DFID_NAME
+#define FANOTIFY_EVENT_INFO_TYPE_FID_OLD FAN_EVENT_INFO_TYPE_OLD_DFID_NAME
 #else
-#define FAN_EVENT_INFO_TYPE FAN_EVENT_INFO_TYPE_FID
+#define FANOTIFY_EVENT_INFO_TYPE_FID FAN_EVENT_INFO_TYPE_FID
+#define FANOTIFY_EVENT_INFO_TYPE_FID_OLD FAN_EVENT_INFO_TYPE_FID
 #endif
 
 #define BUFFER_SIZE 8192
@@ -148,15 +150,35 @@ void FAnotifyCrawlBackend::handleEvents() {
       auto eventLen = event->event_len;
       unsigned processedLen = event->metadata_len;
 
+      fanotify_event_info_fid *fid = nullptr;
+      fanotify_event_info_fid *fidTo = nullptr;
+
       while (eventLen > processedLen) {
         auto header = (fanotify_event_info_header *)((char *)event + processedLen);
 
-        if (FAN_EVENT_INFO_TYPE == header->info_type) {
-          auto fid = (fanotify_event_info_fid *)header;
-          handleEvent(event, fid, watchers);
+        if (FANOTIFY_EVENT_INFO_TYPE_FID == header->info_type || FANOTIFY_EVENT_INFO_TYPE_FID_OLD == header->info_type) {
+          fid = (fanotify_event_info_fid *)header;
+
+          if (FANOTIFY_EVENT_INFO_TYPE_FID == header->info_type) {
+            break;
+          }
         }
 
+#ifdef FAN_EVENT_INFO_TYPE_OLD_DFID_NAME
+        if (FAN_EVENT_INFO_TYPE_NEW_DFID_NAME == header->info_type) {
+          fidTo = (fanotify_event_info_fid *)header;
+
+          if (fid != nullptr) {
+            break;
+          }
+        }
+#endif
+
         processedLen += header->len;
+      }
+
+      if (fid != nullptr) {
+        handleEvent(event, fid, watchers, fidTo);
       }
 
       event = FAN_EVENT_NEXT(event, n);
@@ -168,8 +190,11 @@ void FAnotifyCrawlBackend::handleEvents() {
   }
 }
 
-void FAnotifyCrawlBackend::handleEvent(
-  fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::unordered_set<WatcherRef> &watchers) {
+void FAnotifyCrawlBackend::handleEvent(fanotify_event_metadata *metadata,
+  fanotify_event_info_fid *fid,
+  std::unordered_set<WatcherRef> &watchers,
+  fanotify_event_info_fid *fidTo) {
+
   std::unique_lock<std::mutex> lock(mMutex);
 
   // Find the subscriptions for this watch descriptor
@@ -179,24 +204,41 @@ void FAnotifyCrawlBackend::handleEvent(
     set.insert(it->second);
   }
 
+  std::string mountPathTo;
+
+  if (fidTo != nullptr) {
+    auto sTo = mSubscriptions.find(toString((fsid_t *)&fidTo->fsid));
+    mountPathTo.assign(sTo->second->path);
+  }
+
   for (auto &s : set) {
-    if (handleSubscription(metadata, fid, s)) {
+    if (handleSubscription(metadata, fid, s, fidTo, mountPathTo)) {
       watchers.insert(s->watcher);
     }
   }
 }
 
-bool FAnotifyCrawlBackend::handleSubscription(
-  fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::shared_ptr<FAnotifySubscription> sub) {
+bool FAnotifyCrawlBackend::handleSubscription(fanotify_event_metadata *metadata,
+  fanotify_event_info_fid *fid,
+  std::shared_ptr<FAnotifySubscription> sub,
+  fanotify_event_info_fid *fidTo,
+  const std::string &mountPathTo) {
+
   // Build full path and check if its in our ignore list.
   auto watcher = sub->watcher;
   std::string path(sub->path);
+  std::string pathTo;
   bool isDir = (metadata->mask & FAN_ONDIR) == FAN_ONDIR;
 
 #ifdef FAN_EVENT_INFO_TYPE_DFID_NAME
-  if (FAN_EVENT_INFO_TYPE_DFID_NAME == fid->hdr.info_type) {
+  if (FAN_EVENT_INFO_TYPE_DFID_NAME == fid->hdr.info_type || FAN_EVENT_INFO_TYPE_OLD_DFID_NAME == fid->hdr.info_type) {
     auto handle = (file_handle *)fid->handle;
     path.append("/").append((char *)handle + sizeof(file_handle) + handle->handle_bytes);
+  }
+
+  if (fidTo != nullptr) {
+    auto handle = (file_handle *)fidTo->handle;
+    pathTo.assign(mountPathTo).append("/").append((char *)handle + sizeof(file_handle) + handle->handle_bytes);
   }
 #endif
 
@@ -207,7 +249,7 @@ bool FAnotifyCrawlBackend::handleSubscription(
   // If this is a create, check if it's a directory and start watching if it is.
   // In any case, keep the directory tree up to date.
   if (metadata->mask & (FAN_CREATE | FAN_MOVED_TO)) {
-    watcher->mEvents.create(path);
+    watcher->mEvents.create(path, (metadata->mask & FAN_MOVED_TO) == FAN_MOVED_TO);
 
     struct stat st;
     // Use lstat to avoid resolving symbolic links that we cannot watch anyway
@@ -249,8 +291,11 @@ bool FAnotifyCrawlBackend::handleSubscription(
       }
     }
 
-    watcher->mEvents.remove(path);
+    watcher->mEvents.remove(path, (metadata->mask & FAN_MOVED_FROM) == FAN_MOVED_FROM);
     sub->tree->remove(path);
+  }
+  else if (metadata->mask & (FAN_RENAME)) {
+    watcher->mEvents.move(path, pathTo);
   }
 
   return true;
@@ -266,6 +311,8 @@ void FAnotifyCrawlBackend::unsubscribe(WatcherRef watcher) {
         if (markRc != 0) {
           throw WatcherError(std::string("Unable to remove watcher: ") + strerror(errno), watcher);
         }
+
+        close(it->second->mountFd);
       }
 
       it = mSubscriptions.erase(it);

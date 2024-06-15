@@ -9,7 +9,7 @@
 class FAnotifyCrawlBackend : public FAnotifyBackend {
 public:
   void start() override;
-  ~FAnotifyCrawlBackend();
+  ~FAnotifyCrawlBackend() override;
   void subscribe(WatcherRef watcher) override;
   void unsubscribe(WatcherRef watcher) override;
 
@@ -21,8 +21,16 @@ private:
 
   bool watchDir(WatcherRef watcher, const std::string &path, std::shared_ptr<DirTree> tree);
   void handleEvents();
-  void handleEvent(fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::unordered_set<WatcherRef> &watchers);
-  bool handleSubscription(fanotify_event_metadata *metadata, fanotify_event_info_fid *fid, std::shared_ptr<FAnotifySubscription> sub);
+  void handleEvent(fanotify_event_metadata *metadata,
+    fanotify_event_info_fid *fid,
+    std::unordered_set<WatcherRef> &watchers,
+    fanotify_event_info_fid *fidTo);
+
+  bool handleSubscription(fanotify_event_metadata *metadata,
+    fanotify_event_info_fid *fid,
+    std::shared_ptr<FAnotifySubscription> sub,
+    fanotify_event_info_fid *fidTo,
+    const std::string &mountPathTo);
 };
 
 #endif
