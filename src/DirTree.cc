@@ -141,7 +141,7 @@ DirEntry::DirEntry(FILE *f) {
     path.resize(size);
     if (fread(&path[0], sizeof(char), size, f)) {
       int d = 0;
-      fscanf(f, "%" PRIu64 " %d\n", &mtime, &d);
+      std::ignore = fscanf(f, "%" PRIu64 " %d\n", &mtime, &d);
       isDir = d == 1;
     }
   }

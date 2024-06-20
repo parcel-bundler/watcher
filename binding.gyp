@@ -41,11 +41,13 @@
             "src/watchman/WatchmanBackend.cc",
             "src/shared/BruteForceBackend.cc",
             "src/linux/InotifyBackend.cc",
+            "src/linux/FAnotifyCrawlBackend.cc",
             "src/unix/legacy.cc"
           ],
           "defines": [
             "WATCHMAN",
             "INOTIFY",
+            "FANOTIFY_CRAWL",
             "BRUTE_FORCE"
           ]
         }],

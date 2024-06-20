@@ -9,3 +9,5 @@ stress-test
 crash.log
 test/snapshot.txt
 npm
+test/fanotify/
+test/ll.1.mv.up
