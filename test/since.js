@@ -17,7 +17,7 @@ let backends = [];
 if (process.platform === 'darwin') {
   backends = ['fs-events', 'watchman'];
 } else if (process.platform === 'linux') {
-  backends = ['inotify', 'watchman', 'fanotify-crawl', 'fanotify-fs'];
+  backends = ['inotify', 'watchman', 'fanotify-crawl'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
 }

@@ -9,7 +9,6 @@ declare namespace ParcelWatcher {
     | 'windows'
     | 'brute-force'
     | 'fanotify-crawl'
-    | 'fanotify-fs'
     ;
   export type EventType = 'create' | 'update' | 'delete' | 'move';
   export interface Options {
