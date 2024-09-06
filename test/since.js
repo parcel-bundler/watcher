@@ -480,6 +480,31 @@ describe('since', () => {
         });
       });
 
+      describe('atomic operation', () => {
+        it('should get events and update snapshot in an atomic operation if requested', async () => {
+          let f = getFilename();
+          await watcher.writeSnapshot(tmpDir, snapshotPath, {backend});
+          if (isSecondPrecision) {
+            await sleep(1000);
+          }
+          await fs.writeFile(f, 'hello world');
+          await sleep();
+
+          let res = await watcher.getEventsSince(tmpDir, snapshotPath, {
+            backend,
+            writeSnapshot: true,
+          });
+          assert.deepEqual(res, [{type: 'create', path: f}]);
+
+          await fs.writeFile(f, 'hi');
+          await sleep();
+          res = await watcher.getEventsSince(tmpDir, snapshotPath, {
+            backend,
+          });
+          assert.deepEqual(res, [{type: 'update', path: f}]);
+        })
+      })
+
       describe('ignore', () => {
         it('should ignore a directory', async () => {
           let f1 = getFilename();

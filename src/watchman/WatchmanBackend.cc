@@ -109,7 +109,7 @@ bool WatchmanBackend::checkAvailable() {
   }
 }
 
-void handleFiles(WatcherRef watcher, BSER::Object obj) {
+std::string handleFiles(WatcherRef watcher, BSER::Object obj) {
   auto found = obj.find("files");
   if (found == obj.end()) {
     throw WatcherError("Error reading changes from watchman", watcher);
@@ -138,6 +138,8 @@ void handleFiles(WatcherRef watcher, BSER::Object obj) {
       watcher->mEvents.remove(path);
     }
   }
+
+  return obj.find("clock")->second.stringValue();
 }
 
 void WatchmanBackend::handleSubscription(BSER::Object obj) {
@@ -245,7 +247,7 @@ void WatchmanBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotPat
   ofs << clock(watcher);
 }
 
-void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
+void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath, bool writeSnapshot) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
@@ -263,7 +265,12 @@ void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPa
   cmd.push_back(clock);
 
   BSER::Object obj = watchmanRequest(cmd);
-  handleFiles(watcher, obj);
+  clock = handleFiles(watcher, obj);
+
+  if (writeSnapshot) {
+    std::ofstream ofs(*snapshotPath);
+    ofs << clock;
+  }
 }
 
 std::string getId(WatcherRef watcher) {

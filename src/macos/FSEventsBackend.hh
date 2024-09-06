@@ -9,7 +9,7 @@ public:
   void start() override;
   ~FSEventsBackend();
   void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) override;
-  void getEventsSince(WatcherRef watcher, std::string *snapshotPath) override;
+  void getEventsSince(WatcherRef watcher, std::string *snapshotPath, bool writeSnapshot) override;
   void subscribe(WatcherRef watcher) override;
   void unsubscribe(WatcherRef watcher) override;
 private:

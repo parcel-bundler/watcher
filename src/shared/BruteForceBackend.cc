@@ -27,7 +27,7 @@ void BruteForceBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotP
   fclose(f);
 }
 
-void BruteForceBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
+void BruteForceBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath, bool writeSnapshot) {
   std::unique_lock<std::mutex> lock(mMutex);
   FILE *f = fopen(snapshotPath->c_str(), "r");
   if (!f) {
@@ -38,4 +38,14 @@ void BruteForceBackend::getEventsSince(WatcherRef watcher, std::string *snapshot
   auto now = getTree(watcher);
   now->getChanges(&snapshot, watcher->mEvents);
   fclose(f);
+
+  if (writeSnapshot) {
+    FILE *f = fopen(snapshotPath->c_str(), "w");
+    if (!f) {
+      throw std::runtime_error(std::string("Unable to open snapshot file: ") + strerror(errno));
+    }
+
+    now->write(f);
+    fclose(f);
+  }
 }

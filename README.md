@@ -108,6 +108,10 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
   - glob patterns match on relative paths from the root that is watched. No events will be emitted for matching paths.
 - `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"kqueue"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
 
+The `getEventsSince` API supports one additional option.
+
+- `writeSnapshot` - whether to update existing snapshot or not. default to `false`.
+
 ## WASM
 
 The `@parcel/watcher-wasm` package can be used in place of `@parcel/watcher` on unsupported platforms. It relies on the Node `fs` module, so in non-Node environments such as browsers, an `fs` polyfill will be needed.

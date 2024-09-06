@@ -28,7 +28,7 @@ declare module.exports: {
   getEventsSince(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
+    opts?: Options & { writeSnapshot?: boolean }
   ): Promise<Array<Event>>,
   subscribe(
     dir: FilePath,

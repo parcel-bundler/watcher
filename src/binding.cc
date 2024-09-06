@@ -10,6 +10,17 @@
 
 using namespace Napi;
 
+bool getWriteSnapshot(Env env, Value opts) {
+  std::unordered_set<std::string> result;
+
+  if (opts.IsObject()) {
+    Value v = opts.As<Object>().Get(String::New(env, "writeSnapshot"));
+    return v.ToBoolean();
+  }
+
+  return false;
+}
+
 std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
   std::unordered_set<std::string> result;
 
@@ -91,7 +102,8 @@ class GetEventsSinceRunner : public PromiseRunner {
 public:
   GetEventsSinceRunner(Env env, Value dir, Value snap, Value opts)
     : PromiseRunner(env),
-      snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
+      snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())),
+      writeSnapshot(getWriteSnapshot(env, opts)) {
     watcher = std::make_shared<Watcher>(
       std::string(dir.As<String>().Utf8Value().c_str()),
       getIgnorePaths(env, opts),
@@ -109,9 +121,10 @@ private:
   std::shared_ptr<Backend> backend;
   WatcherRef watcher;
   std::string snapshotPath;
+  bool writeSnapshot;
 
   void execute() override {
-    backend->getEventsSince(watcher, &snapshotPath);
+    backend->getEventsSince(watcher, &snapshotPath, writeSnapshot);
   }
 
   Value getResult() override {

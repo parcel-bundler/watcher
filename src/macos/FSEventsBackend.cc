@@ -42,6 +42,7 @@ class State: public WatcherState {
 public:
   FSEventStreamRef stream;
   std::shared_ptr<DirTree> tree;
+  FSEventStreamEventId id;
   uint64_t since;
 };
 
@@ -67,6 +68,8 @@ void FSEventsCallback(
   bool deletedRoot = false;
 
   for (size_t i = 0; i < numEvents; ++i) {
+    state->id = eventIds[i];
+
     bool isCreated = (eventFlags[i] & kFSEventStreamEventFlagItemCreated) == kFSEventStreamEventFlagItemCreated;
     bool isRemoved = (eventFlags[i] & kFSEventStreamEventFlagItemRemoved) == kFSEventStreamEventFlagItemRemoved;
     bool isModified = (eventFlags[i] & kFSEventStreamEventFlagItemModified) == kFSEventStreamEventFlagItemModified ||
@@ -283,7 +286,7 @@ void FSEventsBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotPat
   ofs << CONVERT_TIME(now);
 }
 
-void FSEventsBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
+void FSEventsBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath, bool writeSnapshot) {
   std::unique_lock<std::mutex> lock(mMutex);
   std::ifstream ifs(*snapshotPath);
   if (ifs.fail()) {
@@ -296,12 +299,24 @@ void FSEventsBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPa
   ifs >> since;
 
   auto s = std::make_shared<State>();
+  s->id = id;
   s->since = since;
   watcher->state = s;
 
-  startStream(watcher, id);
+  startStream(watcher, s->id);
   watcher->wait();
   stopStream(s->stream, mRunLoop);
+
+  if (writeSnapshot) {
+    FSEventStreamEventId id = s->id;
+    std::ofstream ofs(*snapshotPath);
+    ofs << id;
+    ofs << "\n";
+
+    struct timespec now;
+    clock_gettime(CLOCK_REALTIME, &now);
+    ofs << CONVERT_TIME(now);
+  }
 
   watcher->state = nullptr;
 }
@@ -309,9 +324,10 @@ void FSEventsBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPa
 // This function is called by Backend::watch which takes a lock on mMutex
 void FSEventsBackend::subscribe(WatcherRef watcher) {
   auto s = std::make_shared<State>();
+  s->id = kFSEventStreamEventIdSinceNow;
   s->since = 0;
   watcher->state = s;
-  startStream(watcher, kFSEventStreamEventIdSinceNow);
+  startStream(watcher, s->id);
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex

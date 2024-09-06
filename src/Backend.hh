@@ -14,7 +14,7 @@ public:
 
   virtual void start();
   virtual void writeSnapshot(WatcherRef watcher, std::string *snapshotPath) = 0;
-  virtual void getEventsSince(WatcherRef watcher, std::string *snapshotPath) = 0;
+  virtual void getEventsSince(WatcherRef watcher, std::string *snapshotPath, bool writeSnapshot) = 0;
   virtual void subscribe(WatcherRef watcher) = 0;
   virtual void unsubscribe(WatcherRef watcher) = 0;
 

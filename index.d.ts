@@ -27,7 +27,7 @@ declare namespace ParcelWatcher {
   export function getEventsSince(
     dir: FilePath,
     snapshot: FilePath,
-    opts?: Options
+    opts?: Options & { writeSnapshot?: boolean }
   ): Promise<Event[]>;
   export function subscribe(
     dir: FilePath,
