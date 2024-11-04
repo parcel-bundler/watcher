@@ -64,6 +64,8 @@ jobs:
       image: ${{matrix.image}}
       options: -u root
     steps:
+      - run: microdnf install git -y
+        if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v3
       - run: corepack enable
       - uses: actions/setup-node@v3
