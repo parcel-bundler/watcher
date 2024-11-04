@@ -186,12 +186,14 @@ const wasm_env = {
   clear_timeout(t) {
     clearTimeout(t);
   },
+  _setitimer_js() {},
   emscripten_date_now() {
     return Date.now();
   },
   _emscripten_get_now_is_monotonic() {
     return true;
   },
+  _emscripten_runtime_keepalive_clear() {},
   emscripten_get_now() {
     return performance.now();
   },
@@ -243,7 +245,8 @@ const wasi = {
     let read = fs.readvSync(fd, buffers);
     env.u32[pnum >> 2] = read;
     return 0;
-  }
+  },
+  proc_exit() {}
 };
 
 function writeStat(stat, buf) {
