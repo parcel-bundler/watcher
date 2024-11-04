@@ -1,11 +1,10 @@
-const watcherNative = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 const {execSync} = require('child_process');
 const {Worker} = require('worker_threads');
 
-let watcher = watcherNative;
+let watcher, watcherNative;
 
 let backends = [];
 if (process.platform === 'darwin') {
@@ -61,6 +60,9 @@ describe('watcher', () => {
         if (backend === 'wasm') {
           watcher = await import('../wasm/index.mjs');
         } else {
+          if (!watcherNative) {
+            watcherNative = require('../');
+          }
           watcher = watcherNative;
         }
 

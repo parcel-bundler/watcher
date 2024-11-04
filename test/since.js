@@ -1,10 +1,9 @@
-const watcherNative = require('../');
 const assert = require('assert');
 const fs = require('fs-extra');
 const path = require('path');
 
-let watcher = watcherNative;
-let watcherWasm;
+let watcher;
+let watcherWasm, watcherNative;
 
 const snapshotPath = path.join(__dirname, 'snapshot.txt');
 const tmpDir = path.join(
@@ -62,6 +61,9 @@ describe('since', () => {
           }
           watcher = watcherWasm;
         } else {
+          if (!watcherNative) {
+            watcherNative = require('../');
+          }
           watcher = watcherNative;
         }
       });

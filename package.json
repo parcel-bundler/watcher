@@ -31,7 +31,7 @@
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
-    "build": "node-gyp rebuild -j 8 --debug --verbose",
+    "build": "node-gyp rebuild",
     "install": "node scripts/build-from-source.js",
     "test": "mocha"
   },
