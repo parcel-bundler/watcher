@@ -137,7 +137,7 @@ void FSEventsCallback(
       // If multiple flags were set, then we need to call `stat` to determine if the file really exists.
       // This helps disambiguate creates, updates, and deletes.
       struct stat file;
-      if (!pathExists(paths[i]) || stat(paths[i], &file)) {
+      if (stat(paths[i], &file) || !pathExists(paths[i])) {
         // File does not exist, so we have to assume it was removed. This is not exact since the
         // flags set by fsevents get coalesced together (e.g. created & deleted), so there is no way to
         // know whether the create and delete both happened since our snapshot (in which case
