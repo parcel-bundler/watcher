@@ -28,8 +28,8 @@ jobs:
           - os: ubuntu-latest
             arch: x64
             libc: glibc
-            image: ghcr.io/prebuild/centos7-devtoolset7:2.1.1
-            node: 16
+            image: ghcr.io/prebuild/almalinux-devtoolset11:2.3.1
+            node: 18
           - os: ubuntu-latest
             arch: x64
             libc: musl
@@ -53,7 +53,7 @@ jobs:
           - os: ubuntu-latest
             arch: arm
             libc: musl
-            image: ghcr.io/prebuild/linux-armv7l-musl:2.1.1
+            image: ghcr.io/prebuild/linux-armv7l-musl:2.3.1
             node: 18
           - os: ubuntu-latest
             arch: arm64
