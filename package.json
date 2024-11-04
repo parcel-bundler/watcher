@@ -23,12 +23,16 @@
     "wrapper.js",
     "package.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "src",
+    "scripts/build-from-source.js",
+    "binding.gyp"
   ],
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc",
     "format": "prettier --write \"./**/*.{js,json,md}\"",
     "build": "node-gyp rebuild -j 8 --debug --verbose",
+    "install": "node scripts/build-from-source.js",
     "test": "mocha"
   },
   "engines": {
