@@ -17,6 +17,7 @@ FLAGS := $(INCS_Debug) \
 	-s INITIAL_MEMORY=524288000
 
 build/node-headers.tar.gz:
+	mkdir -p build
 	curl $(HEADERS_URL) -o build/node-headers.tar.gz
 
 build/node-$(NODE_VERSION): build/node-headers.tar.gz

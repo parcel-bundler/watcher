@@ -49,6 +49,7 @@ jobs:
           Add-Content $env:GITHUB_PATH "$home\watchman\windows\bin"
           watchman -v
       - run: yarn --frozen-lockfile
+      - run: yarn build
       - run: yarn test
 
   test-freebsd:
@@ -67,6 +68,7 @@ jobs:
             yarn --version
           run: |
             yarn --frozen-lockfile
+            yarn build
             yarn test
 
   test-wasm:
