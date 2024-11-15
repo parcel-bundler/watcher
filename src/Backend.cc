@@ -10,6 +10,9 @@
 #ifdef INOTIFY
 #include "linux/InotifyBackend.hh"
 #endif
+#ifdef FANOTIFY_CRAWL
+#include "linux/FAnotifyCrawlBackend.hh"
+#endif
 #ifdef KQUEUE
 #include "kqueue/KqueueBackend.hh"
 #endif
@@ -45,6 +48,11 @@ std::shared_ptr<Backend> getBackend(std::string backend) {
   #ifdef INOTIFY
     if (backend == "inotify" || backend == "default") {
       return std::make_shared<InotifyBackend>();
+    }
+  #endif
+    #ifdef FANOTIFY_CRAWL
+    if (backend == "fanotify-crawl") {
+      return std::make_shared<FAnotifyCrawlBackend>();
     }
   #endif
   #ifdef KQUEUE

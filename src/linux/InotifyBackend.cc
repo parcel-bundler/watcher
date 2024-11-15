@@ -59,7 +59,7 @@ void InotifyBackend::start() {
 }
 
 InotifyBackend::~InotifyBackend() {
-  write(mPipe[1], "X", 1);
+  std::ignore = write(mPipe[1], "X", 1);
   mEndedSignal.wait();
 }
 

@@ -2,53 +2,90 @@
 #define EVENT_H
 
 #include <string>
-#include <node_api.h>
-#include "wasm/include.h"
-#include <napi.h>
 #include <mutex>
 #include <map>
+
+#include <node_api.h>
+#include <napi.h>
+
+#include "wasm/include.h"
 
 using namespace Napi;
 
 struct Event {
   std::string path;
+  std::string pathTo;
+  std::string pathFrom;
   bool isCreated;
   bool isDeleted;
-  Event(std::string path) : path(path), isCreated(false), isDeleted(false) {}
+  bool isMoved;
 
-  Value toJS(const Env& env) {
+  Event(const std::string &path)
+      : path(path)
+      , isCreated(false)
+      , isDeleted(false)
+      , isMoved(false) {
+  }
+
+  Value toJS(const Env &env) {
     EscapableHandleScope scope(env);
     Object res = Object::New(env);
-    std::string type = isCreated ? "create" : isDeleted ? "delete" : "update";
     res.Set(String::New(env, "path"), String::New(env, path.c_str()));
-    res.Set(String::New(env, "type"), String::New(env, type.c_str()));
+    res.Set(String::New(env, "pathFrom"), String::New(env, pathFrom.c_str()));
+    res.Set(String::New(env, "pathTo"), String::New(env, pathTo.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, (isMoved ? "move" : isCreated ? "create" : isDeleted ? "delete" : "update")));
     return scope.Escape(res);
   }
 };
 
 class EventList {
 public:
-  void create(std::string path) {
+  void create(const std::string &path, bool isMoved = false) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
+    event->isMoved = isMoved;
+
+    if (isMoved) {
+      event->pathTo = path;
+    }
+
     if (event->isDeleted) {
       // Assume update event when rapidly removed and created
       // https://github.com/parcel-bundler/watcher/issues/72
       event->isDeleted = false;
-    } else {
+    }
+    else {
       event->isCreated = true;
     }
   }
 
-  Event *update(std::string path) {
+  Event *update(const std::string &path) {
     std::lock_guard<std::mutex> l(mMutex);
     return internalUpdate(path);
   }
 
-  void remove(std::string path) {
+  void move(const std::string &path, const std::string &pathTo) {
+    std::lock_guard<std::mutex> l(mMutex);
+    Event *eventFrom = internalUpdate(path);
+    eventFrom->pathTo = pathTo;
+    eventFrom->pathFrom = path;
+    eventFrom->isMoved = true;
+
+    Event *eventTo = internalUpdate(pathTo);
+    eventTo->pathTo = pathTo;
+    eventTo->pathFrom = path;
+    eventTo->isMoved = true;
+  }
+
+  void remove(const std::string &path, bool isMoved = false) {
     std::lock_guard<std::mutex> l(mMutex);
     Event *event = internalUpdate(path);
     event->isDeleted = true;
+    event->isMoved = isMoved;
+
+    if (isMoved) {
+      event->pathFrom = path;
+    }
   }
 
   size_t size() {
@@ -59,9 +96,9 @@ public:
   std::vector<Event> getEvents() {
     std::lock_guard<std::mutex> l(mMutex);
     std::vector<Event> eventsCloneVector;
-    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
-      if (!(it->second.isCreated && it->second.isDeleted)) {
-        eventsCloneVector.push_back(it->second);
+    for (auto &e : mEvents) {
+      if (!(e.second.isCreated && e.second.isDeleted)) {
+        eventsCloneVector.push_back(e.second);
       }
     }
     return eventsCloneVector;
@@ -75,7 +112,7 @@ public:
 private:
   mutable std::mutex mMutex;
   std::map<std::string, Event> mEvents;
-  Event *internalUpdate(std::string path) {
+  Event *internalUpdate(const std::string &path) {
     auto found = mEvents.find(path);
     if (found == mEvents.end()) {
       auto it = mEvents.emplace(path, Event(path));

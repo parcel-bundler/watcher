@@ -10,7 +10,7 @@ let backends = [];
 if (process.platform === 'darwin') {
   backends = ['fs-events', 'kqueue', 'watchman'];
 } else if (process.platform === 'linux') {
-  backends = ['inotify', 'watchman'];
+  backends = ['inotify', 'watchman', 'fanotify-crawl'];
 } else if (process.platform === 'win32') {
   backends = ['windows', 'watchman'];
 } else if (process.platform === 'freebsd') {
