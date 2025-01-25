@@ -83,6 +83,7 @@ void KqueueBackend::start() {
         std::vector<KqueueSubscription *> subs = findSubscriptions(entry->path);
         for (auto it = subs.begin(); it != subs.end(); it++) {
           KqueueSubscription *sub = *it;
+          watchers.insert(sub->watcher);
           if (flags & (NOTE_DELETE | NOTE_RENAME | NOTE_REVOKE)) {
             sub->watcher->mEvents.remove(sub->path);
             sub->tree->remove(sub->path);
@@ -96,8 +97,6 @@ void KqueueBackend::start() {
               sub->watcher->mEvents.update(sub->path);
             }
           }
-
-          watchers.insert(sub->watcher);
         }
       }
     }
