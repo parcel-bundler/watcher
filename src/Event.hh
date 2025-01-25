@@ -7,6 +7,7 @@
 #include <napi.h>
 #include <mutex>
 #include <map>
+#include <optional>
 
 using namespace Napi;
 
