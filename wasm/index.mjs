@@ -246,7 +246,8 @@ const wasi = {
     env.u32[pnum >> 2] = read;
     return 0;
   },
-  proc_exit() {}
+  proc_exit() {},
+  clock_time_get() {}
 };
 
 function writeStat(stat, buf) {
