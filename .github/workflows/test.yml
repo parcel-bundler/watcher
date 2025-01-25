@@ -35,7 +35,7 @@ jobs:
         run: |
           wget https://github.com/facebook/watchman/releases/download/v2024.01.22.00/watchman-v2024.01.22.00-linux.zip
           unzip watchman-*-linux.zip
-          cd watchman-v2023.06.19.00-linux
+          cd watchman-v2024.01.22.00-linux
           sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
           sudo cp bin/* /usr/local/bin
           sudo cp lib/* /usr/local/lib
