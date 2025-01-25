@@ -67,8 +67,8 @@ void Watcher::notify() {
 
   if (mCallbacks.size() > 0 && mEvents.size() > 0) {
     // We must release our lock before calling into the debouncer
-    // to avoid a deadlock: the debouncer thread itself will require 
-    // our lock from its thread when calling into `triggerCallbacks` 
+    // to avoid a deadlock: the debouncer thread itself will require
+    // our lock from its thread when calling into `triggerCallbacks`
     // while holding its own debouncer lock.
     lk.unlock();
     mDebounce->trigger();
@@ -119,12 +119,13 @@ void Watcher::notifyError(std::exception &err) {
 // This function is called from the debounce thread.
 void Watcher::triggerCallbacks() {
   std::unique_lock<std::mutex> lk(mMutex);
-  if (mCallbacks.size() > 0 && mEvents.size() > 0) {
+  if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mEvents.hasError())) {
+    auto error = mEvents.getError();
     auto events = mEvents.getEvents();
     mEvents.clear();
 
     for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-      it->tsfn.BlockingCall(new CallbackData("", events), callJSFunction);
+      it->tsfn.BlockingCall(new CallbackData(error, events), callJSFunction);
     }
   }
 }

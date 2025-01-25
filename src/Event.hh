@@ -70,11 +70,27 @@ public:
   void clear() {
     std::lock_guard<std::mutex> l(mMutex);
     mEvents.clear();
+    mError.reset();
+  }
+
+  void error(std::string err) {
+    if (!mError.has_value()) {
+      mError.emplace(err);
+    }
+  }
+
+  bool hasError() {
+    return mError.has_value();
+  }
+
+  std::string getError() {
+    return mError.value_or("");
   }
 
 private:
   mutable std::mutex mMutex;
   std::map<std::string, Event> mEvents;
+  std::optional<std::string> mError;
   Event *internalUpdate(std::string path) {
     auto found = mEvents.find(path);
     if (found == mEvents.end()) {
