@@ -7,6 +7,7 @@
 #include <napi.h>
 #include <mutex>
 #include <map>
+#include <optional>
 
 using namespace Napi;
 
@@ -70,11 +71,30 @@ public:
   void clear() {
     std::lock_guard<std::mutex> l(mMutex);
     mEvents.clear();
+    mError.reset();
+  }
+
+  void error(std::string err) {
+    std::lock_guard<std::mutex> l(mMutex);
+    if (!mError.has_value()) {
+      mError.emplace(err);
+    }
+  }
+
+  bool hasError() {
+    std::lock_guard<std::mutex> l(mMutex);
+    return mError.has_value();
+  }
+
+  std::string getError() {
+    std::lock_guard<std::mutex> l(mMutex);
+    return mError.value_or("");
   }
 
 private:
   mutable std::mutex mMutex;
   std::map<std::string, Event> mEvents;
+  std::optional<std::string> mError;
   Event *internalUpdate(std::string path) {
     auto found = mEvents.find(path);
     if (found == mEvents.end()) {

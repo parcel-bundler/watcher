@@ -112,6 +112,9 @@ private:
 
   void execute() override {
     backend->getEventsSince(watcher, &snapshotPath);
+    if (watcher->mEvents.hasError()) {
+      throw std::runtime_error(watcher->mEvents.getError());
+    }
   }
 
   Value getResult() override {

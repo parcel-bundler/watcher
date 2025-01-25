@@ -78,6 +78,17 @@ void FSEventsCallback(
     bool isDone = (eventFlags[i] & kFSEventStreamEventFlagHistoryDone) == kFSEventStreamEventFlagHistoryDone;
     bool isDir = (eventFlags[i] & kFSEventStreamEventFlagItemIsDir) == kFSEventStreamEventFlagItemIsDir;
 
+
+    if (eventFlags[i] & kFSEventStreamEventFlagMustScanSubDirs) {
+      if (eventFlags[i] & kFSEventStreamEventFlagUserDropped) {
+        list.error("Events were dropped by the FSEvents client. File system must be re-scanned.");
+      } else if (eventFlags[i] & kFSEventStreamEventFlagKernelDropped) {
+        list.error("Events were dropped by the kernel. File system must be re-scanned.");
+      } else {
+        list.error("Too many events. File system must be re-scanned.");
+      }
+    }
+
     if (isDone) {
       watcher->notify();
       break;
@@ -170,7 +181,9 @@ void FSEventsCallback(
     }
   }
 
-  watcher->notify();
+  if (!since) {
+    watcher->notify();
+  }
 
   // Stop watching if the root directory was deleted.
   if (deletedRoot) {
