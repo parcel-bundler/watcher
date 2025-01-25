@@ -33,7 +33,7 @@ jobs:
       - name: Install watchman
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          wget https://github.com/facebook/watchman/releases/download/v2023.06.19.00/watchman-v2023.06.19.00-linux.zip
+          wget https://github.com/facebook/watchman/releases/download/v2024.01.22.00/watchman-v2024.01.22.00-linux.zip
           unzip watchman-*-linux.zip
           cd watchman-v2023.06.19.00-linux
           sudo mkdir -p /usr/local/{bin,lib} /usr/local/var/run/watchman
