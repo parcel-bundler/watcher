@@ -75,16 +75,19 @@ public:
   }
 
   void error(std::string err) {
+    std::lock_guard<std::mutex> l(mMutex);
     if (!mError.has_value()) {
       mError.emplace(err);
     }
   }
 
   bool hasError() {
+    std::lock_guard<std::mutex> l(mMutex);
     return mError.has_value();
   }
 
   std::string getError() {
+    std::lock_guard<std::mutex> l(mMutex);
     return mError.value_or("");
   }
 
