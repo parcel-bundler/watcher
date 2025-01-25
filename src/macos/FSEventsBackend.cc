@@ -170,7 +170,9 @@ void FSEventsCallback(
     }
   }
 
+  if (!since) {
   watcher->notify();
+  }
 
   // Stop watching if the root directory was deleted.
   if (deletedRoot) {
