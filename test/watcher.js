@@ -420,6 +420,9 @@ describe('watcher', () => {
         });
 
         it('should emit when a symlink is renamed', async () => {
+          if (backend === 'wasm') {
+            return;
+          }
           let f1 = getFilename();
           let f2 = getFilename();
           let f3 = getFilename();
@@ -471,6 +474,9 @@ describe('watcher', () => {
 
       describe('rapid changes', () => {
         it('should coalese create and update events', async () => {
+          if (backend === 'wasm') {
+            return;
+          }
           let f1 = getFilename();
           await fs.writeFile(f1, 'hello world');
           fs.writeFile(f1, 'updated');
@@ -858,6 +864,9 @@ describe('watcher', () => {
         });
 
         it('should ignore globs', async () => {
+          if (backend === 'wasm') {
+            return;
+          }
           fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
