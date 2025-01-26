@@ -65,6 +65,7 @@
           "msvs_settings": {
             "VCCLCompilerTool": {
               "ExceptionHandling": 1,  # /EHsc
+              "AdditionalOptions": ['-std:c++17']
             }
           }
         }],
