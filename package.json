@@ -50,7 +50,7 @@
     ]
   },
   "dependencies": {
-    "detect-libc": "^1.0.3",
+    "detect-libc": "^2.0.3",
     "is-glob": "^4.0.3",
     "micromatch": "^4.0.5",
     "node-addon-api": "^7.0.0"
