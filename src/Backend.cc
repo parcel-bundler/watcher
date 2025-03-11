@@ -145,7 +145,7 @@ void Backend::watch(WatcherRef watcher) {
     try {
       this->subscribe(watcher);
       mSubscriptions.insert(watcher);
-    } catch (std::exception &err) {
+    } catch (std::exception&) {
       unref();
       throw;
     }

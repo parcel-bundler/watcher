@@ -84,7 +84,7 @@ struct CallbackData {
 Value callbackEventsToJS(const Env &env, std::vector<Event> &events) {
   EscapableHandleScope scope(env);
   Array arr = Array::New(env, events.size());
-  size_t currentEventIndex = 0;
+  uint32_t currentEventIndex = 0;
   for (auto eventIterator = events.begin(); eventIterator != events.end(); eventIterator++) {
     arr.Set(currentEventIndex++, eventIterator->toJS(env));
   }
