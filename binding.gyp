@@ -81,15 +81,6 @@
             }
           }
         }],
-        ['OS=="win" and target_arch=="x64"', {
-          "msvs_settings": {
-            "VCLinkerTool": {
-              "AdditionalOptions": [
-                "/CETCOMPAT",
-              ]
-            }
-          }
-        }],
         ['OS=="freebsd"', {
           "sources": [
             "src/watchman/BSER.cc",
