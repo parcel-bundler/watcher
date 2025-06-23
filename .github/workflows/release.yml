@@ -84,12 +84,17 @@ jobs:
           path: prebuilds
 
   build-freebsd:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Build FreeBSD
+      - name: Build FreeBSD ${{ matrix.arch }}
         uses: vmactions/freebsd-vm@v1
         with:
+          arch: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
           usesh: true
           prepare: |
             pkg install -y -f curl node libnghttp2 npm yarn
@@ -100,7 +105,7 @@ jobs:
           run: |
             yarn --frozen-lockfile --ignore-scripts
             npm install node-gyp -g
-            yarn prebuild --arch x64 -t 18.0.0
+            yarn prebuild --arch ${{ matrix.arch }} -t 18.0.0
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
