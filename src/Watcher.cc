@@ -212,6 +212,12 @@ void Watcher::clearCallbacks() {
 }
 
 bool Watcher::isIgnored(std::string path) {
+  for (auto it = mIgnoreGlobs.begin(); it != mIgnoreGlobs.end(); it++) {
+    if (it->isNegated() && it->matches(path)) {
+      return false;
+    }
+  }
+  
   for (auto it = mIgnorePaths.begin(); it != mIgnorePaths.end(); it++) {
     auto dir = *it + DIR_SEP;
     if (*it == path || path.compare(0, dir.size(), dir) == 0) {
@@ -228,7 +234,7 @@ bool Watcher::isIgnored(std::string path) {
   auto relativePath = path.substr(basePath.size());
 
   for (auto it = mIgnoreGlobs.begin(); it != mIgnoreGlobs.end(); it++) {
-    if (it->isIgnored(relativePath)) {
+    if (it->matches(relativePath)) {
       return true;
     }
   }
