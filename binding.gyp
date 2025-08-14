@@ -65,7 +65,19 @@
           "msvs_settings": {
             "VCCLCompilerTool": {
               "ExceptionHandling": 1,  # /EHsc
-              "AdditionalOptions": ['-std:c++17']
+              "AdditionalOptions": [
+                "-std:c++17",
+                "/guard:cf",
+                "/w34244",
+                "/w34267",
+                "/sdl",
+                "/ZH:SHA_256"
+              ]
+            },
+            "VCLinkerTool": {
+              "AdditionalOptions": [
+                "/guard:cf",
+              ]
             }
           }
         }],

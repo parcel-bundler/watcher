@@ -21,7 +21,7 @@ template<typename T>
 BSER readBSER(T &&do_read) {
   std::stringstream oss;
   char buffer[256];
-  int r;
+  size_t r;
   int64_t len = -1;
   do {
     // Start by reading a minimal amount of data in order to decode the length.
@@ -104,7 +104,7 @@ bool WatchmanBackend::checkAvailable() {
   try {
     watchmanConnect();
     return true;
-  } catch (std::exception &err) {
+  } catch (std::exception&) {
     return false;
   }
 }
