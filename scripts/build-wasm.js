@@ -50,7 +50,7 @@ wasmPkg.files = ['*.js', '*.cjs', '*.mjs', '*.d.ts', '*.wasm'];
 wasmPkg.dependencies = {
   'napi-wasm': pkg.devDependencies['napi-wasm'],
   'is-glob': pkg.dependencies['is-glob'],
-  'micromatch': pkg.dependencies['micromatch']
+  'picomatch': pkg.dependencies['picomatch']
 };
 wasmPkg.exports = {
   types: './index.d.ts',
