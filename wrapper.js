@@ -9,12 +9,17 @@ function normalizeOptions(dir, opts = {}) {
     opts = { ...rest };
 
     for (const value of ignore) {
+      // isGlob matches negated paths, no need to handle negations 
+      // in else branch
       if (isGlob(value)) {
         if (!opts.ignoreGlobs) {
           opts.ignoreGlobs = [];
         }
 
-        const regex = micromatch.makeRe(value, {
+        const negation = value.startsWith('!') ? "!" : "";
+        const pattern = negation ? value.slice(1) : value;
+
+        const regex = micromatch.makeRe(pattern, {
           // We set `dot: true` to workaround an issue with the
           // regular expression on Linux where the resulting
           // negative lookahead `(?!(\\/|^)` was never matching
@@ -25,7 +30,7 @@ function normalizeOptions(dir, opts = {}) {
           // (https://bit.ly/3V7S6UL)
           lookbehinds: false
         });
-        opts.ignoreGlobs.push(regex.source);
+        opts.ignoreGlobs.push(`${negation}${regex.source}`);
       } else {
         if (!opts.ignorePaths) {
           opts.ignorePaths = [];
