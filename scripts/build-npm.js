@@ -59,6 +59,10 @@ const triples = [
   },
   {
     platform: 'freebsd',
+    arch: 'arm'
+  },
+  {
+    platform: 'freebsd',
     arch: 'x64'
   }
 ];
