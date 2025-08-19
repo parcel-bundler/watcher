@@ -24,7 +24,12 @@ try {
       binding = require('./build/Debug/watcher.node');
     } catch (err) {
       handleError(err);
-      throw new Error(`No prebuild or local build of @parcel/watcher found. Tried ${name}. Please ensure it is installed (don't use --no-optional when installing with npm). Otherwise it is possible we don't support your platform yet. If this is the case, please report an issue to https://github.com/parcel-bundler/watcher.`);
+      try {
+        binding = require('@parcel/watcher-wasm');
+      } catch (err) {
+        handleError(err);
+        throw new Error(`No prebuild or local build of @parcel/watcher found. Tried ${name}. Please ensure it is installed (don't use --no-optional when installing with npm). Otherwise it is possible we don't support your platform yet. If this is the case, please report an issue to https://github.com/parcel-bundler/watcher.`);
+      }
     }
   }
 }
