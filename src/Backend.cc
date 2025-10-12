@@ -22,8 +22,9 @@
 #include <unordered_map>
 
 static std::unordered_map<std::string, std::shared_ptr<Backend>>& getSharedBackends() {
-  static std::unordered_map<std::string, std::shared_ptr<Backend>> sharedBackends;
-  return sharedBackends;
+  static std::unordered_map<std::string, std::shared_ptr<Backend>>* sharedBackends = 
+    new std::unordered_map<std::string, std::shared_ptr<Backend>>();
+  return *sharedBackends;
 }
 
 std::shared_ptr<Backend> getBackend(std::string backend) {

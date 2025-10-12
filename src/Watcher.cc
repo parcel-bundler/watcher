@@ -16,8 +16,9 @@ struct WatcherCompare {
 };
 
 static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>& getSharedWatchers() {
-  static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare> sharedWatchers;
-  return sharedWatchers;
+  static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>* sharedWatchers = 
+    new std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>();
+  return *sharedWatchers;
 }
 
 WatcherRef Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs) {
