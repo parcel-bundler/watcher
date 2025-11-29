@@ -34,6 +34,8 @@ std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
 
   if (opts.IsObject()) {
     Value v = opts.As<Object>().Get(String::New(env, "ignoreGlobs"));
+    Value nocaseVal = opts.As<Object>().Get(String::New(env, "globNoCase"));
+    bool nocase = nocaseVal.IsBoolean() && nocaseVal.As<Boolean>().Value();
     if (v.IsArray()) {
       Array items = v.As<Array>();
       for (size_t i = 0; i < items.Length(); i++) {
@@ -41,7 +43,7 @@ std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
         if (item.IsString()) {
           auto key = item.As<String>().Utf8Value();
           try {
-            result.emplace(key);
+            result.emplace(key, nocase);
           } catch (const std::regex_error& e) {
             Error::New(env, e.what()).ThrowAsJavaScriptException();
           }

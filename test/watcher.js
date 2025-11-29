@@ -879,6 +879,48 @@ describe('watcher', () => {
             {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
           ]);
         });
+
+        it('should ignore globs case-insensitively with globNoCase option', async () => {
+          const dir = path.join(tmpDir, 'case-insensitive-glob');
+          await fs.mkdirp(dir);
+
+          // Watcher with case-sensitive glob matching
+          const caseSensitiveEvents = [];
+          const caseSensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseSensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], globNoCase: false });
+
+          // Watcher with case-insensitive glob matching
+          const caseInsensitiveEvents = [];
+          const caseInsensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseInsensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], globNoCase: true });
+
+          const files = [
+            path.join(dir, 'test1.txt'),
+            path.join(dir, 'test2.TXT'),
+            path.join(dir, 'test3.Txt'),
+            path.join(dir, 'test4.js'),
+          ];
+
+          for (const file of files) {
+            await fs.writeFile(file, 'hello');
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await caseSensitiveWatcher.unsubscribe();
+          await caseInsensitiveWatcher.unsubscribe();
+
+          // Case-sensitive glob *.txt only ignores test1.txt (exact case match)
+          assert.deepEqual(caseSensitiveEvents, [
+            {type: 'create', path: files[1]}, // test2.TXT - not ignored
+            {type: 'create', path: files[2]}, // test3.Txt - not ignored
+            {type: 'create', path: files[3]}, // test4.js - not ignored
+          ]);
+
+          // Case-insensitive glob *.txt ignores test1.txt, test2.TXT, test3.Txt
+          assert.deepEqual(caseInsensitiveEvents, [{type: 'create', path: files[3]}]);
+        });
       });
     });
   });

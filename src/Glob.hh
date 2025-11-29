@@ -7,11 +7,13 @@
 struct Glob {
   std::size_t mHash;
   std::string mRaw;
-  #ifndef __wasm32__
+  #ifdef __wasm32__
+  bool mNoCase;
+  #else
   std::regex mRegex;
   #endif
 
-  Glob(std::string raw);
+  Glob(std::string raw, bool nocase = false);
 
   bool operator==(const Glob &other) const {
     return mHash == other.mHash;
