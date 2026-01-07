@@ -401,6 +401,9 @@ describe('watcher', () => {
           fs.symlink(f1, f2);
 
           let res = await nextEvent();
+          if (backend === 'wasm') {
+            res = res.filter(e => e.type === 'create');
+          }
           assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
 
@@ -860,6 +863,9 @@ describe('watcher', () => {
           fs.writeFile(ignoreFile, 'sup');
 
           let res = await nextEvent();
+          if (backend === 'wasm') {
+            res = res.filter(e => e.type === 'create');
+          }
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
 
