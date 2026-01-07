@@ -129,6 +129,7 @@ subscribe(/* ... */);
 - [Gatsby Cloud](https://twitter.com/chatsidhartha/status/1435647412828196867)
 - [Nx](https://nx.dev)
 - [Nuxt](https://nuxt.com)
+- [Meteor](https://github.com/meteor/meteor)
 
 ## License
 
