@@ -57,12 +57,17 @@ jobs:
       - run: yarn test
 
   test-freebsd:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Test in FreeBSD
+      - name: Test in FreeBSD ${{ matrix.arch }}
         uses: vmactions/freebsd-vm@v1.2.1
         with:
+          arch: ${{ matrix.arch == 'arm64' && 'aarch64' || 'x86_64' }}
           usesh: true
           prepare: |
             pkg install -y -f curl node libnghttp2 npm yarn
