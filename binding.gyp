@@ -6,7 +6,6 @@
       "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc", "src/Glob.cc", "src/Debounce.cc" ],
       "include_dirs" : ["<!(node -p \"require('node-addon-api').include_dir\")"],
       'cflags!': [ '-fno-exceptions', '-std=c++17' ],
-      'cflags': ['-O2', '-D_FORTIFY_SOURCE=2'],
       'cflags_cc!': [ '-fno-exceptions', '-std=c++17' ],
       "conditions": [
         ['OS=="mac"', {
