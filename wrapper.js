@@ -19,7 +19,8 @@ function normalizeOptions(dir, opts = {}) {
           // regular expression on Linux where the resulting
           // negative lookahead `(?!(\\/|^)` was never matching
           // in some cases. See also https://bit.ly/3UZlQDm
-          dot: true
+          dot: true,
+          windows: process.platform === 'win32',
         });
         opts.ignoreGlobs.push(regex.source);
       } else {
