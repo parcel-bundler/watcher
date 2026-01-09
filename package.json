@@ -53,7 +53,7 @@
     "detect-libc": "^2.0.3",
     "is-glob": "^4.0.3",
     "node-addon-api": "^7.0.0",
-    "picomatch": "^4.0.3"
+    "picomatch": "^2.3.1"
   },
   "devDependencies": {
     "esbuild": "^0.19.8",
