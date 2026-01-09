@@ -7,6 +7,7 @@
 struct Glob {
   std::size_t mHash;
   std::string mRaw;
+  bool mNegated;
   #ifndef __wasm32__
   std::regex mRegex;
   #endif
@@ -17,7 +18,8 @@ struct Glob {
     return mHash == other.mHash && mRaw == other.mRaw;
   }
 
-  bool isIgnored(std::string relative_path) const;
+  bool matches(std::string relative_path) const;
+  bool isNegated() const { return mNegated; }
 };
 
 namespace std
