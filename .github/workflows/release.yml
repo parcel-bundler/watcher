@@ -80,7 +80,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: prebuilds
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.libc || 'none' }}-node${{ matrix.node }}
           path: prebuilds
 
   build-freebsd:
@@ -104,7 +104,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: prebuilds
+          name: prebuilds-freebsd-x64-node18
           path: prebuilds
 
   build-wasm:
@@ -139,6 +139,12 @@ jobs:
           cache: yarn
           node-version: 18
       - run: yarn --frozen-lockfile --ignore-scripts
+      - name: Merge prebuild artifacts
+        uses: actions/upload-artifact/merge@v6
+        with:
+          name: prebuilds
+          pattern: prebuilds-*
+          delete-merged: true
       - name: Download artifacts
         uses: actions/download-artifact@v6
       - name: Build npm packages
