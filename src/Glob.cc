@@ -10,7 +10,7 @@ Glob::Glob(std::string raw, bool nocase) {
   #ifdef __wasm32__
     mNoCase = nocase;
   #else
-    mRegex = std::regex(raw, nocase ? std::regex::icase : std::regex::ECMAScript);
+    mRegex = std::regex(raw, nocase ? (std::regex::ECMAScript | std::regex::icase) : std::regex::ECMAScript);
   #endif
 }
 
