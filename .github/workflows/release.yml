@@ -28,7 +28,7 @@ jobs:
           - os: ubuntu-latest
             arch: x64
             libc: glibc
-            image: ghcr.io/prebuild/almalinux-devtoolset11:2.5.0
+            image: ghcr.io/prebuild/almalinux-devtoolset11:2.3.1
             node: 18
           - os: ubuntu-latest
             arch: x64
@@ -64,6 +64,8 @@ jobs:
       image: ${{matrix.image}}
       options: -u root
     steps:
+      - run: microdnf install git tar -y
+        if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - run: microdnf install git -y
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v6
