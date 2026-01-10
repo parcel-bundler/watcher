@@ -28,7 +28,7 @@ jobs:
           - os: ubuntu-latest
             arch: x64
             libc: glibc
-            image: ghcr.io/prebuild/almalinux-devtoolset11:2.3.1
+            image: ghcr.io/prebuild/almalinux-devtoolset11:2.5.0
             node: 18
           - os: ubuntu-latest
             arch: x64
