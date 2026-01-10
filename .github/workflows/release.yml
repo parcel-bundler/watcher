@@ -151,14 +151,14 @@ jobs:
         run: |
           node scripts/build-npm.js
           node scripts/build-wasm.js
-      - name: Publish to npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
-          for pkg in npm/*; do
-            echo "Publishing $pkg..."
-            cd $pkg;
-            npm publish;
-            cd ../..;
-          done
+      # - name: Publish to npm
+      #   env:
+      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      #   run: |
+      #     echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
+      #     for pkg in npm/*; do
+      #       echo "Publishing $pkg..."
+      #       cd $pkg;
+      #       npm publish;
+      #       cd ../..;
+      #     done
