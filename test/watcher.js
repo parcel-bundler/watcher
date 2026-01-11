@@ -883,6 +883,8 @@ describe('watcher', () => {
         it('should ignore globs case-insensitively with globNoCase option', async () => {
           const dir = path.join(tmpDir, 'case-insensitive-glob');
           await fs.mkdirp(dir);
+          // Wait for directory creation to settle before subscribing
+          await new Promise(resolve => setTimeout(resolve, 100));
 
           // Watcher with case-sensitive glob matching
           const caseSensitiveEvents = [];
@@ -911,8 +913,8 @@ describe('watcher', () => {
           await caseSensitiveWatcher.unsubscribe();
           await caseInsensitiveWatcher.unsubscribe();
 
-          // Get unique paths from events
-          const getPaths = (events) => [...new Set(events.map(e => e.path))].sort();
+          // Get unique paths from events, filtering out the directory itself
+          const getPaths = (events) => [...new Set(events.map(e => e.path))].filter(p => p !== dir).sort();
 
           // Case-sensitive glob *.txt only ignores test1.txt (exact case match)
           // So test2.TXT, test3.Txt, and test4.js should have events
