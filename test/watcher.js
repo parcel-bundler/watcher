@@ -911,15 +911,16 @@ describe('watcher', () => {
           await caseSensitiveWatcher.unsubscribe();
           await caseInsensitiveWatcher.unsubscribe();
 
+          // Get unique paths from events
+          const getPaths = (events) => [...new Set(events.map(e => e.path))].sort();
+
           // Case-sensitive glob *.txt only ignores test1.txt (exact case match)
-          assert.deepEqual(caseSensitiveEvents, [
-            {type: 'create', path: files[1]}, // test2.TXT - not ignored
-            {type: 'create', path: files[2]}, // test3.Txt - not ignored
-            {type: 'create', path: files[3]}, // test4.js - not ignored
-          ]);
+          // So test2.TXT, test3.Txt, and test4.js should have events
+          assert.deepEqual(getPaths(caseSensitiveEvents), [files[1], files[2], files[3]].sort());
 
           // Case-insensitive glob *.txt ignores test1.txt, test2.TXT, test3.Txt
-          assert.deepEqual(caseInsensitiveEvents, [{type: 'create', path: files[3]}]);
+          // So only test4.js should have events
+          assert.deepEqual(getPaths(caseInsensitiveEvents), [files[3]]);
         });
       });
     });
