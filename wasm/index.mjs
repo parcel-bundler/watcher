@@ -197,11 +197,12 @@ const wasm_env = {
   emscripten_get_now() {
     return performance.now();
   },
-  wasm_regex_match(string, regex) {
-    let re = regexCache.get(regex);
+  wasm_regex_match(string, regex, nocase) {
+    let cacheKey = regex + (nocase ? '_nocase' : '');
+    let re = regexCache.get(cacheKey);
     if (!re) {
-      re = new RegExp(env.getString(regex));
-      regexCache.set(regex, re);
+      re = new RegExp(env.getString(regex), nocase ? 'i' : '');
+      regexCache.set(cacheKey, re);
     }
     return re.test(env.getString(string)) ? 1 : 0;
   }

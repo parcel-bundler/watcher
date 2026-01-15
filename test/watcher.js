@@ -885,6 +885,51 @@ describe('watcher', () => {
             {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
           ]);
         });
+
+        it('should ignore globs case-insensitively with globNoCase option', async () => {
+          const dir = path.join(tmpDir, 'case-insensitive-glob');
+          await fs.mkdirp(dir);
+          // Wait for directory creation to settle before subscribing
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Watcher with case-sensitive glob matching
+          const caseSensitiveEvents = [];
+          const caseSensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseSensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], globNoCase: false });
+
+          // Watcher with case-insensitive glob matching
+          const caseInsensitiveEvents = [];
+          const caseInsensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseInsensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], globNoCase: true });
+
+          const files = [
+            path.join(dir, 'test1.txt'),
+            path.join(dir, 'test2.TXT'),
+            path.join(dir, 'test3.Txt'),
+            path.join(dir, 'test4.js'),
+          ];
+
+          for (const file of files) {
+            await fs.writeFile(file, 'hello');
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await caseSensitiveWatcher.unsubscribe();
+          await caseInsensitiveWatcher.unsubscribe();
+
+          // Get unique paths from events, filtering out the directory itself
+          const getPaths = (events) => [...new Set(events.map(e => e.path))].filter(p => p !== dir).sort();
+
+          // Case-sensitive glob *.txt only ignores test1.txt (exact case match)
+          // So test2.TXT, test3.Txt, and test4.js should have events
+          assert.deepEqual(getPaths(caseSensitiveEvents), [files[1], files[2], files[3]].sort());
+
+          // Case-insensitive glob *.txt ignores test1.txt, test2.TXT, test3.Txt
+          // So only test4.js should have events
+          assert.deepEqual(getPaths(caseInsensitiveEvents), [files[3]]);
+        });
       });
     });
   });
