@@ -1,16 +1,16 @@
 #include "Glob.hh"
 
 #ifdef __wasm32__
-extern "C" bool wasm_regex_match(const char *s, const char *regex, bool nocase);
+extern "C" bool wasm_regex_match(const char *s, const char *regex, bool noCase);
 #endif
 
-Glob::Glob(std::string raw, bool nocase) {
+Glob::Glob(std::string raw, bool noCase) {
   mRaw = raw;
-  mHash = std::hash<std::string>()(raw + (nocase ? "_nocase" : ""));
+  mHash = std::hash<std::string>()(raw + (noCase ? "_nocase" : ""));
   #ifdef __wasm32__
-    mNoCase = nocase;
+    mNoCase = noCase;
   #else
-    if (nocase) {
+    if (noCase) {
       mRegex = std::regex(raw, std::regex::ECMAScript | std::regex::icase);
     } else {
       mRegex = std::regex(raw);

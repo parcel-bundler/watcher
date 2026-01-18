@@ -106,6 +106,7 @@ All of the APIs in `@parcel/watcher` support the following options, which are pa
 - `ignore` - an array of paths or glob patterns to ignore. uses [`is-glob`](https://github.com/micromatch/is-glob) to distinguish paths from globs. glob patterns are parsed with [`picomatch`](https://github.com/micromatch/picomatch) (see [features](https://github.com/micromatch/picomatch#globbing-features)).
   - paths can be relative or absolute and can either be files or directories. No events will be emitted about these files or directories or their children.
   - glob patterns match on relative paths from the root that is watched. No events will be emitted for matching paths.
+- `ignoreNoCase` - when `true`, path and glob pattern matching in the `ignore` option will be case-insensitive. Defaults to `false`.
 - `backend` - the name of an explicitly chosen backend to use. Allowed options are `"fs-events"`, `"watchman"`, `"inotify"`, `"kqueue"`, `"windows"`, or `"brute-force"` (only for querying). If the specified backend is not available on the current platform, the default backend will be used instead.
 
 ## WASM

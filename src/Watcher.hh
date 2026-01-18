@@ -31,14 +31,15 @@ struct Watcher {
   std::string mDir;
   std::unordered_set<std::string> mIgnorePaths;
   std::unordered_set<Glob> mIgnoreGlobs;
+  bool mIgnoreNoCase;
   EventList mEvents;
   std::shared_ptr<WatcherState> state;
 
-  Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
+  Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs, bool ignoreNoCase);
   ~Watcher();
 
   bool operator==(const Watcher &other) const {
-    return mDir == other.mDir && mIgnorePaths == other.mIgnorePaths && mIgnoreGlobs == other.mIgnoreGlobs;
+    return mDir == other.mDir && mIgnorePaths == other.mIgnorePaths && mIgnoreGlobs == other.mIgnoreGlobs && mIgnoreNoCase == other.mIgnoreNoCase;
   }
 
   void wait();
@@ -50,7 +51,7 @@ struct Watcher {
   bool isIgnored(std::string path);
   void destroy();
 
-  static WatcherRef getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs);
+  static WatcherRef getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs, bool ignoreNoCase);
 
 private:
   std::mutex mMutex;

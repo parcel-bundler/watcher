@@ -1,4 +1,6 @@
 #include <unordered_set>
+#include <algorithm>
+#include <cctype>
 #include <node_api.h>
 #include "wasm/include.h"
 #include <napi.h>
@@ -10,7 +12,15 @@
 
 using namespace Napi;
 
-std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
+bool getIgnoreNoCase(Env env, Value opts) {
+  if (opts.IsObject()) {
+    Value noCaseVal = opts.As<Object>().Get(String::New(env, "ignoreNoCase"));
+    return noCaseVal.IsBoolean() && noCaseVal.As<Boolean>().Value();
+  }
+  return false;
+}
+
+std::unordered_set<std::string> getIgnorePaths(Env env, Value opts, bool noCase) {
   std::unordered_set<std::string> result;
 
   if (opts.IsObject()) {
@@ -20,7 +30,11 @@ std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
       for (size_t i = 0; i < items.Length(); i++) {
         Value item = items.Get(Number::New(env, static_cast<double>(i)));
         if (item.IsString()) {
-          result.insert(std::string(item.As<String>().Utf8Value().c_str()));
+          std::string path = item.As<String>().Utf8Value();
+          if (noCase) {
+            std::transform(path.begin(), path.end(), path.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+          }
+          result.insert(path);
         }
       }
     }
@@ -29,13 +43,11 @@ std::unordered_set<std::string> getIgnorePaths(Env env, Value opts) {
   return result;
 }
 
-std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
+std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts, bool noCase) {
   std::unordered_set<Glob> result;
 
   if (opts.IsObject()) {
     Value v = opts.As<Object>().Get(String::New(env, "ignoreGlobs"));
-    Value nocaseVal = opts.As<Object>().Get(String::New(env, "globNoCase"));
-    bool nocase = nocaseVal.IsBoolean() && nocaseVal.As<Boolean>().Value();
     if (v.IsArray()) {
       Array items = v.As<Array>();
       for (size_t i = 0; i < items.Length(); i++) {
@@ -43,7 +55,7 @@ std::unordered_set<Glob> getIgnoreGlobs(Env env, Value opts) {
         if (item.IsString()) {
           auto key = item.As<String>().Utf8Value();
           try {
-            result.emplace(key, nocase);
+            result.emplace(key, noCase);
           } catch (const std::regex_error& e) {
             Error::New(env, e.what()).ThrowAsJavaScriptException();
           }
@@ -70,10 +82,12 @@ public:
   WriteSnapshotRunner(Env env, Value dir, Value snap, Value opts)
     : PromiseRunner(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
+    bool noCase = getIgnoreNoCase(env, opts);
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnorePaths(env, opts),
-      getIgnoreGlobs(env, opts)
+      getIgnorePaths(env, opts, noCase),
+      getIgnoreGlobs(env, opts, noCase),
+      noCase
     );
 
     backend = getBackend(env, opts);
@@ -98,10 +112,12 @@ public:
   GetEventsSinceRunner(Env env, Value dir, Value snap, Value opts)
     : PromiseRunner(env),
       snapshotPath(std::string(snap.As<String>().Utf8Value().c_str())) {
+    bool noCase = getIgnoreNoCase(env, opts);
     watcher = std::make_shared<Watcher>(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnorePaths(env, opts),
-      getIgnoreGlobs(env, opts)
+      getIgnorePaths(env, opts, noCase),
+      getIgnoreGlobs(env, opts, noCase),
+      noCase
     );
 
     backend = getBackend(env, opts);
@@ -167,10 +183,12 @@ Value getEventsSince(const CallbackInfo& info) {
 class SubscribeRunner : public PromiseRunner {
 public:
   SubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
+    bool noCase = getIgnoreNoCase(env, opts);
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnorePaths(env, opts),
-      getIgnoreGlobs(env, opts)
+      getIgnorePaths(env, opts, noCase),
+      getIgnoreGlobs(env, opts, noCase),
+      noCase
     );
 
     backend = getBackend(env, opts);
@@ -195,10 +213,12 @@ private:
 class UnsubscribeRunner : public PromiseRunner {
 public:
   UnsubscribeRunner(Env env, Value dir, Value fn, Value opts) : PromiseRunner(env) {
+    bool noCase = getIgnoreNoCase(env, opts);
     watcher = Watcher::getShared(
       std::string(dir.As<String>().Utf8Value().c_str()),
-      getIgnorePaths(env, opts),
-      getIgnoreGlobs(env, opts)
+      getIgnorePaths(env, opts, noCase),
+      getIgnoreGlobs(env, opts, noCase),
+      noCase
     );
 
     backend = getBackend(env, opts);

@@ -1,5 +1,7 @@
 #include "Watcher.hh"
 #include <unordered_set>
+#include <algorithm>
+#include <cctype>
 
 using namespace Napi;
 
@@ -16,13 +18,13 @@ struct WatcherCompare {
 };
 
 static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>& getSharedWatchers() {
-  static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>* sharedWatchers = 
+  static std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>* sharedWatchers =
     new std::unordered_set<WatcherRef , WatcherHash, WatcherCompare>();
   return *sharedWatchers;
 }
 
-WatcherRef Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs) {
-  WatcherRef watcher = std::make_shared<Watcher>(dir, ignorePaths, ignoreGlobs);
+WatcherRef Watcher::getShared(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs, bool ignoreNoCase) {
+  WatcherRef watcher = std::make_shared<Watcher>(dir, ignorePaths, ignoreGlobs, ignoreNoCase);
   auto found = getSharedWatchers().find(watcher);
   if (found != getSharedWatchers().end()) {
     return *found;
@@ -46,10 +48,11 @@ void removeShared(Watcher *watcher) {
   }
 }
 
-Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs)
+Watcher::Watcher(std::string dir, std::unordered_set<std::string> ignorePaths, std::unordered_set<Glob> ignoreGlobs, bool ignoreNoCase)
   : mDir(dir),
     mIgnorePaths(ignorePaths),
-    mIgnoreGlobs(ignoreGlobs) {
+    mIgnoreGlobs(ignoreGlobs),
+    mIgnoreNoCase(ignoreNoCase) {
       mDebounce = Debounce::getShared();
       mDebounce->add(this, [this] () {
         triggerCallbacks();
@@ -216,9 +219,14 @@ void Watcher::clearCallbacks() {
 }
 
 bool Watcher::isIgnored(std::string path) {
+  std::string pathToCheck = path;
+  if (mIgnoreNoCase) {
+    std::transform(pathToCheck.begin(), pathToCheck.end(), pathToCheck.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+  }
+
   for (auto it = mIgnorePaths.begin(); it != mIgnorePaths.end(); it++) {
     auto dir = *it + DIR_SEP;
-    if (*it == path || path.compare(0, dir.size(), dir) == 0) {
+    if (*it == pathToCheck || pathToCheck.compare(0, dir.size(), dir) == 0) {
       return true;
     }
   }

@@ -13,7 +13,7 @@ struct Glob {
   std::regex mRegex;
   #endif
 
-  Glob(std::string raw, bool nocase = false);
+  Glob(std::string raw, bool noCase = false);
 
   bool operator==(const Glob &other) const {
     return mHash == other.mHash && mRaw == other.mRaw;

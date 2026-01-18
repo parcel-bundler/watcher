@@ -12,7 +12,7 @@ declare namespace ParcelWatcher {
   export interface Options {
     ignore?: (FilePath|GlobPattern)[];
     backend?: BackendType;
-    globNoCase?: boolean;
+    ignoreNoCase?: boolean;
   }
   export type SubscribeCallback = (
     err: Error | null,
