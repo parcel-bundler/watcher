@@ -46,7 +46,11 @@ std::string getSockPath() {
     return std::string(var);
   }
 
+#ifdef _WIN32
+  FILE *fp = popen("watchman --output-encoding=bser get-sockname", "r");
+#else
   FILE *fp = popen("watchman --output-encoding=bser get-sockname 2>/dev/null", "r");
+#endif
   if (fp == NULL || errno == ECHILD) {
     throw std::runtime_error("Failed to execute watchman");
   }

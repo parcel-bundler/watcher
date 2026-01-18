@@ -5,7 +5,7 @@ std::wstring utf8ToUtf16(std::string input) {
   WCHAR *output = new WCHAR[len];
   MultiByteToWideChar(CP_UTF8, 0, input.c_str(), -1, output, len);
   std::wstring res(output);
-  delete output;
+  delete[] output;
   return res;
 }
 
@@ -15,7 +15,7 @@ std::string utf16ToUtf8(const WCHAR *input, DWORD length) {
   WideCharToMultiByte(CP_UTF8, 0, input, length, output, len, NULL, NULL);
   output[len] = '\0';
   std::string res(output);
-  delete output;
+  delete[] output;
   return res;
 }
 
@@ -33,12 +33,12 @@ std::string normalizePath(std::string path) {
   WCHAR *output = new WCHAR[len];
   len = GetLongPathNameW(p.data(), output, len);
   if (!len) {
-    delete output;
+    delete[] output;
     return path;
   }
 
   // Convert back to utf8
   std::string res = utf16ToUtf8(output + 4, len - 4);
-  delete output;
+  delete[] output;
   return res;
 }

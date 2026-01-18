@@ -10,12 +10,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [18, 20]
+        node: [18, 20, 22, lts/*]  # https://github.com/actions/setup-node?tab=readme-ov-file#usage
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: ${{matrix.node}}
@@ -42,8 +42,8 @@ jobs:
           sudo cp lib/* /usr/local/lib
           sudo chmod 755 /usr/local/bin/watchman
           sudo chmod 2777 /usr/local/var/run/watchman
-          wget https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
-          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.23_amd64.deb
+          wget https://nz2.archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
+          sudo dpkg -i libssl1.1_1.1.1f-1ubuntu2.24_amd64.deb
           watchman -v
       - name: Copy watchman
         if: ${{ matrix.os == 'windows-latest' }}
@@ -59,9 +59,9 @@ jobs:
   test-freebsd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Test in FreeBSD
-        uses: vmactions/freebsd-vm@v1
+        uses: vmactions/freebsd-vm@v1.2.1
         with:
           usesh: true
           prepare: |
@@ -80,9 +80,9 @@ jobs:
     container:
       image: emscripten/emsdk
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: corepack enable
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: 18

@@ -64,11 +64,11 @@ jobs:
       image: ${{matrix.image}}
       options: -u root
     steps:
-      - run: microdnf install git -y
+      - run: microdnf install git tar -y
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: corepack enable
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: ${{matrix.node}}
@@ -78,15 +78,15 @@ jobs:
         env:
           PREBUILD_LIBC: ${{ matrix.libc }}
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
-          name: prebuilds
+          name: prebuilds-${{ matrix.os }}-${{ matrix.arch }}-${{ matrix.libc || 'none' }}-node${{ matrix.node }}
           path: prebuilds
 
   build-freebsd:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Build FreeBSD
         uses: vmactions/freebsd-vm@v1
         with:
@@ -102,9 +102,9 @@ jobs:
             npm install node-gyp -g
             yarn prebuild --arch x64 -t 18.0.0
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
-          name: prebuilds
+          name: prebuilds-freebsd-x64-node18
           path: prebuilds
 
   build-wasm:
@@ -112,16 +112,16 @@ jobs:
     container:
       image: emscripten/emsdk
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: corepack enable
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: 18
       - run: yarn --frozen-lockfile
       - run: make wasm
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: wasm
           path: build/Release/watcher.wasm
@@ -133,14 +133,20 @@ jobs:
       - build-freebsd
       - build-wasm
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: 18
       - run: yarn --frozen-lockfile --ignore-scripts
+      - name: Merge prebuild artifacts
+        uses: actions/upload-artifact/merge@v6
+        with:
+          name: prebuilds
+          pattern: prebuilds-*
+          delete-merged: true
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v6
       - name: Build npm packages
         run: |
           node scripts/build-npm.js

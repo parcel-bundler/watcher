@@ -68,15 +68,18 @@
               "AdditionalOptions": [
                 "-std:c++17",
                 "/guard:cf",
-                "/w34244",
-                "/w34267",
+                "/W3",
+                "/we4146",
+                "/we4244",
+                "/we4267",
                 "/sdl",
                 "/ZH:SHA_256"
               ]
             },
             "VCLinkerTool": {
               "AdditionalOptions": [
-                "/guard:cf",
+                "/DYNAMICBASE",
+                "/guard:cf"
               ]
             }
           }
