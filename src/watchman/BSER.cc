@@ -118,7 +118,7 @@ public:
   BSERString(std::istream &iss) {
     expectType(iss, BSER_STRING);
     int64_t len = BSERInteger(iss).intValue();
-    value.resize(static_cast<std::string::size_type>(len));
+    value.resize(len);
     iss.read(&value[0], len);
   }
 
