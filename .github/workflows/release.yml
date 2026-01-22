@@ -67,6 +67,10 @@ jobs:
       - run: microdnf install git tar -y
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          python-version: '3.11'
       - run: corepack enable
       - uses: actions/setup-node@v6
         with:
