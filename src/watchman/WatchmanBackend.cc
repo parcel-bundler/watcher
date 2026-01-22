@@ -26,7 +26,7 @@ BSER readBSER(T &&do_read) {
   do {
     // Start by reading a minimal amount of data in order to decode the length.
     // After that, attempt to read the remaining length, up to the buffer size.
-    r = do_read(buffer, len == -1 ? 20 : (len < 256 ? len : 256));
+    r = do_read(buffer, len == -1 ? 20 : static_cast<size_t>(len < 256 ? len : 256));
     oss << std::string(buffer, r);
 
     if (len == -1) {
