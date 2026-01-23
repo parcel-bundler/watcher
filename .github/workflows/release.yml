@@ -70,7 +70,7 @@ jobs:
       - uses: actions/setup-python@v5
         if: ${{ matrix.os == 'windows-latest' && matrix.arch == 'ia32' }}
         with:
-          python-version: '3.11'
+          python-version: '3.11' # pin Python version to fix an issue that distutils is missing on ia32 windows runners
       - run: corepack enable
       - uses: actions/setup-node@v6
         with:
@@ -155,14 +155,14 @@ jobs:
         run: |
           node scripts/build-npm.js
           node scripts/build-wasm.js
-      # - name: Publish to npm
-      #   env:
-      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      #   run: |
-      #     echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
-      #     for pkg in npm/*; do
-      #       echo "Publishing $pkg..."
-      #       cd $pkg;
-      #       npm publish;
-      #       cd ../..;
-      #     done
+      - name: Publish to npm
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
+          for pkg in npm/*; do
+            echo "Publishing $pkg..."
+            cd $pkg;
+            npm publish;
+            cd ../..;
+          done
