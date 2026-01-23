@@ -7,6 +7,7 @@
       "include_dirs" : ["<!(node -p \"require('node-addon-api').include_dir\")"],
       'cflags!': [ '-fno-exceptions', '-std=c++17' ],
       'cflags_cc!': [ '-fno-exceptions', '-std=c++17' ],
+      'cflags': [ '-fstack-protector-strong' ],
       "conditions": [
         ['OS=="mac"', {
           "sources": [
@@ -70,7 +71,7 @@
                 "/guard:cf",
                 "/W3",
                 "/we4146",
-                "/we4244",
+                "/w34244",
                 "/we4267",
                 "/sdl",
                 "/ZH:SHA_256"
