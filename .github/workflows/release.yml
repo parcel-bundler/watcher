@@ -68,7 +68,7 @@ jobs:
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v5
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' && matrix.arch == 'ia32' }}
         with:
           python-version: '3.11'
       - run: corepack enable
