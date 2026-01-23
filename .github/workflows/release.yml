@@ -67,6 +67,10 @@ jobs:
       - run: microdnf install git tar -y
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          python-version: '3.11'
       - run: corepack enable
       - uses: actions/setup-node@v6
         with:
@@ -151,14 +155,14 @@ jobs:
         run: |
           node scripts/build-npm.js
           node scripts/build-wasm.js
-      - name: Publish to npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
-          for pkg in npm/*; do
-            echo "Publishing $pkg..."
-            cd $pkg;
-            npm publish;
-            cd ../..;
-          done
+      # - name: Publish to npm
+      #   env:
+      #     NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      #   run: |
+      #     echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
+      #     for pkg in npm/*; do
+      #       echo "Publishing $pkg..."
+      #       cd $pkg;
+      #       npm publish;
+      #       cd ../..;
+      #     done
