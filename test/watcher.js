@@ -885,6 +885,113 @@ describe('watcher', () => {
             {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
           ]);
         });
+
+        it('should ignore globs case-insensitively with ignoreNoCase option', async () => {
+          const dir = path.join(tmpDir, 'case-insensitive-glob');
+          await fs.mkdirp(dir);
+          // Wait for directory creation to settle before subscribing
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Watcher with case-sensitive glob matching
+          const caseSensitiveEvents = [];
+          const caseSensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseSensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], ignoreNoCase: false });
+
+          // Watcher with case-insensitive glob matching
+          const caseInsensitiveEvents = [];
+          const caseInsensitiveWatcher = await watcher.subscribe(dir, (err, events) => {
+            caseInsensitiveEvents.push(...events);
+          }, { backend, ignore: ['*.txt'], ignoreNoCase: true });
+
+          const files = [
+            path.join(dir, 'test1.txt'),
+            path.join(dir, 'test2.TXT'),
+            path.join(dir, 'test3.Txt'),
+            path.join(dir, 'test4.js'),
+          ];
+
+          for (const file of files) {
+            await fs.writeFile(file, 'hello');
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await caseSensitiveWatcher.unsubscribe();
+          await caseInsensitiveWatcher.unsubscribe();
+
+          // Get unique paths from events, filtering out the directory itself
+          const getPaths = (events) => [...new Set(events.map(e => e.path))].filter(p => p !== dir).sort();
+
+          // Case-sensitive glob *.txt only ignores test1.txt (exact case match)
+          // So test2.TXT, test3.Txt, and test4.js should have events
+          assert.deepEqual(getPaths(caseSensitiveEvents), [files[1], files[2], files[3]].sort());
+
+          // Case-insensitive glob *.txt ignores test1.txt, test2.TXT, test3.Txt
+          // So only test4.js should have events
+          assert.deepEqual(getPaths(caseInsensitiveEvents), [files[3]]);
+        });
+
+        it('should ignore paths case-insensitively with ignoreNoCase option', async () => {
+          // Use separate directories to avoid watcher interference
+          const caseSensitiveDir = path.join(tmpDir, 'case-sensitive-path-test');
+          await fs.mkdirp(caseSensitiveDir);
+          const caseSensitiveIgnoredDir = path.join(caseSensitiveDir, 'IgnoredFolder');
+          await fs.mkdirp(caseSensitiveIgnoredDir);
+
+          const caseInsensitiveDir = path.join(tmpDir, 'case-insensitive-path-test');
+          await fs.mkdirp(caseInsensitiveDir);
+          const caseInsensitiveIgnoredDir = path.join(caseInsensitiveDir, 'IgnoredFolder');
+          await fs.mkdirp(caseInsensitiveIgnoredDir);
+
+          // Wait for directory creation to settle before subscribing
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Watcher with case-sensitive path matching
+          const caseSensitiveEvents = [];
+          const caseSensitiveWatcher = await watcher.subscribe(caseSensitiveDir, (err, events) => {
+            caseSensitiveEvents.push(...events);
+          }, { backend, ignore: ['ignoredfolder'], ignoreNoCase: false });
+
+          // Watcher with case-insensitive path matching
+          const caseInsensitiveEvents = [];
+          const caseInsensitiveWatcher = await watcher.subscribe(caseInsensitiveDir, (err, events) => {
+            caseInsensitiveEvents.push(...events);
+          }, { backend, ignore: ['ignoredfolder'], ignoreNoCase: true });
+
+          const caseSensitiveFiles = [
+            path.join(caseSensitiveDir, 'test.txt'),
+            path.join(caseSensitiveIgnoredDir, 'ignored.txt'),
+          ];
+
+          const caseInsensitiveFiles = [
+            path.join(caseInsensitiveDir, 'test.txt'),
+            path.join(caseInsensitiveIgnoredDir, 'ignored.txt'),
+          ];
+
+          for (const file of caseSensitiveFiles) {
+            await fs.writeFile(file, 'hello');
+          }
+
+          for (const file of caseInsensitiveFiles) {
+            await fs.writeFile(file, 'hello');
+          }
+
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await caseSensitiveWatcher.unsubscribe();
+          await caseInsensitiveWatcher.unsubscribe();
+
+          // Get unique paths from events, filtering out directory creations
+          const getCaseSensitivePaths = (events) => [...new Set(events.map(e => e.path))].filter(p => p !== caseSensitiveDir && p !== caseSensitiveIgnoredDir).sort();
+          const getCaseInsensitivePaths = (events) => [...new Set(events.map(e => e.path))].filter(p => p !== caseInsensitiveDir && p !== caseInsensitiveIgnoredDir).sort();
+
+          // Case-sensitive path 'ignoredfolder' doesn't match 'IgnoredFolder'
+          // So both files should have events
+          assert.deepEqual(getCaseSensitivePaths(caseSensitiveEvents), caseSensitiveFiles.sort());
+
+          // Case-insensitive path 'ignoredfolder' matches 'IgnoredFolder'
+          // So only test.txt should have events
+          assert.deepEqual(getCaseInsensitivePaths(caseInsensitiveEvents), [caseInsensitiveFiles[0]]);
+        });
       });
     });
   });

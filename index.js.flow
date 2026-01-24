@@ -2,7 +2,7 @@
 declare type FilePath = string;
 declare type GlobPattern = string;
 
-export type BackendType = 
+export type BackendType =
   | 'fs-events'
   | 'watchman'
   | 'inotify'
@@ -11,7 +11,8 @@ export type BackendType =
 export type EventType = 'create' | 'update' | 'delete';
 export interface Options {
   ignore?: Array<FilePath | GlobPattern>,
-  backend?: BackendType
+  backend?: BackendType,
+  ignoreNoCase?: boolean
 }
 export type SubscribeCallback = (
   err: ?Error,

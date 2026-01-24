@@ -2,7 +2,7 @@ declare type FilePath = string;
 declare type GlobPattern = string;
 
 declare namespace ParcelWatcher {
-  export type BackendType = 
+  export type BackendType =
     | 'fs-events'
     | 'watchman'
     | 'inotify'
@@ -12,6 +12,7 @@ declare namespace ParcelWatcher {
   export interface Options {
     ignore?: (FilePath|GlobPattern)[];
     backend?: BackendType;
+    ignoreNoCase?: boolean;
   }
   export type SubscribeCallback = (
     err: Error | null,
