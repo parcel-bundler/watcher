@@ -63,6 +63,65 @@ std::shared_ptr<Backend> getBackend(Env env, Value opts) {
   return Backend::getShared(backendName);
 }
 
+struct CallbackData {
+  std::string error;
+  std::vector<Event> events;
+  CallbackData(std::string error, std::vector<Event> events) : error(error), events(events) {}
+};
+
+Value callbackEventsToJS(const Env &env, std::vector<Event> &events) {
+  EscapableHandleScope scope(env);
+  Array arr = Array::New(env, events.size());
+  uint32_t currentEventIndex = 0;
+  for (auto eventIterator = events.begin(); eventIterator != events.end(); eventIterator++) {
+    Object res = Object::New(env);
+    std::string type = eventIterator->isCreated ? "create" : eventIterator->isDeleted ? "delete" : "update";
+    res.Set(String::New(env, "path"), String::New(env, eventIterator->path.c_str()));
+    res.Set(String::New(env, "type"), String::New(env, type.c_str()));
+    arr.Set(currentEventIndex++, res);
+  }
+  return scope.Escape(arr);
+}
+
+void callJSFunction(Napi::Env env, Function jsCallback, CallbackData *data) {
+  HandleScope scope(env);
+  auto err = data->error.size() > 0 ? Error::New(env, data->error).Value() : env.Null();
+  auto events = callbackEventsToJS(env, data->events);
+  jsCallback.Call({err, events});
+  delete data;
+
+  // Throw errors from the callback as fatal exceptions
+  // If we don't handle these node segfaults...
+  if (env.IsExceptionPending()) {
+    Napi::Error err = env.GetAndClearPendingException();
+    napi_fatal_exception(env, err.Value());
+  }
+}
+
+class NapiCallback: public Callback {
+public:
+  Napi::ThreadSafeFunction tsfn;
+  Napi::FunctionReference ref;
+
+  virtual void call(std::string error, std::vector<Event> events) {
+    CallbackData *data = new CallbackData(error, events);
+    tsfn.BlockingCall(data, callJSFunction);
+  }
+
+  virtual bool operator==(const Callback &other) const {
+    if (const NapiCallback *cb = dynamic_cast<const NapiCallback*>(&other)) {
+      return ref.Value() == cb->ref.Value();
+    } else {
+      return false;
+    }
+  }
+
+  virtual ~NapiCallback() {
+    tsfn.Release();
+    ref.Unref();
+  }
+};
+
 class WriteSnapshotRunner : public PromiseRunner {
 public:
   WriteSnapshotRunner(Env env, Value dir, Value snap, Value opts)
@@ -172,7 +231,20 @@ public:
     );
 
     backend = getBackend(env, opts);
-    watcher->watch(fn.As<Function>());
+    // watcher->watch(fn.As<Function>());
+
+    auto callback = fn.As<Function>();
+    auto tsfn = ThreadSafeFunction::New(
+      callback.Env(),
+      callback,
+      "Watcher callback",
+      0, // Unlimited queue
+      1 // Initial thread count
+    );
+    auto data = std::make_shared<NapiCallback>();
+    data->tsfn = tsfn;
+    data->ref = Napi::Persistent(callback);
+    watcher->watch(data);
   }
 
 private:
@@ -200,7 +272,21 @@ public:
     );
 
     backend = getBackend(env, opts);
-    shouldUnwatch = watcher->unwatch(fn.As<Function>());
+
+    auto callback = fn.As<Function>();
+    auto tsfn = ThreadSafeFunction::New(
+      callback.Env(),
+      callback,
+      "Watcher callback",
+      0, // Unlimited queue
+      1 // Initial thread count
+    );
+
+    auto data = std::make_shared<NapiCallback>();
+    data->tsfn = tsfn;
+    data->ref = Napi::Persistent(callback);
+
+    shouldUnwatch = watcher->unwatch(data);
   }
 
 private:

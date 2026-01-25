@@ -2,29 +2,16 @@
 #define EVENT_H
 
 #include <string>
-#include <node_api.h>
 #include "wasm/include.h"
-#include <napi.h>
 #include <mutex>
 #include <map>
 #include <optional>
-
-using namespace Napi;
 
 struct Event {
   std::string path;
   bool isCreated;
   bool isDeleted;
   Event(std::string path) : path(path), isCreated(false), isDeleted(false) {}
-
-  Value toJS(const Env& env) {
-    EscapableHandleScope scope(env);
-    Object res = Object::New(env);
-    std::string type = isCreated ? "create" : isDeleted ? "delete" : "update";
-    res.Set(String::New(env, "path"), String::New(env, path.c_str()));
-    res.Set(String::New(env, "type"), String::New(env, type.c_str()));
-    return scope.Escape(res);
-  }
 };
 
 class EventList {

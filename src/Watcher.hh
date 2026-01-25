@@ -4,23 +4,36 @@
 #include <condition_variable>
 #include <unordered_set>
 #include <set>
-#include <node_api.h>
 #include "Glob.hh"
 #include "Event.hh"
 #include "Debounce.hh"
 #include "DirTree.hh"
 #include "Signal.hh"
 
-using namespace Napi;
+// using namespace Napi;
 
 struct Watcher;
 using WatcherRef = std::shared_ptr<Watcher>;
 
-struct Callback {
-  Napi::ThreadSafeFunction tsfn;
-  Napi::FunctionReference ref;
+typedef void (watcher_cb)(void *data, std::string error, std::vector<Event> events);
+
+// struct Callback {
+//   // Napi::ThreadSafeFunction tsfn;
+//   // Napi::FunctionReference ref;
+//   watcher_cb *fn;
+//   void *data;
+//   std::thread::id threadId;
+// };
+
+class Callback {
+public:
   std::thread::id threadId;
+  virtual void call(std::string error, std::vector<Event> events) = 0;
+  virtual bool operator==(const Callback &other) const = 0;
+  virtual ~Callback() = default;
 };
+
+// typedef std::function<void(std::string error, std::vector<Event> events)> Callback;
 
 class WatcherState {
 public:
@@ -44,8 +57,8 @@ struct Watcher {
   void wait();
   void notify();
   void notifyError(std::exception &err);
-  bool watch(Function callback);
-  bool unwatch(Function callback);
+  bool watch(std::shared_ptr<Callback> callback);
+  bool unwatch(std::shared_ptr<Callback> callback);
   void unref();
   bool isIgnored(std::string path);
   void destroy();
@@ -55,10 +68,10 @@ struct Watcher {
 private:
   std::mutex mMutex;
   std::condition_variable mCond;
-  std::vector<Callback> mCallbacks;
+  std::vector<std::shared_ptr<Callback>> mCallbacks;
   std::shared_ptr<Debounce> mDebounce;
 
-  std::vector<Callback>::iterator findCallback(Function callback);
+  std::vector<std::shared_ptr<Callback>>::iterator findCallback(std::shared_ptr<Callback> callback);
   void clearCallbacks();
   void triggerCallbacks();
 };

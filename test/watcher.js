@@ -21,7 +21,7 @@ if (process.env.TEST_WASM) {
   backends = ['wasm'];
 }
 
-describe('watcher', () => {
+describe.only('watcher', () => {
   backends.forEach((backend) => {
     describe(backend, () => {
       let tmpDir;

@@ -5,8 +5,8 @@
       "defines": [ "NAPI_DISABLE_CPP_EXCEPTIONS" ],
       "sources": [ "src/binding.cc", "src/Watcher.cc", "src/Backend.cc", "src/DirTree.cc", "src/Glob.cc", "src/Debounce.cc" ],
       "include_dirs" : ["<!(node -p \"require('node-addon-api').include_dir\")"],
-      'cflags!': [ '-fno-exceptions', '-std=c++17' ],
-      'cflags_cc!': [ '-fno-exceptions', '-std=c++17' ],
+      'cflags!': [ '-fno-exceptions', '-std=c++17', '-fno-rtti' ],
+      'cflags_cc!': [ '-fno-exceptions', '-std=c++17', '-fno-rtti' ],
       'cflags': [ '-fstack-protector-strong' ],
       "conditions": [
         ['OS=="mac"', {
@@ -28,7 +28,8 @@
             "KQUEUE"
           ],
           "xcode_settings": {
-            "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+            "GCC_ENABLE_CPP_RTTI": "YES"
           }
         }],
         ['OS=="mac" and target_arch=="arm64"', {

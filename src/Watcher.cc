@@ -1,7 +1,7 @@
 #include "Watcher.hh"
 #include <unordered_set>
 
-using namespace Napi;
+// using namespace Napi;
 
 struct WatcherHash {
   std::size_t operator() (WatcherRef const &k) const {
@@ -79,42 +79,44 @@ void Watcher::notify() {
   }
 }
 
-struct CallbackData {
-  std::string error;
-  std::vector<Event> events;
-  CallbackData(std::string error, std::vector<Event> events) : error(error), events(events) {}
-};
+// struct CallbackData {
+//   std::string error;
+//   std::vector<Event> events;
+//   CallbackData(std::string error, std::vector<Event> events) : error(error), events(events) {}
+// };
 
-Value callbackEventsToJS(const Env &env, std::vector<Event> &events) {
-  EscapableHandleScope scope(env);
-  Array arr = Array::New(env, events.size());
-  uint32_t currentEventIndex = 0;
-  for (auto eventIterator = events.begin(); eventIterator != events.end(); eventIterator++) {
-    arr.Set(currentEventIndex++, eventIterator->toJS(env));
-  }
-  return scope.Escape(arr);
-}
+// Value callbackEventsToJS(const Env &env, std::vector<Event> &events) {
+//   EscapableHandleScope scope(env);
+//   Array arr = Array::New(env, events.size());
+//   uint32_t currentEventIndex = 0;
+//   for (auto eventIterator = events.begin(); eventIterator != events.end(); eventIterator++) {
+//     arr.Set(currentEventIndex++, eventIterator->toJS(env));
+//   }
+//   return scope.Escape(arr);
+// }
 
-void callJSFunction(Napi::Env env, Function jsCallback, CallbackData *data) {
-  HandleScope scope(env);
-  auto err = data->error.size() > 0 ? Error::New(env, data->error).Value() : env.Null();
-  auto events = callbackEventsToJS(env, data->events);
-  jsCallback.Call({err, events});
-  delete data;
+// void callJSFunction(Napi::Env env, Function jsCallback, CallbackData *data) {
+//   HandleScope scope(env);
+//   auto err = data->error.size() > 0 ? Error::New(env, data->error).Value() : env.Null();
+//   auto events = callbackEventsToJS(env, data->events);
+//   jsCallback.Call({err, events});
+//   delete data;
 
-  // Throw errors from the callback as fatal exceptions
-  // If we don't handle these node segfaults...
-  if (env.IsExceptionPending()) {
-    Napi::Error err = env.GetAndClearPendingException();
-    napi_fatal_exception(env, err.Value());
-  }
-}
+//   // Throw errors from the callback as fatal exceptions
+//   // If we don't handle these node segfaults...
+//   if (env.IsExceptionPending()) {
+//     Napi::Error err = env.GetAndClearPendingException();
+//     napi_fatal_exception(env, err.Value());
+//   }
+// }
 
 void Watcher::notifyError(std::exception &err) {
   std::unique_lock<std::mutex> lk(mMutex);
   for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-    CallbackData *data = new CallbackData(err.what(), {});
-    it->tsfn.BlockingCall(data, callJSFunction);
+    // CallbackData *data = new CallbackData(err.what(), {});
+    // it->tsfn.BlockingCall(data, callJSFunction);
+    // (*it->fn)(it->data, err.what(), {});
+    (*it)->call(err.what(), {});
   }
 
   clearCallbacks();
@@ -129,13 +131,15 @@ void Watcher::triggerCallbacks() {
     mEvents.clear();
 
     for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-      it->tsfn.BlockingCall(new CallbackData(error, events), callJSFunction);
+      // it->tsfn.BlockingCall(new CallbackData(error, events), callJSFunction);
+      // (*it->fn)(it->data, error, events);
+      (*it)->call(error, events);
     }
   }
 }
 
 // This should be called from the JavaScript thread.
-bool Watcher::watch(Function callback) {
+bool Watcher::watch(std::shared_ptr<Callback> callback) {
   std::unique_lock<std::mutex> lk(mMutex);
 
   auto it = findCallback(callback);
@@ -143,28 +147,30 @@ bool Watcher::watch(Function callback) {
     return false;
   }
 
-  auto tsfn = ThreadSafeFunction::New(
-    callback.Env(),
-    callback,
-    "Watcher callback",
-    0, // Unlimited queue
-    1 // Initial thread count
-  );
+  // auto tsfn = ThreadSafeFunction::New(
+  //   callback.Env(),
+  //   callback,
+  //   "Watcher callback",
+  //   0, // Unlimited queue
+  //   1 // Initial thread count
+  // );
 
-  mCallbacks.push_back(Callback {
-    tsfn,
-    Napi::Persistent(callback),
-    std::this_thread::get_id()
-  });
+  // mCallbacks.push_back(Callback {
+  //   tsfn,
+  //   Napi::Persistent(callback),
+  //   std::this_thread::get_id()
+  // });
+
+  mCallbacks.push_back(callback);
 
   return true;
 }
 
 // This should be called from the JavaScript thread.
-std::vector<Callback>::iterator Watcher::findCallback(Function callback) {
+std::vector<std::shared_ptr<Callback>>::iterator Watcher::findCallback(std::shared_ptr<Callback> callback) {
   for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
     // Only consider callbacks created by the same thread, or V8 will panic.
-    if (it->threadId == std::this_thread::get_id() && it->ref.Value() == callback) {
+    if ((**it) == *callback) {
       return it;
     }
   }
@@ -173,14 +179,12 @@ std::vector<Callback>::iterator Watcher::findCallback(Function callback) {
 }
 
 // This should be called from the JavaScript thread.
-bool Watcher::unwatch(Function callback) {
+bool Watcher::unwatch(std::shared_ptr<Callback> callback) {
   std::unique_lock<std::mutex> lk(mMutex);
 
   bool removed = false;
   auto it = findCallback(callback);
   if (it != mCallbacks.end()) {
-    it->tsfn.Release();
-    it->ref.Unref();
     mCallbacks.erase(it);
     removed = true;
   }
@@ -206,10 +210,10 @@ void Watcher::destroy() {
 
 // Private because it doesn't lock.
 void Watcher::clearCallbacks() {
-  for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
-    it->tsfn.Release();
-    it->ref.Unref();
-  }
+  // for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
+  //   it->tsfn.Release();
+  //   it->ref.Unref();
+  // }
 
   mCallbacks.clear();
   unref();
