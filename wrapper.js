@@ -1,6 +1,23 @@
 const path = require('path');
-const picomatch = require('picomatch');
+const globToRegExp = require('glob-to-regexp');
 const isGlob = require('is-glob');
+
+// Patterns containing extglob syntax that glob-to-regexp doesn't support
+const NEEDS_PICOMATCH = /[{(|)}\[\]!@+]/;
+let picomatch;
+
+function globToRegex(value) {
+  if (NEEDS_PICOMATCH.test(value)) {
+    if (!picomatch) {
+      picomatch = require('picomatch');
+    }
+    return picomatch.makeRe(value, {
+      dot: true,
+      windows: process.platform === 'win32',
+    });
+  }
+  return globToRegExp(value, { globstar: true });
+}
 
 function normalizeOptions(dir, opts = {}) {
   const { ignore, ...rest } = opts;
@@ -14,14 +31,7 @@ function normalizeOptions(dir, opts = {}) {
           opts.ignoreGlobs = [];
         }
 
-        const regex = picomatch.makeRe(value, {
-          // We set `dot: true` to workaround an issue with the
-          // regular expression on Linux where the resulting
-          // negative lookahead `(?!(\\/|^)` was never matching
-          // in some cases. See also https://bit.ly/3UZlQDm
-          dot: true,
-          windows: process.platform === 'win32',
-        });
+        const regex = globToRegex(value);
         opts.ignoreGlobs.push(regex.source);
       } else {
         if (!opts.ignorePaths) {
