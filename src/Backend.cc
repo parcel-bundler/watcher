@@ -104,6 +104,12 @@ void Backend::run() {
       try {
         start();
       } catch (std::exception &err) {
+        // If start() throws before reaching notifyStarted() (e.g. inotify_init1
+        // fails with EMFILE), the main thread would otherwise block forever on
+        // mStartedSignal. Record the error, then unblock run() so subsequent
+        // watch() calls can surface the failure to the subscriber.
+        mStartError = err.what();
+        notifyStarted();
         handleError(err);
       }
     });
@@ -115,6 +121,7 @@ void Backend::run() {
     try {
       start();
     } catch (std::exception &err) {
+      mStartError = err.what();
       handleError(err);
     }
   #endif
@@ -144,6 +151,12 @@ Backend::~Backend() {
 
 void Backend::watch(WatcherRef watcher) {
   std::unique_lock<std::mutex> lock(mMutex);
+  if (mStartError) {
+    // Backend thread failed to start (e.g. EMFILE from inotify_init1).
+    // SubscribeRunner::execute() catches this and routes it into the
+    // returned Promise's reject path via PromiseRunner's error buffer.
+    throw std::runtime_error(*mStartError);
+  }
   auto res = mSubscriptions.find(watcher);
   if (res == mSubscriptions.end()) {
     try {

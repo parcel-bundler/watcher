@@ -4,6 +4,8 @@
 #include "Event.hh"
 #include "Watcher.hh"
 #include "Signal.hh"
+#include <optional>
+#include <string>
 #include <thread>
 
 class Backend {
@@ -30,6 +32,7 @@ public:
 private:
   std::unordered_set<WatcherRef> mSubscriptions;
   Signal mStartedSignal;
+  std::optional<std::string> mStartError;
 
   void handleError(std::exception &err);
 };
