@@ -885,6 +885,44 @@ describe('watcher', () => {
             {type: 'create', path: path.join(ignoreGlobDir, 'test.txt')},
           ]);
         });
+
+        it('should ignore regex patterns', async () => {
+          if (backend === 'wasm') {
+            return;
+          }
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random().toString(31).slice(2),
+          );
+          fs.mkdirpSync(dir);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          let events = [];
+          let sub = await watcher.subscribe(
+            dir,
+            (err, e) => events.push(...e),
+            {backend, ignore: [/.*\.ignore$/]},
+          );
+
+          try {
+            fs.writeFile(path.join(dir, 'test.txt'), 'hello');
+            fs.writeFile(path.join(dir, 'test.ignore'), 'hello');
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } finally {
+            await sub.unsubscribe();
+          }
+
+          assert.deepEqual(events, [
+            {type: 'create', path: path.join(dir, 'test.txt')},
+          ]);
+        });
+
+        it('should throw when a regex with flags is passed in ignore', () => {
+          assert.throws(
+            () => watcher.subscribe(tmpDir, () => {}, {backend, ignore: [/foo/i]}),
+            /Flags are not supported/,
+          );
+        });
       });
     });
   });

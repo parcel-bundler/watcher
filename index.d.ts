@@ -10,7 +10,7 @@ declare namespace ParcelWatcher {
     | 'brute-force';
   export type EventType = 'create' | 'update' | 'delete';
   export interface Options {
-    ignore?: (FilePath|GlobPattern)[];
+    ignore?: (FilePath|GlobPattern|RegExp)[];
     backend?: BackendType;
   }
   export type SubscribeCallback = (

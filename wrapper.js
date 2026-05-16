@@ -9,7 +9,17 @@ function normalizeOptions(dir, opts = {}) {
     opts = { ...rest };
 
     for (const value of ignore) {
-      if (isGlob(value)) {
+      if (value instanceof RegExp) {
+        if (value.flags !== '') {
+          throw new Error(
+            `RegExp ignore patterns must not have flags (got /${value.source}/${value.flags}). Flags are not supported by the native matcher.`,
+          );
+        }
+        if (!opts.ignoreGlobs) {
+          opts.ignoreGlobs = [];
+        }
+        opts.ignoreGlobs.push(value.source);
+      } else if (isGlob(value)) {
         if (!opts.ignoreGlobs) {
           opts.ignoreGlobs = [];
         }
