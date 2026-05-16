@@ -901,12 +901,14 @@ describe('watcher', () => {
           let sub = await watcher.subscribe(
             dir,
             (err, e) => events.push(...e),
-            {backend, ignore: [/.*\.ignore$/]},
+            {backend, ignore: [/.*\.ignore$/, /node_modules/]},
           );
 
           try {
+            fs.mkdirpSync(path.join(dir, 'node_modules', 'pkg'));
             fs.writeFile(path.join(dir, 'test.txt'), 'hello');
             fs.writeFile(path.join(dir, 'test.ignore'), 'hello');
+            fs.writeFile(path.join(dir, 'node_modules', 'pkg', 'index.js'), 'hello');
             await new Promise((resolve) => setTimeout(resolve, 500));
           } finally {
             await sub.unsubscribe();
