@@ -6,11 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          cache: yarn
+          node-version: lts/*
+      - run: yarn --frozen-lockfile
+      - run: yarn prettier --check '**/*.{js,mjs,ts,flow}'
+
   test:
     strategy:
       fail-fast: false
       matrix:
-        node: [18, 20, 22, lts/*]  # https://github.com/actions/setup-node?tab=readme-ov-file#usage
+        node: [18, 20, 22, lts/*] # https://github.com/actions/setup-node?tab=readme-ov-file#usage
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
