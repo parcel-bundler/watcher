@@ -3,10 +3,10 @@ const picomatch = require('picomatch');
 const isGlob = require('is-glob');
 
 function normalizeOptions(dir, opts = {}) {
-  const { ignore, ...rest } = opts;
+  const {ignore, ...rest} = opts;
 
   if (Array.isArray(ignore)) {
-    opts = { ...rest };
+    opts = {...rest};
 
     for (const value of ignore) {
       if (isGlob(value)) {
@@ -69,6 +69,6 @@ exports.createWrapper = (binding) => {
         fn,
         normalizeOptions(dir, opts),
       );
-    }
+    },
   };
 };
