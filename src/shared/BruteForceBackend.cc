@@ -1,4 +1,5 @@
 #include <string>
+#include <cstring>
 #include "../DirTree.hh"
 #include "../Event.hh"
 #include "./BruteForceBackend.hh"

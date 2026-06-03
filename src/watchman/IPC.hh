@@ -2,6 +2,7 @@
 #define IPC_H
 
 #include <string>
+#include <cstring>
 #include <stdlib.h>
 
 #ifdef _WIN32

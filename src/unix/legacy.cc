@@ -1,4 +1,5 @@
 #include <string>
+#include <cstring>
 
 // weird error on linux
 #ifdef __THROW

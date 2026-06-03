@@ -1,4 +1,5 @@
 #include <memory>
+#include <cstring>
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>

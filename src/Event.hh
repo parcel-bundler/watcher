@@ -2,6 +2,7 @@
 #define EVENT_H
 
 #include <string>
+#include <vector>
 #include "wasm/include.h"
 #include <mutex>
 #include <map>
