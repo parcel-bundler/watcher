@@ -8,7 +8,6 @@ edition = "2021"
 [dependencies]
 dashmap = "*"
 crossbeam-channel = "*"
-kqueue-sys = "*"
 libc = "*"
 
 [build-dependencies]
