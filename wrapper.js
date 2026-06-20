@@ -9,7 +9,21 @@ function normalizeOptions(dir, opts = {}) {
     opts = { ...rest };
 
     for (const value of ignore) {
-      if (isGlob(value)) {
+      if (value instanceof RegExp) {
+        if (value.flags !== '') {
+          throw new Error(
+            `RegExp ignore patterns must not have flags (got /${value.source}/${value.flags}). Flags are not supported by the native matcher.`,
+          );
+        }
+        if (!opts.ignoreGlobs) {
+          opts.ignoreGlobs = [];
+        }
+        // The native backend uses std::regex_match (full-string match), but
+        // callers expect JS .test() semantics (substring search). Wrapping the
+        // source in ^[\\s\\S]*(?:…)[\\s\\S]*$ achieves that. The (?:…) group
+        // isolates the source so leading/trailing | in the source stays contained.
+        opts.ignoreGlobs.push(`^[\\s\\S]*(?:${value.source})[\\s\\S]*$`);
+      } else if (isGlob(value)) {
         if (!opts.ignoreGlobs) {
           opts.ignoreGlobs = [];
         }

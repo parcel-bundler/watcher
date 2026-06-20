@@ -10,7 +10,7 @@ export type BackendType =
   | 'brute-force';
 export type EventType = 'create' | 'update' | 'delete';
 export interface Options {
-  ignore?: Array<FilePath | GlobPattern>,
+  ignore?: Array<FilePath | GlobPattern | RegExp>,
   backend?: BackendType
 }
 export type SubscribeCallback = (
