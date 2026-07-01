@@ -1,10 +1,10 @@
-import { Environment, napi } from 'napi-wasm';
+import {Environment, napi} from 'napi-wasm';
 import fs from 'fs';
 import Path from 'path';
-import { createWrapper } from '../wrapper.js';
+import {createWrapper} from '../wrapper.js';
 
 let env;
-let encoder = new TextEncoder;
+let encoder = new TextEncoder();
 
 let constants = {
   O_ACCMODE: 0o00000003,
@@ -24,7 +24,7 @@ let constants = {
   O_DIRECTORY: 0o00200000,
   O_NOFOLLOW: 0o00400000,
   O_NOATIME: 0o01000000,
-  O_CLOEXEC: 0o02000000
+  O_CLOEXEC: 0o02000000,
 };
 
 napi.napi_get_last_error_info = () => {};
@@ -40,7 +40,9 @@ const wasm_env = {
     let p = Path.resolve(dir, env.getString(path));
     let nofollow = flags & 256;
     try {
-      let stat = nofollow ? fs.lstatSync(p, {bigint: true}) : fs.statSync(p, {bigint: true});
+      let stat = nofollow
+        ? fs.lstatSync(p, {bigint: true})
+        : fs.statSync(p, {bigint: true});
       return writeStat(stat, buf);
     } catch (err) {
       env.i32[env.instance.exports.__errno_location >> 2] = err.errno;
@@ -93,25 +95,35 @@ const wasm_env = {
     let i = dir?.index || 0;
     for (; i < entries.length; i++) {
       let entry = entries[i];
-      let type = entry.isFIFO() ? 1
-        : entry.isCharacterDevice() ? 2
-        : entry.isDirectory() ? 4
-        : entry.isBlockDevice() ? 6
-        : entry.isFile() ? 8
-        : entry.isSymbolicLink() ? 10
-        : entry.isSocket() ? 12
+      let type = entry.isFIFO()
+        ? 1
+        : entry.isCharacterDevice()
+        ? 2
+        : entry.isDirectory()
+        ? 4
+        : entry.isBlockDevice()
+        ? 6
+        : entry.isFile()
+        ? 8
+        : entry.isSymbolicLink()
+        ? 10
+        : entry.isSocket()
+        ? 12
         : 0;
       let len = align(utf8Length(entry.name) + 20, 8);
-      if ((dirp - start + len) > count) {
+      if (dirp - start + len > count) {
         break;
       }
 
       // Write a linux_dirent64 struct into wasm memory.
       env.u64[dirp >> 3] = 1n; // ino
-      env.u64[(dirp + 8) >> 3] = BigInt((dirp - start) + len); // offset
+      env.u64[(dirp + 8) >> 3] = BigInt(dirp - start + len); // offset
       env.u16[(dirp + 16) >> 1] = len;
       env.memory[dirp + 18] = type;
-      let {written} = encoder.encodeInto(entry.name, env.memory.subarray(dirp + 19));
+      let {written} = encoder.encodeInto(
+        entry.name,
+        env.memory.subarray(dirp + 19),
+      );
       env.memory[dirp + 19 + written] = 0; // null terminate
       dirp += len;
     }
@@ -165,7 +177,12 @@ const wasm_env = {
         let fptr = env.instance.exports.malloc(filename.byteLength + 1);
         env.memory.set(filename, fptr);
         env.memory[fptr + filename.byteLength] = 0;
-        env.instance.exports.wasm_backend_event_handler(backend, wd, type, fptr);
+        env.instance.exports.wasm_backend_event_handler(
+          backend,
+          wd,
+          type,
+          fptr,
+        );
         env.instance.exports.free(fptr);
       }
     });
@@ -204,7 +221,7 @@ const wasm_env = {
       regexCache.set(regex, re);
     }
     return re.test(env.getString(string)) ? 1 : 0;
-  }
+  },
 };
 
 const wasi = {
@@ -247,7 +264,7 @@ const wasi = {
     return 0;
   },
   proc_exit() {},
-  clock_time_get() {}
+  clock_time_get() {},
 };
 
 function writeStat(stat, buf) {
@@ -302,12 +319,14 @@ function align(len, p) {
   return Math.ceil(len / p) * p;
 }
 
-let wasmBytes = fs.readFileSync(new URL('../build/Debug/watcher.wasm', import.meta.url));
+let wasmBytes = fs.readFileSync(
+  new URL('../build/Debug/watcher.wasm', import.meta.url),
+);
 let wasmModule = new WebAssembly.Module(wasmBytes);
 let instance = new WebAssembly.Instance(wasmModule, {
   napi,
   env: wasm_env,
-  wasi_snapshot_preview1: wasi
+  wasi_snapshot_preview1: wasi,
 });
 
 env = new Environment(instance);

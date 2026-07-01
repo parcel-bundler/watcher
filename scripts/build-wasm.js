@@ -6,7 +6,7 @@ const pkg = require('../package.json');
 const dir = `${__dirname}/..`;
 try {
   fs.mkdirSync(dir + '/npm/wasm');
-} catch (err) { }
+} catch (err) {}
 
 let dts = fs.readFileSync(`${dir}/index.d.ts`, 'utf8');
 dts += `
@@ -25,7 +25,11 @@ fs.writeFileSync(`${dir}/npm/wasm/index.mjs`, js);
 
 fs.copyFileSync(`${dir}/wrapper.js`, `${dir}/npm/wasm/wrapper.js`);
 fs.copyFileSync(`${dir}/wasm/watcher.wasm`, `${dir}/npm/wasm/watcher.wasm`);
-fs.cpSync(`${dir}/node_modules/napi-wasm`, `${dir}/npm/wasm/node_modules/napi-wasm`, {recursive: true});
+fs.cpSync(
+  `${dir}/node_modules/napi-wasm`,
+  `${dir}/npm/wasm/node_modules/napi-wasm`,
+  {recursive: true},
+);
 
 const cjsBuild = {
   entryPoints: [`${dir}/npm/wasm/index.mjs`],
@@ -34,13 +38,13 @@ const cjsBuild = {
   platform: 'node',
   packages: 'external',
   outdir: `${dir}/npm/wasm`,
-  outExtension: { '.js': '.cjs' },
+  outExtension: {'.js': '.cjs'},
   inject: [`${dir}/wasm/import.meta.url-polyfill.js`],
-  define: { 'import.meta.url': 'import_meta_url' },
+  define: {'import.meta.url': 'import_meta_url'},
 };
 esbuild.build(cjsBuild).catch(console.error);
 
-const wasmPkg = { ...pkg };
+const wasmPkg = {...pkg};
 wasmPkg.name = '@parcel/watcher-wasm';
 wasmPkg.main = 'index.mjs';
 wasmPkg.module = 'index.mjs';
@@ -50,12 +54,12 @@ wasmPkg.files = ['*.js', '*.cjs', '*.mjs', '*.d.ts', '*.wasm'];
 wasmPkg.dependencies = {
   'napi-wasm': pkg.devDependencies['napi-wasm'],
   'is-glob': pkg.dependencies['is-glob'],
-  'picomatch': pkg.dependencies['picomatch']
+  picomatch: pkg.dependencies['picomatch'],
 };
 wasmPkg.exports = {
   types: './index.d.ts',
   import: './index.mjs',
-  require: './index.cjs'
+  require: './index.cjs',
 };
 wasmPkg.bundledDependencies = ['napi-wasm']; // for stackblitz
 delete wasmPkg.binary;
@@ -65,4 +69,7 @@ delete wasmPkg.devDependencies;
 delete wasmPkg.optionalDependencies;
 delete wasmPkg.targets;
 delete wasmPkg.scripts;
-fs.writeFileSync(`${dir}/npm/wasm/package.json`, JSON.stringify(wasmPkg, false, 2) + '\n');
+fs.writeFileSync(
+  `${dir}/npm/wasm/package.json`,
+  JSON.stringify(wasmPkg, false, 2) + '\n',
+);

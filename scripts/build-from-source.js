@@ -7,7 +7,10 @@ if (process.env.npm_config_build_from_source === 'true') {
 }
 
 function build() {
-  spawn('node-gyp', ['rebuild'], { stdio: 'inherit', shell: true }).on('exit', function (code) {
-    process.exit(code);
-  });
+  spawn('node-gyp', ['rebuild'], {stdio: 'inherit', shell: true}).on(
+    'exit',
+    function (code) {
+      process.exit(code);
+    },
+  );
 }

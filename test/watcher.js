@@ -86,7 +86,13 @@ describe('watcher', () => {
         await new Promise((resolve) => setTimeout(resolve, 100));
         sub = await watcher.subscribe(tmpDir, fn, {
           backend,
-          ignore: [ignoreDir, ignoreFile, `${ignoreGlobDirName}/*.ignore`, `${ignoreGlobDirName}/ignore/**`, `${ignoreGlobDirName}/[a-e]?on(g|l)i/**`]
+          ignore: [
+            ignoreDir,
+            ignoreFile,
+            `${ignoreGlobDirName}/*.ignore`,
+            `${ignoreGlobDirName}/ignore/**`,
+            `${ignoreGlobDirName}/[a-e]?on(g|l)i/**`,
+          ],
         });
       });
 
@@ -361,7 +367,7 @@ describe('watcher', () => {
           await fs.mkdir(base);
           await nextEvent();
 
-          let getPath = p => path.join(base, p);
+          let getPath = (p) => path.join(base, p);
 
           await fs.mkdir(getPath('dir'));
           await nextEvent();
@@ -402,7 +408,7 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           if (backend === 'wasm') {
-            res = res.filter(e => e.type === 'create');
+            res = res.filter((e) => e.type === 'create');
           }
           assert.deepEqual(res, [{type: 'create', path: f2}]);
         });
@@ -531,7 +537,7 @@ describe('watcher', () => {
             if (backend === 'kqueue') {
               // kqueue delivers events so fast that the original writeFile
               // doesn't get coalesced with the renames.
-              assert(res.find(v => v.type === 'create' && v.path === f2));
+              assert(res.find((v) => v.type === 'create' && v.path === f2));
             } else {
               assert.deepEqual(res, [{type: 'create', path: f2}]);
             }
@@ -551,7 +557,7 @@ describe('watcher', () => {
             if (backend === 'kqueue') {
               // kqueue delivers events so fast that the original writeFile
               // doesn't get coalesced with the renames.
-              assert(res.find(v => v.type === 'create' && v.path === f4));
+              assert(res.find((v) => v.type === 'create' && v.path === f4));
             } else {
               assert.deepEqual(res, [{type: 'create', path: f4}]);
             }
@@ -808,7 +814,8 @@ describe('watcher', () => {
       if (backend !== 'wasm') {
         describe('worker threads', () => {
           it('should support worker threads', async function () {
-            let worker = new Worker(`
+            let worker = new Worker(
+              `
               const {parentPort} = require('worker_threads');
               const {tmpDir, backend, modulePath} = require('worker_threads').workerData;
               const watcher = require(modulePath);
@@ -821,7 +828,16 @@ describe('watcher', () => {
               }
 
               run();
-            `, {eval: true, workerData: {tmpDir, backend, modulePath: require.resolve('../')}});
+            `,
+              {
+                eval: true,
+                workerData: {
+                  tmpDir,
+                  backend,
+                  modulePath: require.resolve('../'),
+                },
+              },
+            );
 
             await new Promise((resolve, reject) => {
               worker.once('message', resolve);
@@ -864,7 +880,7 @@ describe('watcher', () => {
 
           let res = await nextEvent();
           if (backend === 'wasm') {
-            res = res.filter(e => e.type === 'create');
+            res = res.filter((e) => e.type === 'create');
           }
           assert.deepEqual(res, [{type: 'create', path: f1}]);
         });
@@ -876,9 +892,15 @@ describe('watcher', () => {
           fs.writeFile(path.join(ignoreGlobDir, 'test.txt'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'test.ignore'), 'hello');
           fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'ignore', 'test.ignore'), 'hello');
+          fs.writeFile(
+            path.join(ignoreGlobDir, 'ignore', 'test.ignore'),
+            'hello',
+          );
           fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'test.txt'), 'hello');
-          fs.writeFile(path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'), 'hello');
+          fs.writeFile(
+            path.join(ignoreGlobDir, 'erongi', 'deep', 'test.txt'),
+            'hello',
+          );
 
           let res = await nextEvent();
           assert.deepEqual(res, [
@@ -908,7 +930,10 @@ describe('watcher', () => {
             fs.mkdirpSync(path.join(dir, 'node_modules', 'pkg'));
             fs.writeFile(path.join(dir, 'test.txt'), 'hello');
             fs.writeFile(path.join(dir, 'test.ignore'), 'hello');
-            fs.writeFile(path.join(dir, 'node_modules', 'pkg', 'index.js'), 'hello');
+            fs.writeFile(
+              path.join(dir, 'node_modules', 'pkg', 'index.js'),
+              'hello',
+            );
             await new Promise((resolve) => setTimeout(resolve, 500));
           } finally {
             await sub.unsubscribe();
