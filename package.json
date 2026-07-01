@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "prebuild": "prebuildify --napi --strip --tag-libc",
-    "format": "prettier --write \"./**/*.{js,json,md}\"",
+    "format": "prettier --write \"./**/*.{js,mjs,json,md,ts,flow}\"",
     "build": "node-gyp rebuild",
     "install": "node scripts/build-from-source.js",
     "test": "mocha"
@@ -44,7 +44,7 @@
     }
   },
   "lint-staged": {
-    "*.{js,json,md}": [
+    "*.{js,mjs,json,md,ts,flow}": [
       "prettier --write",
       "git add"
     ]
@@ -53,7 +53,7 @@
     "detect-libc": "^2.0.3",
     "is-glob": "^4.0.3",
     "node-addon-api": "^7.0.0",
-    "picomatch": "^4.0.3"
+    "picomatch": "^4.0.4"
   },
   "devDependencies": {
     "esbuild": "^0.19.8",

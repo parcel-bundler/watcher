@@ -5,69 +5,69 @@ const dir = `${__dirname}/..`;
 const triples = [
   {
     platform: 'darwin',
-    arch: 'x64'
+    arch: 'x64',
   },
   {
     platform: 'darwin',
-    arch: 'arm64'
+    arch: 'arm64',
   },
   {
     platform: 'win32',
-    arch: 'x64'
+    arch: 'x64',
   },
   {
     platform: 'win32',
-    arch: 'arm64'
+    arch: 'arm64',
   },
   {
     platform: 'win32',
-    arch: 'ia32'
+    arch: 'ia32',
   },
   {
     platform: 'linux',
     arch: 'x64',
-    libc: 'glibc'
+    libc: 'glibc',
   },
   {
     platform: 'linux',
     arch: 'x64',
-    libc: 'musl'
+    libc: 'musl',
   },
   {
     platform: 'linux',
     arch: 'arm64',
-    libc: 'glibc'
+    libc: 'glibc',
   },
   {
     platform: 'linux',
     arch: 'arm64',
-    libc: 'musl'
+    libc: 'musl',
   },
   {
     platform: 'linux',
     arch: 'arm',
-    libc: 'glibc'
+    libc: 'glibc',
   },
   {
     platform: 'linux',
     arch: 'arm',
-    libc: 'musl'
+    libc: 'musl',
   },
   {
     platform: 'android',
-    arch: 'arm64'
+    arch: 'arm64',
   },
   {
     platform: 'freebsd',
-    arch: 'x64'
-  }
+    arch: 'x64',
+  },
 ];
 
 let optionalDependencies = {};
 
 try {
   fs.mkdirSync(dir + '/npm');
-} catch (err) { }
+} catch (err) {}
 
 for (let triple of triples) {
   // Add the libc field to package.json to avoid downloading both
@@ -83,15 +83,18 @@ for (let triple of triples) {
 
 try {
   fs.mkdirSync(dir + '/npm/watcher');
-} catch (err) { }
+} catch (err) {}
 for (let file of pkg.files) {
   fs.cpSync(`${dir}/${file}`, `npm/watcher/${file}`, {recursive: true});
 }
 pkg.optionalDependencies = optionalDependencies;
-fs.writeFileSync(`${dir}/npm/watcher/package.json`, JSON.stringify(pkg, false, 2) + '\n');
+fs.writeFileSync(
+  `${dir}/npm/watcher/package.json`,
+  JSON.stringify(pkg, false, 2) + '\n',
+);
 
 function buildNode(triple, t) {
-  let pkg2 = { ...pkg };
+  let pkg2 = {...pkg};
   pkg2.name = `@parcel/watcher-${t}`;
   pkg2.os = [triple.platform];
   pkg2.cpu = [triple.arch];
@@ -114,9 +117,20 @@ function buildNode(triple, t) {
 
   try {
     fs.mkdirSync(dir + '/npm/' + t);
-  } catch (err) { }
-  fs.writeFileSync(`${dir}/npm/${t}/package.json`, JSON.stringify(pkg2, false, 2) + '\n');
-  fs.copyFileSync(`${dir}/prebuilds/${triple.platform}-${triple.arch}/@parcel+watcher.${triple.libc || 'glibc'}.node`, `${dir}/npm/${t}/watcher.node`);
-  fs.writeFileSync(`${dir}/npm/${t}/README.md`, `This is the ${t} build of @parcel/watcher. See https://github.com/parcel-bundler/watcher for details.`);
+  } catch (err) {}
+  fs.writeFileSync(
+    `${dir}/npm/${t}/package.json`,
+    JSON.stringify(pkg2, false, 2) + '\n',
+  );
+  fs.copyFileSync(
+    `${dir}/prebuilds/${triple.platform}-${triple.arch}/@parcel+watcher.${
+      triple.libc || 'glibc'
+    }.node`,
+    `${dir}/npm/${t}/watcher.node`,
+  );
+  fs.writeFileSync(
+    `${dir}/npm/${t}/README.md`,
+    `This is the ${t} build of @parcel/watcher. See https://github.com/parcel-bundler/watcher for details.`,
+  );
   fs.copyFileSync(`${dir}/LICENSE`, `${dir}/npm/${t}/LICENSE`);
 }
