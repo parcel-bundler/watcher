@@ -944,10 +944,9 @@ describe('watcher', () => {
           ]);
         });
 
-        it('should throw when a regex with flags is passed in ignore', () => {
-          assert.throws(
-            () =>
-              watcher.subscribe(tmpDir, () => {}, {backend, ignore: [/foo/i]}),
+        it('should throw when a regex with flags is passed in ignore', async () => {
+          await assert.rejects(
+            watcher.subscribe(tmpDir, () => {}, {backend, ignore: [/foo/i]}),
             /Flags are not supported/,
           );
         });
