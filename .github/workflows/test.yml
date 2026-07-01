@@ -15,7 +15,7 @@ jobs:
           cache: yarn
           node-version: lts/*
       - run: yarn --frozen-lockfile
-      - run: yarn prettier --check '**/*.{js,mjs,ts,flow}'
+      - run: yarn prettier --check '**/*.{js,mjs,json,md,ts,flow}'
 
   test:
     strategy:
