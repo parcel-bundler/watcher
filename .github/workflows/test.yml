@@ -76,7 +76,7 @@ jobs:
         with:
           usesh: true
           prepare: |
-            pkg install -y -f curl node libnghttp2 npm yarn
+            pkg install -y -f curl node libnghttp2 npm yarn python3
             echo "~~~~ node -v ~~~~"
             node -v
             echo "~~~~ yarn --version ~~~~"
@@ -89,7 +89,7 @@ jobs:
   test-wasm:
     runs-on: ubuntu-latest
     container:
-      image: emscripten/emsdk
+      image: emscripten/emsdk:6.0.1
     steps:
       - uses: actions/checkout@v6
       - run: corepack enable
