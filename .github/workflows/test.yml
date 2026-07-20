@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Test in FreeBSD
-        uses: vmactions/freebsd-vm@v1.2.1
+        uses: vmactions/freebsd-vm@v1.5.2
         with:
           usesh: true
           prepare: |
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           cache: yarn
-          node-version: 18
+          node-version: lts/*
       - run: yarn --frozen-lockfile
       - run: make wasm-debug
       - run: TEST_WASM=1 yarn test
