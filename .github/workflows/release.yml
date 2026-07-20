@@ -12,13 +12,10 @@ jobs:
         include:
           - os: windows-latest
             arch: x64
-            node: 18
+            node: 24
           - os: windows-latest
             arch: arm64
-            node: 20
-          - os: windows-latest
-            arch: ia32
-            node: 16
+            node: 24
           - os: macos-latest
             arch: x64
             node: 18
@@ -67,17 +64,12 @@ jobs:
       - run: microdnf install git tar -y
         if: ${{ matrix.arch == 'x64' && matrix.libc == 'glibc' }}
       - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
-        if: ${{ matrix.os == 'windows-latest' && matrix.arch == 'ia32' }}
-        with:
-          python-version: '3.11' # pin Python version to fix an issue that distutils is missing on ia32 windows runners
       - run: corepack enable
       - uses: actions/setup-node@v6
         with:
           cache: yarn
           node-version: ${{matrix.node}}
       - run: yarn --frozen-lockfile --ignore-scripts
-      - run: npm install node-gyp -g
       - run: yarn prebuild --arch ${{ matrix.arch }} -t ${{ matrix.node }}.0.0
         env:
           PREBUILD_LIBC: ${{ matrix.libc }}
@@ -103,7 +95,6 @@ jobs:
             yarn --version
           run: |
             yarn --frozen-lockfile --ignore-scripts
-            npm install node-gyp -g
             yarn prebuild --arch x64 -t 18.0.0
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
