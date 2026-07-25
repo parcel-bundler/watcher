@@ -944,6 +944,47 @@ describe('watcher', () => {
           ]);
         });
 
+        it('should ignore when the watched dir is not canonical', async () => {
+          if (backend === 'wasm') {
+            return;
+          }
+          // Deliberately not realpath'd, unlike every other test here: on macOS
+          // os.tmpdir() is /var/... while the backend reports the /private/var
+          // firmlink, and callers have no reason to expect the two to differ.
+          let dir = path.join(
+            require('os').tmpdir(),
+            Math.random().toString(31).slice(2),
+          );
+          fs.mkdirpSync(dir);
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          let events = [];
+          let sub = await watcher.subscribe(
+            dir,
+            (err, e) => events.push(...e),
+            {backend, ignore: ['node_modules', '*.ignore', /\.secret$/]},
+          );
+
+          try {
+            fs.mkdirpSync(path.join(dir, 'node_modules', 'pkg'));
+            fs.writeFile(path.join(dir, 'test.txt'), 'hello');
+            fs.writeFile(path.join(dir, 'test.ignore'), 'hello');
+            fs.writeFile(path.join(dir, 'test.secret'), 'hello');
+            fs.writeFile(
+              path.join(dir, 'node_modules', 'pkg', 'index.js'),
+              'hello',
+            );
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          } finally {
+            await sub.unsubscribe();
+          }
+
+          assert.deepEqual(
+            events.map((e) => path.basename(e.path)),
+            ['test.txt'],
+          );
+        });
+
         it('should throw when a regex with flags is passed in ignore', async () => {
           await assert.rejects(
             watcher.subscribe(tmpDir, () => {}, {backend, ignore: [/foo/i]}),

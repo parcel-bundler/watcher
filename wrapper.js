@@ -1,6 +1,26 @@
+const fs = require('fs');
 const path = require('path');
 const picomatch = require('picomatch');
 const isGlob = require('is-glob');
+
+// The backends report canonical paths, and every ignore check is made against
+// the watched directory: `ignorePaths` are resolved from it, and `ignoreGlobs`
+// are matched against the event path with that directory stripped off. So a
+// caller who passes a non-canonical directory gets no ignoring at all, silently
+// -- on macOS `os.tmpdir()` is `/var/...` while events arrive under the
+// `/private/var` firmlink, and the prefix comparison fails before any pattern is
+// consulted. Canonicalize once here so both sides agree.
+//
+// Falls back to the plain resolve when the path cannot be canonicalized, which
+// keeps a not-yet-created directory behaving as it did before.
+function resolveDir(dir) {
+  const resolved = path.resolve(dir);
+  try {
+    return fs.realpathSync(resolved);
+  } catch (err) {
+    return resolved;
+  }
+}
 
 function normalizeOptions(dir, opts = {}) {
   const {ignore, ...rest} = opts;
@@ -53,21 +73,23 @@ function normalizeOptions(dir, opts = {}) {
 exports.createWrapper = (binding) => {
   return {
     writeSnapshot(dir, snapshot, opts) {
+      dir = resolveDir(dir);
       return binding.writeSnapshot(
-        path.resolve(dir),
+        dir,
         path.resolve(snapshot),
         normalizeOptions(dir, opts),
       );
     },
     getEventsSince(dir, snapshot, opts) {
+      dir = resolveDir(dir);
       return binding.getEventsSince(
-        path.resolve(dir),
+        dir,
         path.resolve(snapshot),
         normalizeOptions(dir, opts),
       );
     },
     async subscribe(dir, fn, opts) {
-      dir = path.resolve(dir);
+      dir = resolveDir(dir);
       opts = normalizeOptions(dir, opts);
       await binding.subscribe(dir, fn, opts);
 
@@ -78,11 +100,8 @@ exports.createWrapper = (binding) => {
       };
     },
     unsubscribe(dir, fn, opts) {
-      return binding.unsubscribe(
-        path.resolve(dir),
-        fn,
-        normalizeOptions(dir, opts),
-      );
+      dir = resolveDir(dir);
+      return binding.unsubscribe(dir, fn, normalizeOptions(dir, opts));
     },
   };
 };
