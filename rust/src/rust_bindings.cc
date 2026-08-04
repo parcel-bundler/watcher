@@ -13,7 +13,7 @@ public:
 
   virtual void call(std::string error, std::vector<Event> events) {
     const char *c_error = error.empty() ? NULL : error.c_str();
-    (fn)(data, c_error, events.data(), events.size());
+    (fn)(data, c_error, events.data(), static_cast<int>(events.size()));
   }
 
   virtual bool operator==(const Callback &other) const {
@@ -44,7 +44,7 @@ extern "C" void parcel_watcher_subscribe(const char *dir, c_watcher_cb *cb, void
 
     try {
       backend->watch(watcher);
-    } catch (std::exception &err) {
+    } catch (std::exception &) {
       watcher->destroy();
     } catch (const char *e) {
       printf("ERROR: %s\n", e);
