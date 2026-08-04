@@ -1,6 +1,5 @@
 use std::{
   ffi::{c_char, c_int, c_void, CStr, CString, OsStr},
-  os::unix::ffi::OsStrExt,
   path::{Path, PathBuf},
   sync::mpsc::{self, Receiver, Sender},
 };
@@ -86,7 +85,7 @@ extern "C" fn watch_cb(
       let path = unsafe { CStr::from_ptr(parcel_watcher_event_get_path(events, i)) };
       let ty = unsafe { parcel_watcher_event_get_type(events, i) };
       rust_events.push(Event {
-        path: PathBuf::from(OsStr::from_bytes(path.to_bytes())),
+        path: PathBuf::from(unsafe { OsStr::from_encoded_bytes_unchecked(path.to_bytes()) }),
         ty: if ty == 0 {
           EventType::Created
         } else if ty == 1 {
