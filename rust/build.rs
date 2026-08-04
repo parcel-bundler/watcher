@@ -74,6 +74,10 @@ fn main() {
   // Compiler flags matching the node bindings in binding.gyp.
   if build.get_compiler().is_like_msvc() {
     build
+      // Inherited from node's common.gypi by the node bindings: don't let /sdl
+      // turn the deprecated CRT/POSIX function warnings into errors.
+      .define("_CRT_SECURE_NO_DEPRECATE", None)
+      .define("_CRT_NONSTDC_NO_DEPRECATE", None)
       .flag("/EHsc")
       .flag("/guard:cf")
       .flag("/W3")
