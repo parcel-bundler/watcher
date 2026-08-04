@@ -2,18 +2,14 @@ fn main() {
   let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
 
   let mut build = cc::Build::new();
-  build
-    .cpp(true)
-    .flag("-std=c++17")
-    .includes(&["../src"])
-    .files(&[
-      "src/rust_bindings.cc",
-      "../src/Watcher.cc",
-      "../src/Glob.cc",
-      "../src/DirTree.cc",
-      "../src/Debounce.cc",
-      "../src/Backend.cc",
-    ]);
+  build.cpp(true).std("c++17").includes(&["../src"]).files(&[
+    "src/rust_bindings.cc",
+    "../src/Watcher.cc",
+    "../src/Glob.cc",
+    "../src/DirTree.cc",
+    "../src/Debounce.cc",
+    "../src/Backend.cc",
+  ]);
 
   match target_os.as_str() {
     "macos" => {
@@ -73,6 +69,23 @@ fn main() {
         .define("KQUEUE", None);
     }
     os => panic!("Unsupported target OS: {}", os),
+  }
+
+  // Compiler flags matching the node bindings in binding.gyp.
+  if build.get_compiler().is_like_msvc() {
+    build
+      .flag("/EHsc")
+      .flag("/guard:cf")
+      .flag("/W3")
+      .flag("/we4146")
+      .flag("/w34244")
+      .flag("/we4267")
+      .flag("/sdl")
+      .flag("/ZH:SHA_256");
+    println!("cargo:rustc-link-arg=/DYNAMICBASE");
+    println!("cargo:rustc-link-arg=/guard:cf");
+  } else {
+    build.flag("-fstack-protector-strong");
   }
 
   build.compile("libwatcher.a");
