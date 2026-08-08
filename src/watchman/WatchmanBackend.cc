@@ -1,6 +1,7 @@
 #include <string>
 #include <fstream>
 #include <stdlib.h>
+#include <filesystem>
 #include <algorithm>
 #include "../DirTree.hh"
 #include "../Event.hh"
@@ -245,8 +246,16 @@ void WatchmanBackend::writeSnapshot(WatcherRef watcher, std::string *snapshotPat
   std::unique_lock<std::mutex> lock(mMutex);
   watchmanWatch(watcher->mDir);
 
-  std::ofstream ofs(*snapshotPath);
-  ofs << clock(watcher);
+  auto clockValue = clock(watcher);
+  auto temporaryDirectory = std::filesystem::temp_directory_path();
+  auto temporaryFilePath = temporaryDirectory.append("tmp-parcel-snapshot.txt");
+  {
+    std::ofstream ofs(temporaryFilePath);
+    ofs << clockValue;
+    ofs.flush();
+    ofs.close();
+  }
+  std::filesystem::rename(temporaryFilePath, *snapshotPath);
 }
 
 void WatchmanBackend::getEventsSince(WatcherRef watcher, std::string *snapshotPath) {
