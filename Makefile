@@ -14,6 +14,7 @@ FLAGS := $(INCS_Debug) \
 	-DNAPI_HAS_THREADS=1 \
 	-sEXPORTED_FUNCTIONS="['_napi_register_wasm_v1', '_wasm_backend_event_handler', '_malloc', '_free', '_on_timeout']" \
 	-sERROR_ON_UNDEFINED_SYMBOLS=0 \
+	-sEXPORTED_RUNTIME_METHODS=wasmTable \
 	-s INITIAL_MEMORY=524288000
 
 build/node-headers.tar.gz:
