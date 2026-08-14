@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <memory>
 #include <poll.h>
 #include <unistd.h>
@@ -39,6 +40,11 @@ void InotifyBackend::start() {
   while (true) {
     int result = poll(pollfds, 2, 500);
     if (result < 0) {
+      // Signals can interrupt poll without indicating a watcher failure.
+      if (errno == EINTR) {
+        continue;
+      }
+
       throw std::runtime_error(std::string("Unable to poll: ") + strerror(errno));
     }
 
