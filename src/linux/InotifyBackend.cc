@@ -22,7 +22,12 @@ void InotifyBackend::start() {
   // Init inotify file descriptor.
   mInotify = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
   if (mInotify == -1) {
-    throw std::runtime_error(std::string("Unable to initialize inotify: ") + strerror(errno));
+    // EMFILE from inotify_init1 means the fs.inotify.max_user_instances limit
+    // was reached, not the process open file limit that strerror's text suggests.
+    std::string reason = errno == EMFILE
+      ? "too many inotify instances (increase fs.inotify.max_user_instances) or open files"
+      : strerror(errno);
+    throw std::runtime_error(std::string("Unable to initialize inotify: ") + reason);
   }
 
   pollfd pollfds[2];
@@ -72,7 +77,12 @@ void InotifyBackend::subscribe(WatcherRef watcher) {
     if (it->second.isDir) {
       bool success = watchDir(watcher, it->second.path, tree);
       if (!success) {
-        throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + strerror(errno), watcher);
+        // ENOSPC from inotify_add_watch means the fs.inotify.max_user_watches limit
+        // was reached, not that the disk is full, so don't report strerror's misleading text.
+        std::string reason = errno == ENOSPC
+          ? "inotify watch limit reached (increase fs.inotify.max_user_watches)"
+          : strerror(errno);
+        throw WatcherError(std::string("inotify_add_watch on '") + it->second.path + std::string("' failed: ") + reason, watcher);
       }
     }
   }
