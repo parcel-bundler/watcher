@@ -59,19 +59,16 @@ public:
 
   std::vector<Event> getEvents() {
     std::lock_guard<std::mutex> l(mMutex);
-    std::vector<Event> eventsCloneVector;
-    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
-      if (!(it->second.isCreated && it->second.isDeleted)) {
-        eventsCloneVector.push_back(it->second);
-      }
-    }
-    return eventsCloneVector;
+    return internalGetEvents();
   }
 
-  void clear() {
+  std::vector<Event> take(std::string &error) {
     std::lock_guard<std::mutex> l(mMutex);
+    std::vector<Event> events = internalGetEvents();
+    error = mError.value_or("");
     mEvents.clear();
     mError.reset();
+    return events;
   }
 
   void error(std::string err) {
@@ -103,6 +100,16 @@ private:
     }
 
     return &found->second;
+  }
+
+  std::vector<Event> internalGetEvents() {
+    std::vector<Event> eventsCloneVector;
+    for(auto it = mEvents.begin(); it != mEvents.end(); ++it) {
+      if (!(it->second.isCreated && it->second.isDeleted)) {
+        eventsCloneVector.push_back(it->second);
+      }
+    }
+    return eventsCloneVector;
   }
 };
 

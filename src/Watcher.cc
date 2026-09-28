@@ -124,9 +124,8 @@ void Watcher::notifyError(std::exception &err) {
 void Watcher::triggerCallbacks() {
   std::unique_lock<std::mutex> lk(mMutex);
   if (mCallbacks.size() > 0 && (mEvents.size() > 0 || mEvents.hasError())) {
-    auto error = mEvents.getError();
-    auto events = mEvents.getEvents();
-    mEvents.clear();
+    std::string error;
+    auto events = mEvents.take(error);
 
     for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
       it->tsfn.BlockingCall(new CallbackData(error, events), callJSFunction);
