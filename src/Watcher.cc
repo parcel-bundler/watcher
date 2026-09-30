@@ -143,17 +143,26 @@ bool Watcher::watch(Function callback) {
     return false;
   }
 
+  // Failed subscriptions and backend errors can remove callbacks on a worker
+  // thread. Only the owning JavaScript thread may delete their N-API references.
+  auto ref = std::make_shared<FunctionReference>(Napi::Persistent(callback));
   auto tsfn = ThreadSafeFunction::New(
     callback.Env(),
     callback,
     "Watcher callback",
     0, // Unlimited queue
-    1 // Initial thread count
+    1, // Initial thread count
+    [ref](Napi::Env) {
+      ref->Reset();
+    }
   );
+  if (tsfn == nullptr) {
+    return false;
+  }
 
   mCallbacks.push_back(Callback {
     tsfn,
-    Napi::Persistent(callback),
+    ref,
     std::this_thread::get_id()
   });
 
@@ -164,7 +173,7 @@ bool Watcher::watch(Function callback) {
 std::vector<Callback>::iterator Watcher::findCallback(Function callback) {
   for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
     // Only consider callbacks created by the same thread, or V8 will panic.
-    if (it->threadId == std::this_thread::get_id() && it->ref.Value() == callback) {
+    if (it->threadId == std::this_thread::get_id() && !it->ref->IsEmpty() && it->ref->Value() == callback) {
       return it;
     }
   }
@@ -180,7 +189,6 @@ bool Watcher::unwatch(Function callback) {
   auto it = findCallback(callback);
   if (it != mCallbacks.end()) {
     it->tsfn.Release();
-    it->ref.Unref();
     mCallbacks.erase(it);
     removed = true;
   }
@@ -208,7 +216,6 @@ void Watcher::destroy() {
 void Watcher::clearCallbacks() {
   for (auto it = mCallbacks.begin(); it != mCallbacks.end(); it++) {
     it->tsfn.Release();
-    it->ref.Unref();
   }
 
   mCallbacks.clear();

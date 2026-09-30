@@ -18,7 +18,8 @@ using WatcherRef = std::shared_ptr<Watcher>;
 
 struct Callback {
   Napi::ThreadSafeFunction tsfn;
-  Napi::FunctionReference ref;
+  // The thread-safe function's finalizer resets this on the JavaScript thread.
+  std::shared_ptr<Napi::FunctionReference> ref;
   std::thread::id threadId;
 };
 
