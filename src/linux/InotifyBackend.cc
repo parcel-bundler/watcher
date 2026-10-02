@@ -1,4 +1,5 @@
 #include <memory>
+#include <dirent.h>
 #include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -84,6 +85,13 @@ bool InotifyBackend::watchDir(WatcherRef watcher, std::string path, std::shared_
     return false;
   }
 
+  auto range = mSubscriptions.equal_range(wd);
+  for (auto it = range.first; it != range.second; it++) {
+    if (it->second->watcher == watcher && it->second->path == path) {
+      return true;
+    }
+  }
+
   std::shared_ptr<InotifySubscription> sub = std::make_shared<InotifySubscription>();
   sub->tree = tree;
   sub->path = path;
@@ -91,6 +99,29 @@ bool InotifyBackend::watchDir(WatcherRef watcher, std::string path, std::shared_
   mSubscriptions.emplace(wd, sub);
 
   return true;
+}
+
+void InotifyBackend::watchSubdirs(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree) {
+  std::vector<std::string> dirs = {path};
+  while (!dirs.empty()) {
+    std::string dirPath = dirs.back();
+    dirs.pop_back();
+    DIR *dir = opendir(dirPath.c_str());
+    if (!dir) {
+      continue;
+    }
+
+    while (struct dirent *ent = readdir(dir)) {
+      std::string child = dirPath + "/" + ent->d_name;
+      struct stat st;
+      bool isDir = ent->d_type == DT_DIR || (ent->d_type == DT_UNKNOWN && fstatat(dirfd(dir), ent->d_name, &st, AT_SYMLINK_NOFOLLOW) == 0 && S_ISDIR(st.st_mode));
+      if (isDir && strcmp(ent->d_name, ".") != 0 && strcmp(ent->d_name, "..") != 0 && !watcher->isIgnored(child) && watchDir(watcher, child, tree)) {
+        dirs.push_back(child);
+      }
+    }
+
+    closedir(dir);
+  }
 }
 
 void InotifyBackend::handleEvents() {
@@ -181,6 +212,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
         sub->tree->remove(path);
         return false;
       }
+      watchSubdirs(watcher, path, sub->tree);
     }
   } else if (event->mask & (IN_MODIFY | IN_ATTRIB)) {
     watcher->mEvents.update(path);
@@ -201,7 +233,7 @@ bool InotifyBackend::handleSubscription(struct inotify_event *event, std::shared
     // XXX: self events don't have the IN_ISDIR mask
     if (isSelfEvent || isDir) {
       for (auto it = mSubscriptions.begin(); it != mSubscriptions.end();) {
-        if (it->second->path == path) {
+        if (it->second->path == path || it->second->path.rfind(path + "/", 0) == 0) {
           it = mSubscriptions.erase(it);
         } else {
           ++it;

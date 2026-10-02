@@ -26,6 +26,7 @@ private:
   Signal mEndedSignal;
 
   bool watchDir(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree);
+  void watchSubdirs(WatcherRef watcher, std::string path, std::shared_ptr<DirTree> tree);
   void handleEvents();
   void handleEvent(struct inotify_event *event, std::unordered_set<WatcherRef> &watchers);
   bool handleSubscription(struct inotify_event *event, std::shared_ptr<InotifySubscription> sub);
