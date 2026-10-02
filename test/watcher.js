@@ -395,6 +395,30 @@ describe('watcher', () => {
             ]);
           }
         });
+
+        it('should emit when a file is created in nested new directories', async () => {
+          if (backend === 'kqueue' || backend === 'wasm') {
+            return;
+          }
+
+          let f1 = getFilename();
+          let f2 = path.join(f1, 'a', 'b', 'file');
+          fs.mkdirpSync(path.dirname(f2));
+          await nextEvent();
+
+          fs.writeFile(f2, 'hello world');
+          let res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f2}]);
+
+          let f3 = getFilename();
+          let f4 = path.join(f3, 'a', 'b', 'file2');
+          fs.rename(f1, f3);
+          await nextEvent();
+
+          fs.writeFile(f4, 'hello world');
+          res = await nextEvent();
+          assert.deepEqual(res, [{type: 'create', path: f4}]);
+        });
       });
 
       describe('symlinks', () => {
