@@ -246,6 +246,13 @@ void FSEventsBackend::startStream(WatcherRef watcher, FSEventStreamEventId id) {
 
   FSEventStreamSetExclusionPaths(stream, exclusions);
 
+  // FSEventsCallback can run on the run loop thread as soon as the stream is scheduled, before FSEventStreamStart
+  // returns, and it uses the tree of the state, so the state is complete before the stream is scheduled.
+  auto stateGuard = watcher->state;
+  State* s = static_cast<State*>(stateGuard.get());
+  s->tree = std::make_shared<DirTree>(watcher->mDir);
+  s->stream = stream;
+
   FSEventStreamScheduleWithRunLoop(stream, mRunLoop, kCFRunLoopDefaultMode);
   bool started = FSEventStreamStart(stream);
 
@@ -256,11 +263,6 @@ void FSEventsBackend::startStream(WatcherRef watcher, FSEventStreamEventId id) {
     FSEventStreamRelease(stream);
     throw WatcherError("Error starting FSEvents stream", watcher);
   }
-
-  auto stateGuard = watcher->state;
-  State* s = static_cast<State*>(stateGuard.get());
-  s->tree = std::make_shared<DirTree>(watcher->mDir);
-  s->stream = stream;
 }
 
 void FSEventsBackend::start() {
