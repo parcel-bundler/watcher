@@ -67,7 +67,7 @@ WindowsBackend::~WindowsBackend() {
   QueueUserAPC([](__in ULONG_PTR) {}, mThread.native_handle(), (ULONG_PTR)this);
 }
 
-class Subscription: public WatcherState {
+class Subscription: public WatcherState, public std::enable_shared_from_this<Subscription> {
 public:
   Subscription(WindowsBackend *backend, WatcherRef watcher, std::shared_ptr<DirTree> tree) {
     mRunning = true;
@@ -134,6 +134,9 @@ public:
       return;
     }
 
+    // The kernel writes into this object until the read completes, so it must outlive the read.
+    mSelf = shared_from_this();
+
     // Asynchronously wait for changes.
     int success = ReadDirectoryChangesW(
       mDirectoryHandle,
@@ -146,6 +149,8 @@ public:
       &mOverlapped,
       [](DWORD errorCode, DWORD numBytes, LPOVERLAPPED overlapped) {
         auto subscription = reinterpret_cast<Subscription *>(overlapped->hEvent);
+        // Take the read's reference: poll() takes a new one if it reads again.
+        std::shared_ptr<Subscription> self = std::move(subscription->mSelf);
         try {
           subscription->processEvents(errorCode);
         } catch (WatcherError &err) {
@@ -155,6 +160,7 @@ public:
     );
 
     if (!success) {
+      mSelf = nullptr;
       throw WatcherError("Failed to read changes", mWatcher);
     }
   }
@@ -248,6 +254,8 @@ public:
     }
   }
 
+  std::shared_ptr<Subscription> mSelf;
+
 private:
   WindowsBackend *mBackend;
   std::shared_ptr<Watcher> mWatcher;
@@ -265,18 +273,34 @@ void WindowsBackend::subscribe(WatcherRef watcher) {
   auto sub = std::make_shared<Subscription>(this, watcher, getTree(watcher, false));
   watcher->state = sub;
 
-  // Queue polling for this subscription in the correct thread.
+  // Queue polling for this subscription in the correct thread. The APC holds a reference,
+  // as unsubscribe may drop the watcher's before it runs.
+  auto ref = new std::shared_ptr<Subscription>(sub);
   bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
-    Subscription *sub = (Subscription *)ptr;
-    sub->run();
-  }, mThread.native_handle(), (ULONG_PTR)sub.get());
+    auto sub = (std::shared_ptr<Subscription> *)ptr;
+    (*sub)->run();
+    delete sub;
+  }, mThread.native_handle(), (ULONG_PTR)ref);
 
   if (!success) {
+    delete ref;
     throw std::runtime_error("Unable to queue APC");
   }
 }
 
 // This function is called by Backend::unwatch which takes a lock on mMutex
 void WindowsBackend::unsubscribe(WatcherRef watcher) {
+  // CancelIo only cancels reads issued by the calling thread, so stop in the backend thread.
+  // The cancelled read's completion then drops the last reference there.
+  auto ref = new std::shared_ptr<Subscription>(std::static_pointer_cast<Subscription>(watcher->state));
   watcher->state = nullptr;
+  bool success = QueueUserAPC([](__in ULONG_PTR ptr) {
+    auto sub = (std::shared_ptr<Subscription> *)ptr;
+    (*sub)->stop();
+    delete sub;
+  }, mThread.native_handle(), (ULONG_PTR)ref);
+
+  if (!success) {
+    delete ref;
+  }
 }

@@ -759,6 +759,45 @@ describe('watcher', () => {
         });
       });
 
+      describe('unsubscribe', () => {
+        it('should not crash when unsubscribing while files change', async () => {
+          if (backend === 'watchman' || backend === 'wasm') {
+            return;
+          }
+
+          let dir = path.join(
+            fs.realpathSync(require('os').tmpdir()),
+            Math.random().toString(31).slice(2),
+          );
+          fs.mkdirpSync(dir);
+
+          // Keep the directory changing, so reads complete while subscriptions are released.
+          let writing = true;
+          let writer = (async () => {
+            for (let n = 0; writing; n++) {
+              await fs.writeFile(
+                path.join(dir, `f${n % 100}`),
+                'x'.repeat(n % 1000),
+              );
+            }
+          })();
+
+          try {
+            for (let i = 0; i < 100; i++) {
+              let sub = await watcher.subscribe(dir, () => {}, {backend});
+              await new Promise((resolve) =>
+                setTimeout(resolve, Math.random() * 10),
+              );
+              await sub.unsubscribe();
+            }
+          } finally {
+            writing = false;
+            await writer;
+            fs.removeSync(dir);
+          }
+        });
+      });
+
       describe('errors', () => {
         it('should error if the watched directory does not exist', async () => {
           let dir = path.join(
