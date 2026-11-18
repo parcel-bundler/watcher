@@ -230,7 +230,7 @@ void FSEventsBackend::startStream(WatcherRef watcher, FSEventStreamEventId id) {
     pathsToWatch,
     id,
     latency,
-    kFSEventStreamCreateFlagFileEvents
+    kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents
   );
 
   CFMutableArrayRef exclusions = CFArrayCreateMutable(NULL, watcher->mIgnorePaths.size(), NULL);
